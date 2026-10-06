@@ -1,0 +1,26 @@
+# gitleaks configuration — spec §18.2 (CI secret scanning).
+# Extends the default ruleset; only known dummy values used by tests and CI are allowlisted.
+# Never add a real credential here: rotate it instead.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Placeholder credentials used by the unit-test setup and the CI build step"
+regexTarget = "match"
+regexes = [
+  '''sk_test_placeholder''',
+  '''pk_test_placeholder''',
+  '''whsec_test_placeholder''',
+  '''sk_test_ci''',
+  '''pk_test_ci''',
+  '''whsec_ci''',
+  '''ci-cron-secret-0123456789abcdef0123456789''',
+  '''test-cron-secret-0123456789abcdef0123456789''',
+  '''(test|ci)-webhook-(user|password|path-secret)-0123456789[a-f0-9]*''',
+]
+paths = [
+  '''tests/setup\.ts''',
+  '''\.github/workflows/ci\.yml''',
+  '''\.env\.example''',
+]

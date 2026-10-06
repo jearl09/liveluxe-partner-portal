@@ -79,7 +79,7 @@ jobs:
       - name: Secret scan (gitleaks)
         run: |
           curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz | tar xz gitleaks
-          ./gitleaks git --redact --exit-code=1 --report-format=sarif --report-path=gitleaks.sarif .
+          ./gitleaks git --redact --config .gitleaks.toml --exit-code=1 --report-format=sarif --report-path=gitleaks.sarif .
       - uses: actions/upload-artifact@v4
         if: always()
         with:
