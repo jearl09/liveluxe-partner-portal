@@ -1,26 +1,178 @@
 @import "tailwindcss";
 
+/*
+ * Live Luxe brand tokens (§13.5 Branding) — taken from the public Docklands site:
+ * deep navy surfaces, warm cream chrome, antique gold accent, serif display type.
+ * These are the shadcn/ui token names so every component picks them up.
+ * Light theme only for now: partner and ops screens are read in daylight on laptops;
+ * an OS dark preference must not wash the UI out.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --navy-950: #0b1422;
+  --navy-900: #101c2c;
+  --navy-800: #182840;
+  --navy-700: #24375a;
+  --cream-50: #faf7f1;
+  --cream-100: #f4efe6;
+  --cream-200: #e9e1d2;
+  --cream-300: #d9cdb7;
+  --gold-500: #b7853a;
+  --gold-600: #a0722f;
+  --gold-400: #cfa25c;
+  --ink-900: #141a24;
+  --ink-700: #3a4454;
+  --ink-500: #6b7484;
+
+  --background: var(--cream-50);
+  --foreground: var(--ink-900);
+  --card: #ffffff;
+  --card-foreground: var(--ink-900);
+  --popover: #ffffff;
+  --popover-foreground: var(--ink-900);
+  --primary: var(--navy-900);
+  --primary-foreground: #ffffff;
+  --secondary: var(--cream-100);
+  --secondary-foreground: var(--navy-900);
+  --accent: var(--gold-500);
+  --accent-foreground: #ffffff;
+  --muted: var(--cream-100);
+  --muted-foreground: var(--ink-500);
+  --destructive: #b42318;
+  --border: var(--cream-200);
+  --input: var(--cream-300);
+  --ring: var(--gold-500);
+  --radius: 0.5rem;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-navy-950: var(--navy-950);
+  --color-navy-900: var(--navy-900);
+  --color-navy-800: var(--navy-800);
+  --color-navy-700: var(--navy-700);
+  --color-cream-50: var(--cream-50);
+  --color-cream-100: var(--cream-100);
+  --color-cream-200: var(--cream-200);
+  --color-cream-300: var(--cream-300);
+  --color-gold-400: var(--gold-400);
+  --color-gold-500: var(--gold-500);
+  --color-gold-600: var(--gold-600);
+  --color-ink-900: var(--ink-900);
+  --color-ink-700: var(--ink-700);
+  --color-ink-500: var(--ink-500);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-playfair), Georgia, "Times New Roman", serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 4px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    color-scheme: light;
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  .font-serif {
+    font-family: var(--font-serif);
+  }
+  input,
+  select,
+  textarea {
+    background: #fff;
+    color: var(--foreground);
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--ink-500);
+  }
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 1px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Gold eyebrow label used across headings, matching the site's "DOCKLANDS, MELBOURNE" treatment. */
+.eyebrow {
+  color: var(--gold-500);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.gold-rule {
+  width: 3.5rem;
+  height: 2px;
+  background: var(--gold-500);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Print: the requests table prints cleanly for claim files (§13.5). */
+@media print {
+  header,
+  footer,
+  nav,
+  .print\:hidden {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+  main {
+    max-width: none;
+    padding: 0;
+  }
+  .print-section {
+    border: 0;
+  }
+  .print-section table {
+    display: table !important;
+    width: 100%;
+  }
+  .print-section ul {
+    display: none !important;
+  }
+  a {
+    text-decoration: none;
+    color: inherit;
+  }
 }

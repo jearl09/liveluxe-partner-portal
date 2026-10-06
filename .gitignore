@@ -39,3 +39,18 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# playwright
+/playwright-report
+/test-results
+
+# supabase local
+/supabase/.branches
+/supabase/.temp
+
+# keep the env template
+!.env.example
+
+# scratch assets dropped in the root for design review
+/Screenshot*.png
+/*.pdf

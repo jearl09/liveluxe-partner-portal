@@ -1,0 +1,20 @@
+/** Vitest global setup. Provides a valid env so modules that call env() at import do not throw. */
+(process.env as Record<string, string | undefined>).NODE_ENV = "test";
+process.env.VERCEL_ENV ??= "development";
+process.env.NEXT_PUBLIC_APP_URL ??= "http://localhost:3000";
+process.env.NEXT_PUBLIC_SUPABASE_URL ??= "http://127.0.0.1:54321";
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??= "test-anon-key";
+process.env.SUPABASE_SERVICE_ROLE_KEY ??= "test-service-role-key";
+process.env.HOSTAWAY_ACCOUNT_ID ??= "12345";
+process.env.HOSTAWAY_API_KEY ??= "test-hostaway-key";
+process.env.HOSTAWAY_WEBHOOK_USER ??= "test-webhook-user-0123456789";
+process.env.HOSTAWAY_WEBHOOK_PASSWORD ??= "test-webhook-password-0123456789abcdef";
+process.env.HOSTAWAY_WEBHOOK_PATH_SECRET ??= "test-webhook-path-secret-0123456789abcdef";
+process.env.HOSTAWAY_ALLOW_WRITES ??= "false";
+process.env.STRIPE_SECRET_KEY ??= "sk_test_placeholder";
+process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ??= "pk_test_placeholder";
+process.env.STRIPE_WEBHOOK_SECRET ??= "whsec_test_placeholder";
+process.env.RESEND_API_KEY ??= "re_test_placeholder";
+process.env.EMAIL_FROM ??= "bookings@test.livluxe.com.au";
+process.env.EMAIL_REPLY_TO ??= "ops@test.livluxe.com.au";
+process.env.CRON_SECRET ??= "test-cron-secret-0123456789abcdef0123456789";

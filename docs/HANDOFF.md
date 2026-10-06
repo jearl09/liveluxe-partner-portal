@@ -1,0 +1,130 @@
+# Handoff — state of the project as of 2026-10-06 (session 2)
+
+Read this first when starting a new Claude Code session in this folder.
+
+## What this is
+
+Livluxe Partner Direct Booking Platform for Live Luxe Pty Ltd (ABN 16 678 772 613). Invite-only portal for insurance
+and corporate partners to book long stays. Built from `docs/spec/Livluxe-Partner-Booking-Platform-Architecture-Spec.pdf`
+(v1.0, 16 Sep 2026), which is the architecture of record. Code comments cite it as §N.
+
+## Stack (per spec)
+
+Next.js 16 (App Router, `proxy.ts`), TypeScript strict, Tailwind v4, shadcn-style components, Supabase (Postgres + PostGIS + RLS),
+Stripe, Hostaway Public API v1 (hand-rolled client), Resend, MapLibre, Vercel Cron, Vitest, Playwright, GitHub Actions. npm.
+
+## Done
+
+### Session 1 — Phase 0 foundations
+
+- Full repo scaffold per spec §5.2. `README.md` has the layout; `docs/GETTING-STARTED.md` the setup.
+- Pure domain layer (`lib/domain`): state machine, quote engine, availability, permissions, money, errors.
+- Integration clients: Hostaway (governor, token, retry, breaker), Stripe, Resend, Slack. Webhook receivers. 14 cron jobs registered (stubs).
+- Initial migration applied to the HOSTED Supabase project (ap-southeast-2) via the SQL editor. Three follow-up patches in
+  `supabase/patches/` were also applied; the migration file already includes them.
+- Admin user exists: claudia@liveluxeau.com, role livluxe_admin, org 00000000-0000-0000-0000-000000000001.
+- `.env.local` has real Supabase keys plus generated local-dev values for CRON_SECRET and Hostaway webhook secrets.
+  Hostaway account/API key and Resend key are placeholders.
+
+### Session 2 — Phase 0 auth hardening (spec §8.1 / §8.2) — code complete, NOT yet exercised end-to-end
+
+- **Login rate limiting**: 5 / account / 15 min and 20 / IP / 15 min, sliding window in Postgres
+  (`auth_attempts` + `auth_rate_limit_hit()`), applied to sign-in, MFA verify, reset request and invite acceptance.
+  Fails OPEN (with an error log) if the function is missing — apply the migration to turn it on.
+- **Invitation flow**: `POST /api/invitations` (needs `org.manage_users`; partner_admin → partner roles in own org,
+  livluxe_admin → anyone) inserts via RLS, stores SHA-256(token), emails `templates/invitation.tsx` with a 7-day link.
+  `/invite/[token]` previews through the anonymous `invitation_preview()` function; `POST /api/auth/accept-invite`
+  creates the auth user (service role), runs `accept_invitation()` atomically, audits, signs in. Orphan auth users are
+  deleted if acceptance fails.
+- **Password reset**: `/reset-password` → Supabase recovery email → `/api/auth/callback` (PKCE `code` or
+  `token_hash` link styles) → `/reset-password/confirm` → `POST /api/auth/reset-password/confirm` → sign out → login.
+- **Password policy + HIBP**: ≥12 chars, not containing the email local-part, k-anonymity breach check on every
+  password set (fails open, logged). Pure rules in `lib/domain/auth.ts`.
+- _\*TOTP MFA for livluxe_* roles_*: `/mfa/enrol` (QR + manual key), `/mfa/verify`, `POST /api/auth/mfa/verify`
+  (`challengeAndVerify`). Enforced three times: `proxy.ts` (JWT `aal` claim), `app/(admin)/layout.tsx`
+  (`getAuthenticatorAssuranceLevel`), and the post-login redirect. First verification sets `partner_users.mfa_enrolled`
+  and writes `auth.mfa_enrolled` to `audit_log`.
+- `proxy.ts` now returns the §16.1 JSON 401 envelope for unauthenticated `/api/*` calls instead of redirecting.
+- Tests: 49 unit tests, `lib/domain` coverage 95%. typecheck · lint · build · guard all green.
+- New migration: `supabase/migrations/20261006120000_phase0_auth.sql`.
+
+## Departures from the spec (all deliberate)
+
+- JWT custom claim is `user_role`, not `role` (Supabase reserves `role` for the Postgres role). Helpers: `public.jwt_org_id()`,
+  `public.jwt_role()`, `public.jwt_is_livluxe()` — in `public`, not `auth` (hosted Supabase forbids writing to `auth`).
+- JWT hook `public.custom_access_token_hook` is `security definer`.
+- `proxy.ts` (Next 16) instead of `middleware.ts`.
+- Invitation acceptance uses the service role (to create the auth user) from `app/api/auth/accept-invite` — an
+  explicitly audited admin operation per §8.3. Everything else in the flow goes through RLS or security-definer functions.
+
+## BLOCKED — dashboard actions only you can do (in this order)
+
+1. **Apply the Phase 0 auth migration**: paste `supabase/migrations/20261006120000_phase0_auth.sql` into the SQL editor.
+   Until then login works but is NOT rate limited (logged as auth.rate_limit_unavailable).
+2. **Enable the JWT claims hook** (still outstanding from session 1): Authentication → Hooks → Customize Access Token (JWT)
+   Claims → Postgres → schema `public` → function `custom_access_token_hook` → Save. Verify by signing in: `/login` should
+   no longer bounce back with `?setup=hook`.
+3. **Enable TOTP** (only if anyone wants to turn MFA on): Authentication → Multi-Factor → TOTP → Enabled.
+4. **URL configuration**: Site URL = app origin; add `<origin>/api/auth/callback` (and the Vercel preview pattern) to the
+   redirect allow-list. Optionally change the "Reset password" email template as described in `docs/GETTING-STARTED.md`.
+5. **Resend**: a real `RESEND_API_KEY` and verified sending domain before issuing invitations (the insert succeeds
+   and is audited before the email is sent; a send failure surfaces as HTTP 500 from `POST /api/invitations`).
+
+Run `node scripts/check-auth-setup.mjs claudia@liveluxeau.com` — it tells you which of steps 1–2 is still outstanding.
+Then sign in → `/admin/queue`; optionally Settings → Security → Turn on MFA.
+Then issue an invitation with `curl -X POST /api/invitations -H 'content-type: application/json'
+-d '{"email":"…","role":"partner_admin","orgId":"<partner org uuid>"}'` (cookie from the browser session) and accept it.
+
+### Session 2 (cont.) — brand theme
+
+- Root cause of the "faded" UI: shadcn tokens (`bg-primary`, `border-input`…) were never defined, and `globals.css`
+  flipped to a dark background under an OS dark-mode preference. Both fixed.
+- Live Luxe theme from the public Docklands site: navy `#101c2c`, cream `#f4efe6`, gold `#b7853a`, Playfair Display
+  headings, Inter body. Tokens in `app/globals.css`; `.eyebrow` and `.gold-rule` utilities.
+- New: `components/layout/brand.tsx` (wordmark), `nav-links.tsx` (active state), restyled `app-shell.tsx` (cream partner
+  header, navy ops header, sign-out, footer), split-screen auth layout, `PageHeader`, `StatCard`, dashboard, search and
+  queue placeholders. Button gained a `gold` variant.
+- `scripts/check-auth-setup.mjs <email>` diagnoses login (migration applied? partner_users active? JWT hook on?).
+
+### Session 2 (cont.) — partner dashboard (§13.1 "/")
+
+- Built to the brief in chat: header with greeting + freshness pill, "Needs your attention" strip (renders only when
+  non-empty), 4 KPI tiles linking to pre-filtered /requests, requests-in-progress table (action-first sort, card list
+  under 1280 px, prints cleanly), 7-day agenda with access-pack notes, recent activity (tz-labelled, UTC on hover),
+  quick search, manual-search fallback band, sticky phone search button, skeleton `loading.tsx`, per-section error
+  cards with support refs.
+- Pure view-model in `lib/domain/dashboard.ts` (tested); loader in `lib/dashboard/load.ts` on the RLS client.
+  Real data arrives with Phase 3; until then `/?demo=1` (non-production) and `/dev/dashboard[?state=empty|stale]`
+  (no session needed, 404 in production) show sample data for design review.
+- New migration `supabase/migrations/20261006130000_dashboard.sql`: `partner_orgs.logo_url` (co-branded header),
+  `availability_freshness()` (partner-safe read of the last sync), setting `sync.stale_after_minutes`.
+  Apply it in the SQL editor with the Phase 0 auth one.
+- Shared `StatusPill` (`components/ui/status-pill.tsx`) is THE status colour mapping; reuse it on /requests and /admin.
+
+## Known gaps / follow-ups in this area
+
+- Spec §8.2 items not yet built: idle/absolute session timeouts (partner 12 h / 30 d, Livluxe 2 h / 7 d), email notice on
+  account lock, exponential delay on invite-token attempts, new-device email, invitee email-domain allowlist (§8.1),
+  impersonation (§8.2). Password reset does not yet revoke other sessions.
+
+- No UI yet for issuing invitations (`/team`, `/admin/partners` are Phase 2+); the API is ready.
+- No MFA recovery codes. Lost device = delete the factor in the Supabase dashboard (Authentication → Users → MFA).
+- `lib/db/types.ts` is still hand-maintained. Run `npm run db:types` against a local stack once Docker is available.
+- The `/invite/[token]` page and `accept-invite` route each look the token up once; acceptance re-checks atomically in SQL.
+- E2E (Playwright) coverage of these flows is not written; they need a local Supabase stack with Inbucket for the emails.
+
+## Optional
+
+- Demo data: paste `supabase/seed/seed.sql` into the SQL editor (idempotent). Adds 2 demo partners, 2 listings, 120 days of calendar, a rate card.
+- `frontend-design` plugin was installed at project scope for this folder; start Claude Code here for it to load.
+
+## Next engineering steps
+
+1. Exercise the auth flows above once the dashboard steps are done; fix whatever the real Supabase project disagrees with.
+2. Phase 1 (Hostaway read sync) — BLOCKED on a Hostaway TEST account. See `docs/DECISIONS-REQUIRED.md` #10.
+3. Business decisions in `docs/DECISIONS-REQUIRED.md` (GST treatment, rate card structure, hold policy, etc.).
+4. First commit: the tree has never been committed beyond the create-next-app scaffold (`git status` shows everything untracked).
+
+## Commands
+
+npm run dev · npm run typecheck · npm run lint · npm run test:unit · npm run guard:service-role · npm run build
