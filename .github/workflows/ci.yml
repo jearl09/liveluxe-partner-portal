@@ -61,7 +61,8 @@ jobs:
       - run: npm ci
       - run: supabase start
       - run: supabase db reset
-      - run: npm run test:integration
+      # No integration suites exist until Phase 1; an empty run must not fail the build.
+      - run: npm run test:integration -- --passWithNoTests
         env:
           SUPABASE_DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
 
@@ -73,9 +74,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Scan the whole history with the gitleaks CLI. The marketplace action diffs from
+      # <base>^, which does not exist on the first push of a repo, and then fails.
+      - name: Secret scan (gitleaks)
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz | tar xz gitleaks
+          ./gitleaks git --redact --exit-code=1 --report-format=sarif --report-path=gitleaks.sarif .
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gitleaks-results
+          path: gitleaks.sarif
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
