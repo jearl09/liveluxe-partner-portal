@@ -11,8 +11,17 @@ import type { CalendarDay, DayStatus } from "@/lib/domain/availability";
 const toCents = (major: number | null | undefined): number | null =>
   major === null || major === undefined ? null : Math.round(major * 100);
 
-const hourToTime = (h: number | null | undefined): string | null =>
-  h === null || h === undefined ? null : `${String(h).padStart(2, "0")}:00:00`;
+/**
+ * Hostaway expresses check-in windows as hours and allows values past midnight
+ * (e.g. checkInTimeEnd = 26 means 2 am the next day). Postgres `time` does not,
+ * so wrap into 0–23; anything non-numeric or absurd becomes null.
+ */
+const hourToTime = (h: number | null | undefined): string | null => {
+  if (h === null || h === undefined || !Number.isFinite(h)) return null;
+  const whole = Math.trunc(h);
+  if (whole < 0 || whole > 47) return null;
+  return `${String(whole % 24).padStart(2, "0")}:00:00`;
+};
 
 const truthy = (v: boolean | number | null | undefined) => v === true || v === 1;
 

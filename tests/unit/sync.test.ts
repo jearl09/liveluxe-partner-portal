@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { chunk, nextCalendarBatch, planListingSync } from "@/lib/domain/sync";
+import { chunk, looksInternalListing, nextCalendarBatch, planListingSync } from "@/lib/domain/sync";
 
 const existing = [
   { hostawayListingId: 1, contentHash: "a", isActive: true },
@@ -70,5 +70,16 @@ describe("nextCalendarBatch (resumable cursor)", () => {
 
   it("handles an empty catalogue", () => {
     expect(nextCalendarBatch([], 5, 2)).toEqual({ ids: [], nextCursor: null, wrapped: false });
+  });
+});
+
+describe("looksInternalListing", () => {
+  it("flags cleaning / discarded / test pseudo-listings and nothing else", () => {
+    expect(looksInternalListing("CLEANING - 3405/160 Victoria St")).toBe(true);
+    expect(looksInternalListing("[DISCARDED] 1415/673 La Trobe Street Docklands")).toBe(true);
+    expect(looksInternalListing(" Test listing")).toBe(true);
+    expect(looksInternalListing("1311/677 La Trobe Street Docklands")).toBe(false);
+    expect(looksInternalListing("Live Luxe | Cozy & Central 1B Studio at QV Market")).toBe(false);
+    expect(looksInternalListing("Cleanly furnished apartment")).toBe(false);
   });
 });

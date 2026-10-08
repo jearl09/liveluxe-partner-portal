@@ -161,6 +161,7 @@ export interface Database {
         created_at: string;
       }>;
       auth_attempts: Row<{ id: number; key: string; attempted_at: string }>;
+      job_leases: Row<{ key: string; holder: string; expires_at: string; acquired_at: string }>;
       listings: Row<ListingRow>;
       listing_images: Row<{
         id: string;
@@ -207,8 +208,8 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
-      try_advisory_lock: { Args: { lock_key: string }; Returns: boolean };
-      release_advisory_lock: { Args: { lock_key: string }; Returns: boolean };
+      job_lease_acquire: { Args: { p_key: string; p_holder: string; p_ttl_seconds: number }; Returns: boolean };
+      job_lease_release: { Args: { p_key: string; p_holder: string }; Returns: boolean };
       hostaway_rate_limit_acquire: {
         Args: { p_bucket: string; p_max_tokens: number; p_refill_per_sec: number };
         Returns: boolean;

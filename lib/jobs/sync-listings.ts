@@ -12,7 +12,7 @@
 import { adminDb } from "@/lib/db/admin";
 import { hostaway } from "@/lib/hostaway/api";
 import { mapListing, type ListingRow as MappedListing } from "@/lib/hostaway/mappers";
-import { chunk, planListingSync } from "@/lib/domain/sync";
+import { chunk, looksInternalListing, planListingSync } from "@/lib/domain/sync";
 import { jitterPoint, toEwktPoint } from "@/lib/domain/geo";
 import { log } from "@/lib/observability/logger";
 import type { Database, Json } from "@/lib/db/types";
@@ -38,6 +38,8 @@ function toListingInsert(m: MappedListing, syncedAt: string): ListingInsert {
     hostaway_status: "active",
     is_active: true,
     last_synced_at: syncedAt,
+    // Only ever lowers visibility; never flips a listing ops hid back on.
+    ...(looksInternalListing(m.public_name) ? { is_partner_visible: false } : {}),
   };
 }
 

@@ -17,6 +17,14 @@ describe("mapListing (spec §6.6)", () => {
     expect(listing.checkout_by).toBe("10:00:00");
   });
 
+  it("wraps check-in hours past midnight and drops nonsense (Hostaway allows 26 = 2 am)", () => {
+    const late = mapListing({ ...src, checkInTimeStart: 15, checkInTimeEnd: 26, checkOutTime: 48 }).listing;
+    expect(late.checkin_from).toBe("15:00:00");
+    expect(late.checkin_to).toBe("02:00:00");
+    expect(late.checkout_by).toBeNull();
+    expect(mapListing({ ...src, checkInTimeStart: null }).listing.checkin_from).toBeNull();
+  });
+
   it("keeps sensitive fields out of the listing row", () => {
     const serialised = JSON.stringify(listing);
     expect(serialised).not.toContain("REDACTED-IN-FIXTURE");

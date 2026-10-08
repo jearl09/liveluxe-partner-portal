@@ -131,6 +131,22 @@ Then issue an invitation with `curl -X POST /api/invitations -H 'content-type: a
   `calendar_days`, `search_available_listings`.
 - Tests: 90 unit tests; new `geo`, `dates`, `sync`, `search`, `hostaway-mappers`. Domain coverage 93 % lines.
 
+### Session 3 (cont.) — first real sync, and what it taught us
+
+- First live sync against the Live Luxe Hostaway account succeeded: 129 listings, 2,336 images, 6,159 amenity rows,
+  ~50,000 calendar days (near + far). Hostaway lists check-in windows past midnight (hour 26 = 2 am); the mapper now
+  wraps hours into 0–23 instead of failing the whole upsert.
+- Hostaway holds operational pseudo-listings ("CLEANING - …", "[DISCARDED] …"). `looksInternalListing()` hides them
+  from partners at sync time (`is_partner_visible = false`, never raised back). 14 of 129 are hidden. Ops will need
+  `/admin/listings` to curate the rest (some real apartments carry a $10 base price or no bedroom count).
+- **Bug found and fixed**: `pg_try_advisory_lock` is session-scoped; behind Supabase's REST connection pool the unlock
+  runs on another session and the lock leaks (a job was "skipped: lock held" a second after the previous run ended).
+  Replaced by a lease row: migration `20261008100000_job_leases.sql` (`job_leases`, `job_lease_acquire/release`,
+  drops the advisory helpers). `withAdvisoryLock()` keeps its name and signature; TTL defaults to 6 min.
+  **Apply this migration in the SQL editor before running any job again** — `lib/jobs/lock.ts` calls the new RPCs.
+- `SUPABASE_DB_URL` in `.env.local` points at a local stack (127.0.0.1:54322), so migrations still go through the
+  dashboard SQL editor on the hosted project.
+
 ## Known gaps / follow-ups in this area
 
 - Spec §8.2 items not yet built: idle/absolute session timeouts (partner 12 h / 30 d, Livluxe 2 h / 7 d), email notice on
@@ -170,9 +186,9 @@ Development runs on the engineer's own Supabase project. Switch to Live Luxe's p
 
 ## Next engineering steps
 
-1. Run the first real sync (laptop or Mac mini): `npm run dev`, then `node scripts/run-job.mjs sync-listings`,
-   `sync-calendar-near`, `sync-calendar-far`. Check `/search` and a listing page. Fix any Hostaway payload drift
-   (`hostaway.parse_failed` in the log → adjust `lib/hostaway/types.ts`).
+1. Apply `20261008100000_job_leases.sql` in the SQL editor, then finish the near-calendar pass:
+   `node scripts/run-job.mjs sync-calendar-near` until the run notes say "pass complete" (3 runs for 129 listings).
+   Then eyeball `/search` with dates and a few listing pages for payload drift (`hostaway.parse_failed` in the log).
 2. Week 2: basket + booking request submission (DRAFT → SUBMITTED, hold, reference, quote persisted with price hash),
    admin queue with approve / decline / counter, rate-card application in `priceStay`, partner-safe settings read,
    Resend emails, `drain-webhooks` + `expire-holds` jobs.

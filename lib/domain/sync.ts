@@ -85,3 +85,14 @@ export function nextCalendarBatch(
   const reachedEnd = start + batchSize >= orderedIds.length;
   return { ids, nextCursor: reachedEnd ? null : ids[ids.length - 1], wrapped: cursorAfterId !== null && start === 0 };
 }
+
+/**
+ * Hostaway accounts accumulate operational pseudo-listings (cleaning jobs, discarded
+ * duplicates, templates). They must never reach a partner. This only ever LOWERS
+ * visibility; ops can still hide anything else from /admin/listings.
+ */
+const INTERNAL_NAME = /^\s*\[?\s*(discarded|cleaning|clean|test|template|duplicate|archived|do not use|dnu)\b/i;
+
+export function looksInternalListing(publicName: string): boolean {
+  return INTERNAL_NAME.test(publicName);
+}
