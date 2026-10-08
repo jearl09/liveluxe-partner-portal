@@ -35,9 +35,11 @@ console.log("1. Phase 0 auth migration");
   if (r.ok) ok("auth_rate_limit_hit() exists — rate limiting is active");
   else {
     failures++;
+    const detail = await r.text().catch(() => "");
     bad(
-      `auth_rate_limit_hit() missing (HTTP ${r.status}). Apply supabase/migrations/20261006120000_phase0_auth.sql in the SQL editor.`,
+      `auth_rate_limit_hit() not callable (HTTP ${r.status}). Apply supabase/migrations/20261006120000_phase0_auth.sql in the SQL editor.`,
     );
+    if (detail) console.log(`    ${detail.slice(0, 400)}`);
   }
 }
 
