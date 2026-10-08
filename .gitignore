@@ -54,3 +54,6 @@ next-env.d.ts
 # scratch assets dropped in the root for design review
 /Screenshot*.png
 /*.pdf
+
+.vercel
+.env*

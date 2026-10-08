@@ -147,6 +147,21 @@ Then issue an invitation with `curl -X POST /api/invitations -H 'content-type: a
 - `SUPABASE_DB_URL` in `.env.local` points at a local stack (127.0.0.1:54322), so migrations still go through the
   dashboard SQL editor on the hosted project.
 
+### Session 3 (cont.) — test deployment on Vercel (2026-10-08 evening)
+
+- **Live test link: https://liveluxe-partner-portal.vercel.app** on the engineer's personal Vercel account (Hobby),
+  project `liveluxe-partner-portal`, same Supabase project as local dev, so synced data and users are shared.
+- Env pushed with `node scripts/vercel-env-push.mjs` (reads `.env.local`, never prints values; skips blanks and
+  `NEXT_PUBLIC_APP_URL`, which is set to the Vercel URL). Re-run it after any `.env.local` change, then redeploy.
+- Hobby allows two daily crons, so deploys go through `node scripts/deploy-hobby.mjs` (swaps `vercel.json` to nightly
+  `sync-listings` + `sync-calendar-near`, restores afterwards). Other jobs: trigger by hand with
+  `NEXT_PUBLIC_APP_URL=https://liveluxe-partner-portal.vercel.app node scripts/run-job.mjs <job>`.
+- `.vercel/` is git-ignored; `vercel link` also appended `VERCEL_OIDC_TOKEN` to `.env.local` (harmless, skipped by the push).
+- Still to do for this link: Supabase → Authentication → URL Configuration: Site URL
+  `https://liveluxe-partner-portal.vercel.app`, add `https://liveluxe-partner-portal.vercel.app/api/auth/callback` to the
+  redirect allow-list (needed only for password-reset emails). Go-live moves to the General group's Pro team with
+  the full cron schedule.
+
 ## Known gaps / follow-ups in this area
 
 - Spec §8.2 items not yet built: idle/absolute session timeouts (partner 12 h / 30 d, Livluxe 2 h / 7 d), email notice on
