@@ -9,6 +9,7 @@
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
+const SECRET = /SECRET|_KEY$|PASSWORD|TOKEN|SERVICE_ROLE|WEBHOOK_USER/;
 const SKIP = new Set(["NODE_ENV", "VERCEL_ENV", "SUPABASE_DB_URL", "VERCEL_OIDC_TOKEN", "NEXT_PUBLIC_APP_URL"]);
 const args = process.argv.slice(2);
 const targets = args.includes("--only") ? [args[args.indexOf("--only") + 1]] : ["production", "preview"];
@@ -38,7 +39,10 @@ for (const [key, value] of Object.entries(vars)) {
   }
   for (const target of targets) {
     run(["env", "rm", key, target, "--yes"]); // ignore "not found"
-    const r = run(["env", "add", key, target], value);
+    // NEXT_PUBLIC_* and plain config must be readable at build time (Next inlines them);
+    // only real secrets are stored as Vercel "sensitive" values.
+    const flag = !key.startsWith("NEXT_PUBLIC_") && SECRET.test(key) ? "--sensitive" : "--no-sensitive";
+    const r = run(["env", "add", key, target, flag], value);
     if (r.status !== 0) {
       console.error(`  ✗ ${key} (${target}): ${(r.stderr || r.stdout).split("\n").slice(-3).join(" ").trim()}`);
       process.exitCode = 1;
