@@ -7,6 +7,9 @@ import { JOBS, type JobName } from "./registry";
 import { log } from "@/lib/observability/logger";
 import { alertCritical } from "@/lib/notifications/slack";
 
+/** Longer than the route's maxDuration (300 s) plus the lease TTL, so a live run is never closed. */
+const STALE_RUN_MS = 10 * 60_000;
+
 export type RunOutcome = { status: "succeeded" | "failed" | "skipped"; runId?: string; error?: string };
 
 export async function runJob(name: JobName, requestId: string): Promise<RunOutcome> {
@@ -16,6 +19,18 @@ export async function runJob(name: JobName, requestId: string): Promise<RunOutco
   return withAdvisoryLock<RunOutcome>(
     `job:${name}`,
     async () => {
+      // A serverless invocation can die without reaching the catch below (timeout, OOM,
+      // dev-server restart). Its lease has already expired or we would not be here, so
+      // close any row it left behind rather than show "running" forever (§17.5).
+      const stale = await db
+        .from("sync_runs")
+        .update({ status: "failed", finished_at: new Date().toISOString(), error: "abandoned: invocation died" })
+        .eq("job", name)
+        .eq("status", "running")
+        .lt("started_at", new Date(Date.now() - STALE_RUN_MS).toISOString())
+        .select("id");
+      if (stale.data?.length) log.warn("job.stale_runs_closed", { job: name, count: stale.data.length });
+
       const { data: run, error } = await db
         .from("sync_runs")
         .insert({ job: name, status: "running", started_at: new Date().toISOString() })

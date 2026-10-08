@@ -18,10 +18,20 @@ if (!job || !secret) {
 
 const started = Date.now();
 console.log(`→ POST ${base}/api/cron/${job}`);
-const res = await fetch(`${base}/api/cron/${job}`, {
-  method: "POST",
-  headers: { authorization: `Bearer ${secret}` },
-});
+let res;
+try {
+  res = await fetch(`${base}/api/cron/${job}`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${secret}` },
+    signal: AbortSignal.timeout(320_000),
+  });
+} catch (e) {
+  console.error(
+    `✗ request failed after ${((Date.now() - started) / 1000).toFixed(1)} s: ${e?.cause?.message ?? e.message}`,
+  );
+  console.error("  The job may still be running on the server; check sync_runs before re-triggering.");
+  process.exit(1);
+}
 const body = await res.json().catch(() => ({}));
 console.log(`← HTTP ${res.status} in ${((Date.now() - started) / 1000).toFixed(1)} s`);
 console.log(JSON.stringify(body, null, 2));
