@@ -113,6 +113,21 @@ Then issue an invitation with `curl -X POST /api/invitations -H 'content-type: a
 - The `/invite/[token]` page and `accept-invite` route each look the token up once; acceptance re-checks atomically in SQL.
 - E2E (Playwright) coverage of these flows is not written; they need a local Supabase stack with Inbucket for the emails.
 
+## Move to the client's Supabase project (do before the first partner is invited)
+
+Development runs on the engineer's own Supabase project. Switch to Live Luxe's project by the end of week 2 of the
+3-week plan, while the only data is the admin user and demo rows. Steps, under an hour:
+
+1. Client project in ap-southeast-2 (Sydney), Pro plan (PITR + daily backups per spec §18.2).
+2. SQL editor: run the migrations in order: `20261006000000_initial_schema.sql`, `20261006120000_phase0_auth.sql`,
+   `20261006130000_dashboard.sql`. Then `supabase/seed/seed.sql` if demo data is wanted.
+3. Dashboard: enable the JWT hook (`public.custom_access_token_hook`), enable TOTP, set Site URL and add
+   `/api/auth/callback` to the redirect allow-list, optionally the reset-password email template (GETTING-STARTED.md).
+4. Create the first livluxe_admin auth user and its active `partner_users` row (GETTING-STARTED.md).
+5. Swap `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` in Proton Pass
+   (`Builds/liveluxe-partner-portal`) and in Vercel. Run `node scripts/check-auth-setup.mjs <email>` to confirm.
+6. Nothing else changes: no data migration is needed before the pilot.
+
 ## Optional
 
 - Demo data: paste `supabase/seed/seed.sql` into the SQL editor (idempotent). Adds 2 demo partners, 2 listings, 120 days of calendar, a rate card.
