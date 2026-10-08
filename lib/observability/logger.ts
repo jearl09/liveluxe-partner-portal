@@ -41,3 +41,8 @@ export const log = {
   /** CRITICAL: also fans out to Slack #alerts via lib/notifications/slack when configured. */
   critical: (msg: string, ctx?: LogContext) => emit("critical", msg, ctx),
 };
+
+/** Short support reference shown to the user and written to the log line, e.g. LLX-3F9A. */
+export function supportRef(): string {
+  return `LLX-${Math.random().toString(16).slice(2, 6).toUpperCase()}`;
+}

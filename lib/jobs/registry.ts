@@ -5,6 +5,8 @@
  * sync_runs row, emits a heartbeat, and is safe to run twice.
  */
 import { log } from "@/lib/observability/logger";
+import { syncListings } from "./sync-listings";
+import { syncCalendar } from "./sync-calendar";
 
 export interface JobResult {
   examined?: number;
@@ -28,17 +30,17 @@ export const JOBS: Record<string, { schedule: string; description: string; run: 
   "sync-listings": {
     schedule: "0 * * * *",
     description: "Full catalogue refresh from Hostaway (hash-compare upsert, soft-delete absent).",
-    run: todo("sync-listings"),
+    run: syncListings,
   },
   "sync-calendar-near": {
     schedule: "*/15 * * * *",
-    description: "Calendar 0–120 days, staggered by listing_id % 15.",
-    run: todo("sync-calendar-near"),
+    description: "Calendar 0–120 days, resumable batches of active listings.",
+    run: syncCalendar("near", "sync-calendar-near"),
   },
   "sync-calendar-far": {
     schedule: "0 */6 * * *",
-    description: "Calendar 121–400 days.",
-    run: todo("sync-calendar-far"),
+    description: "Calendar 121–400 days, resumable batches of active listings.",
+    run: syncCalendar("far", "sync-calendar-far"),
   },
   "drain-webhooks": {
     schedule: "* * * * *",

@@ -176,3 +176,22 @@
     color: inherit;
   }
 }
+
+/* Hostaway descriptions arrive as sanitised HTML; give them readable rhythm without a full prose plugin. */
+.prose-livluxe p {
+  margin-bottom: 0.75rem;
+}
+.prose-livluxe ul,
+.prose-livluxe ol {
+  margin: 0 0 0.75rem 1.25rem;
+  list-style: disc;
+}
+.prose-livluxe ol {
+  list-style: decimal;
+}
+.prose-livluxe strong {
+  color: var(--navy-900);
+}
+.prose-livluxe a {
+  text-decoration: underline;
+}

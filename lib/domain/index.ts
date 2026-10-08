@@ -6,3 +6,7 @@ export * from "./availability";
 export * from "./quote-engine";
 export * from "./auth";
 export * from "./dashboard";
+export * from "./dates";
+export * from "./geo";
+export * from "./search";
+export * from "./sync";

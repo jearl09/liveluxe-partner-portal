@@ -1,16 +1,17 @@
 /**
- * POST /api/quotes — price a stay and return a frozen quote (spec §9, §16.2).
+ * POST /api/quotes — price a stay and return a quote (spec §9, §16.2).
  *
- * This is the reference implementation of the Route Handler pattern:
- *   auth → Zod validation → permission check → domain call → persist → respond.
- * The calendar/rate-card loading is stubbed with TODOs until Phase 1 lands the sync.
+ * Reference Route Handler pattern: auth → Zod validation → permission check →
+ * domain call → respond. Pricing comes from lib/listings/price so the API and the
+ * listing page can never disagree.
  */
 import { z } from "zod";
 import { withApi, ok, fail, parseBody } from "@/lib/api/response";
 import { getSessionClaims } from "@/lib/db/server";
 import { can } from "@/lib/domain/permissions";
-import { buildQuote, PLACEHOLDER_TAX_RULES } from "@/lib/domain/quote-engine";
-import { resolveAvailability, assertAvailable, type CalendarDay } from "@/lib/domain/availability";
+import { assertAvailable } from "@/lib/domain/availability";
+import { DomainError } from "@/lib/domain/errors";
+import { priceStay } from "@/lib/listings/price";
 
 export const runtime = "nodejs";
 
@@ -34,29 +35,17 @@ export const POST = withApi<unknown>("/api/quotes", async (req, _ctx, { requestI
 
   const input = await parseBody(req, QuoteRequest);
 
-  // TODO(phase-1): load calendar_days for [checkIn, checkOut) + listing limits via the RLS client.
-  // TODO(phase-3): load the org's effective rate card for checkIn and the settings-table pricing policy.
-  const days: CalendarDay[] = [];
-  const limits = { minNights: 1, maxNights: null, maxGuests: 6, maxPets: 0 };
+  const priced = await priceStay(input.listingId, input);
+  if (!priced) return fail("NOT_FOUND", requestId, { listingId: input.listingId });
 
-  const availability = resolveAvailability(days, limits, input);
-  assertAvailable(availability, input.listingId);
+  assertAvailable(priced.availability, input.listingId);
+  if (!priced.quote) {
+    throw new DomainError("VALIDATION_FAILED", {
+      reason: "price_on_application",
+      unpricedDates: priced.availability.unpricedDates,
+    });
+  }
 
-  const quote = buildQuote({
-    ...input,
-    nightlyPricesCents: days.map((d) => d.priceCents),
-    listing: {
-      cleaningFeeCents: 0,
-      extraPersonFeeCents: 0,
-      guestsIncluded: 1,
-      securityDepositCents: 0,
-      weeklyDiscountPct: 0,
-      monthlyDiscountPct: 0,
-    },
-    rateCard: null,
-    policy: { midStayClean: null, taxRules: PLACEHOLDER_TAX_RULES },
-  });
-
-  // TODO(phase-3): insert into quotes (immutable), set expires_at = now() + org quote validity (default 48h).
-  return ok({ quote, expiresAt: new Date(Date.now() + 48 * 3600 * 1000).toISOString() }, { requestId });
+  // TODO(week-2): insert into quotes (immutable), expires_at = now() + quote.validity_hours.
+  return ok({ quote: priced.quote, expiresAt: new Date(Date.now() + 48 * 3600 * 1000).toISOString() }, { requestId });
 });

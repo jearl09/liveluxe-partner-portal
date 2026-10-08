@@ -13,6 +13,59 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 
 type Row<T> = { Row: T; Insert: Partial<T>; Update: Partial<T>; Relationships: [] };
 
+export type DayStatus = "available" | "blocked" | "reserved" | "pending" | "unknown";
+
+/** public.listings — Hostaway-synced catalogue (§6.6). geom columns are written as EWKT strings. */
+export type ListingRow = {
+  id: string;
+  hostaway_listing_id: number;
+  hostaway_listing_map_id: number | null;
+  public_name: string;
+  internal_name: string | null;
+  description_html: string | null;
+  house_rules: string | null;
+  address_line: string | null;
+  suburb: string | null;
+  state: string | null;
+  postcode: string | null;
+  country_code: string;
+  geom: unknown;
+  geom_public: unknown;
+  timezone: string;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  beds: number | null;
+  bed_config: Json | null;
+  max_guests: number | null;
+  max_pets: number;
+  property_type: string | null;
+  area_sqm: number | null;
+  base_price_cents: number | null;
+  currency: string;
+  cleaning_fee_cents: number;
+  extra_person_fee_cents: number;
+  guests_included: number;
+  security_deposit_cents: number;
+  weekly_discount_pct: number;
+  monthly_discount_pct: number;
+  min_nights: number;
+  max_nights: number | null;
+  checkin_from: string | null;
+  checkin_to: string | null;
+  checkout_by: string | null;
+  hostaway_status: string | null;
+  is_active: boolean;
+  is_partner_visible: boolean;
+  suitability_tags: string[];
+  partner_notes: string | null;
+  min_turnover_hours: number | null;
+  checkin_release_offset_hours: number | null;
+  content_hash: string | null;
+  last_synced_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export interface Database {
   public: {
     Tables: {
@@ -108,12 +161,28 @@ export interface Database {
         created_at: string;
       }>;
       auth_attempts: Row<{ id: number; key: string; attempted_at: string }>;
-      listings: Row<{
+      listings: Row<ListingRow>;
+      listing_images: Row<{
         id: string;
-        hostaway_listing_id: number;
-        public_name: string;
-        suburb: string | null;
-        is_active: boolean;
+        listing_id: string;
+        url: string;
+        storage_path: string | null;
+        caption: string | null;
+        sort_order: number;
+      }>;
+      listing_amenities: Row<{ listing_id: string; amenity_code: string; label: string | null }>;
+      calendar_days: Row<{
+        listing_id: string;
+        date: string;
+        status: DayStatus;
+        is_available: boolean;
+        allotment: number | null;
+        price_cents: number | null;
+        min_stay: number | null;
+        closed_on_arrival: boolean;
+        closed_on_departure: boolean;
+        reservation_ref: string | null;
+        source_synced_at: string;
       }>;
       booking_requests: Row<{
         id: string;
@@ -145,6 +214,10 @@ export interface Database {
         Returns: boolean;
       };
       map_availability: { Args: { p_from: string; p_to: string }; Returns: unknown[] };
+      search_available_listings: {
+        Args: { p_check_in: string; p_check_out: string; p_guests?: number; p_pets?: number };
+        Returns: ListingRow[];
+      };
       auth_rate_limit_hit: { Args: { p_key: string; p_max: number; p_window_seconds: number }; Returns: boolean };
       invitation_preview: {
         Args: { p_token_hash: string };

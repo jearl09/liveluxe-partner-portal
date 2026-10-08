@@ -1,4 +1,4 @@
-# Handoff — state of the project as of 2026-10-06 (session 2)
+# Handoff — state of the project as of 2026-10-08 (session 3)
 
 Read this first when starting a new Claude Code session in this folder.
 
@@ -101,6 +101,36 @@ Then issue an invitation with `curl -X POST /api/invitations -H 'content-type: a
   Apply it in the SQL editor with the Phase 0 auth one.
 - Shared `StatusPill` (`components/ui/status-pill.tsx`) is THE status colour mapping; reuse it on /requests and /admin.
 
+### Session 3 (2026-10-08) — Week 1 of the 3-week plan: Hostaway sync, search, listing detail
+
+- **Environment**: Supabase (engineer's project `adgvnmbkvydkonnpskzx`) has all three migrations, the JWT hook and TOTP;
+  `check-auth-setup.mjs` is all green. Real Hostaway key (partner label `claude`, named "Livluxe Partner Portal") and
+  Stripe test keys are in `.env.local` on the laptop and the Mac mini; David's sweeper moves them into Proton Pass.
+  The Mac mini runs `pp npm run dev` on http://100.97.204.91:3000 (Tailscale only).
+- **Sync jobs are real** (`lib/jobs/sync-listings.ts`, `lib/jobs/sync-calendar.ts`), wired in the registry:
+  - `sync-listings`: pages `/listings`, maps through `mapListing`, hash-compare upsert, replaces images + amenities,
+    touches unchanged rows, soft-deletes absent ones only on a complete fetch. `geom` / `geom_public` written as EWKT;
+    the public pin is a deterministic 100–200 m jitter (`lib/domain/geo.ts`).
+  - `sync-calendar-near` (today → +120 d) and `-far` (+121 → +400 d): walk active listings in id order in batches of 60
+    within a 200 s budget; the cursor is stored in `sync_runs.checkpoint` and the next run resumes. Per-listing failures
+    are logged and skipped; a run fails only if nothing succeeded.
+  - Trigger locally: `node scripts/run-job.mjs sync-listings` (then `sync-calendar-near`, `sync-calendar-far`) against a
+    running dev server. Read-only against Hostaway; writes stay blocked by `HOSTAWAY_ALLOW_WRITES`.
+  - Sensitive fields (door codes, Wi-Fi) are mapped but **not persisted yet** (needs the encrypted
+    `listing_access_details` writer). They are never logged.
+- **/search is live**: `parseSearchParams` (pure, tested) → `searchListings` (RLS). With dates it calls
+  `search_available_listings()` (gap-free, holds and approved bookings excluded) and shows avg nightly + stay total
+  from `calendar_days`; without dates it lists the catalogue. Suburb/postcode/name filter, guests, pets, bedrooms,
+  24 per page, freshness pill, inline error card with support ref. Map column removed until a tile key exists.
+- **/listings/[id] is live**: gallery, facts, sanitised description, 90-day availability strip, stay details, fees,
+  amenities, house rules, and a server-rendered quote panel. Street address hidden (suburb/state/postcode only).
+- **Pricing**: `lib/listings/price.ts` (`priceStay`) is the single pricing path for the page and `POST /api/quotes`
+  (now reads real calendar rows). Rate card = null and tax = placeholder GST until week 2; the UI says "indicative".
+- `lib/db/types.ts` extended by hand: full `listings` row (as a `type`, not `interface` — an interface breaks the
+  supabase-js schema generic and turns every query into `never`), `listing_images`, `listing_amenities`,
+  `calendar_days`, `search_available_listings`.
+- Tests: 90 unit tests; new `geo`, `dates`, `sync`, `search`, `hostaway-mappers`. Domain coverage 93 % lines.
+
 ## Known gaps / follow-ups in this area
 
 - Spec §8.2 items not yet built: idle/absolute session timeouts (partner 12 h / 30 d, Livluxe 2 h / 7 d), email notice on
@@ -112,6 +142,11 @@ Then issue an invitation with `curl -X POST /api/invitations -H 'content-type: a
 - `lib/db/types.ts` is still hand-maintained. Run `npm run db:types` against a local stack once Docker is available.
 - The `/invite/[token]` page and `accept-invite` route each look the token up once; acceptance re-checks atomically in SQL.
 - E2E (Playwright) coverage of these flows is not written; they need a local Supabase stack with Inbucket for the emails.
+- Week 1 gaps: no map (needs `NEXT_PUBLIC_MAP_TILE_KEY`); `search_available_listings` runs with invoker rights, so another
+  org's APPROVED bookings only block dates once Hostaway reflects them (fine once holds/writes land in week 2);
+  `listing_amenities.amenity_code` is the Hostaway amenity id as text; quotes are not persisted; `settings` has no
+  partner-safe read yet (placeholder tax rules in code); access details not stored; Hostaway fixture is still a placeholder
+  — record a real `/listings/{id}` response and replace `tests/fixtures/hostaway/listing.json`.
 
 ## Move to the client's Supabase project (do before the first partner is invited)
 
@@ -135,10 +170,15 @@ Development runs on the engineer's own Supabase project. Switch to Live Luxe's p
 
 ## Next engineering steps
 
-1. Exercise the auth flows above once the dashboard steps are done; fix whatever the real Supabase project disagrees with.
-2. Phase 1 (Hostaway read sync) — BLOCKED on a Hostaway TEST account. See `docs/DECISIONS-REQUIRED.md` #10.
-3. Business decisions in `docs/DECISIONS-REQUIRED.md` (GST treatment, rate card structure, hold policy, etc.).
-4. First commit: the tree has never been committed beyond the create-next-app scaffold (`git status` shows everything untracked).
+1. Run the first real sync (laptop or Mac mini): `npm run dev`, then `node scripts/run-job.mjs sync-listings`,
+   `sync-calendar-near`, `sync-calendar-far`. Check `/search` and a listing page. Fix any Hostaway payload drift
+   (`hostaway.parse_failed` in the log → adjust `lib/hostaway/types.ts`).
+2. Week 2: basket + booking request submission (DRAFT → SUBMITTED, hold, reference, quote persisted with price hash),
+   admin queue with approve / decline / counter, rate-card application in `priceStay`, partner-safe settings read,
+   Resend emails, `drain-webhooks` + `expire-holds` jobs.
+3. Week 3: Stripe deposit/authorisation, invoices, check-in access pack release, reconcile jobs, pilot polish, cut over
+   to the client's Supabase (checklist above) and deploy to Vercel.
+4. Business decisions in `docs/DECISIONS-REQUIRED.md` (GST treatment, rate card structure, hold policy, etc.).
 
 ## Commands
 

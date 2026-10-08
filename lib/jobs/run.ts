@@ -52,15 +52,13 @@ export async function runJob(name: JobName, requestId: string): Promise<RunOutco
     },
     {
       onLocked: async () => {
-        await db
-          .from("sync_runs")
-          .insert({
-            job: name,
-            status: "skipped",
-            started_at: new Date().toISOString(),
-            finished_at: new Date().toISOString(),
-            error: "lock held by another invocation",
-          });
+        await db.from("sync_runs").insert({
+          job: name,
+          status: "skipped",
+          started_at: new Date().toISOString(),
+          finished_at: new Date().toISOString(),
+          error: "lock held by another invocation",
+        });
         log.info("job.skipped_locked", { job: name, requestId });
         return { status: "skipped" };
       },

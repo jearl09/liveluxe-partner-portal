@@ -113,12 +113,25 @@ npm run stripe:listen     # prints whsec_… → STRIPE_WEBHOOK_SECRET in .env.l
 stripe trigger payment_intent.amount_capturable_updated
 ```
 
-## 6. Hostaway webhooks locally
+## 6. Hostaway sync locally
+
+With the dev server running and real `HOSTAWAY_ACCOUNT_ID` / `HOSTAWAY_API_KEY` in `.env.local`:
+
+```
+node scripts/run-job.mjs sync-listings        # catalogue (≈ 1 call per 100 listings)
+node scripts/run-job.mjs sync-calendar-near   # today → +120 days, 60 listings per run; re-run until "pass complete"
+node scripts/run-job.mjs sync-calendar-far    # +121 → +400 days
+```
+
+Each run prints the `sync_runs` outcome. Then open `/search` with dates. The jobs are read-only against Hostaway; the
+governor keeps them under 8 calls / 10 s. In production Vercel Cron runs them on the schedules in `vercel.json`.
+
+## 7. Hostaway webhooks locally
 
 Hostaway rejects internal hosts, so expose the dev server with a tunnel (ngrok or Cloudflare Tunnel) and register
 `https://<tunnel>/api/webhooks/hostaway/<HOSTAWAY_WEBHOOK_PATH_SECRET>` with Basic auth on the **test** account.
 
-## 7. Where to go next
+## 8. Where to go next
 
 - `docs/DECISIONS-REQUIRED.md` — the twelve business decisions that gate each phase.
 - `docs/adr/` — architecture decision records; add one whenever you deviate from the spec.
