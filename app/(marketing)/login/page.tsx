@@ -42,7 +42,8 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       )}
       {params.invited === "1" && <Notice tone="success">Your account is ready. Sign in to continue.</Notice>}
       {error && <Notice tone="error">{error}</Notice>}
-      <input type="hidden" name="next" value={next} />
+      {/* Only forward an explicit destination; otherwise the role decides (ops → /admin/queue). */}
+      {params.next ? <input type="hidden" name="next" value={next} /> : null}
       {needsSetup && (
         <Notice tone="warn">
           Supabase is not configured. Fill in <code>NEXT_PUBLIC_SUPABASE_URL</code> and{" "}

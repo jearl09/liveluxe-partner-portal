@@ -20,7 +20,8 @@ export const runtime = "nodejs";
 export async function POST(req: Request) {
   const reqId = requestId(req);
   const { email, password, next } = await formFields(req, ["email", "password", "next"] as const);
-  const safeNext = safeRedirectPath(next);
+  // Empty = no explicit destination: postLoginDestination() then picks by role.
+  const safeNext = next ? safeRedirectPath(next) : undefined;
 
   if (!email || !password) return redirectTo(req, "/login", { error: "missing", next: safeNext });
 
