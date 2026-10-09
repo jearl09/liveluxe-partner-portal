@@ -42,7 +42,9 @@ export function QuoteLines({
         <tfoot>
           <tr>
             <td className="text-navy-900 pt-3 font-medium">Total</td>
-            <td className="text-navy-900 pt-3 text-right font-serif text-xl">{formatMoney(totalCents, currency)}</td>
+            <td className="text-navy-900 pt-3 text-right font-serif text-xl whitespace-nowrap">
+              {formatMoney(totalCents, currency)}
+            </td>
           </tr>
           <tr>
             <td className="text-ink-500 text-xs" colSpan={2}>

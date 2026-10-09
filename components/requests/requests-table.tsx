@@ -75,7 +75,7 @@ export function RequestsTable({
                   </span>
                 </td>
               )}
-              <td className="px-4 py-3 align-top font-mono text-xs">
+              <td className="px-4 py-3 align-top font-mono text-xs whitespace-nowrap">
                 <Link
                   href={hrefFor(r)}
                   className="text-navy-900 after:absolute after:inset-0 focus-visible:outline-none"

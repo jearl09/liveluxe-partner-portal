@@ -1,4 +1,4 @@
-# Handoff — state of the project as of 2026-10-08 (session 3)
+# Handoff — state of the project as of 2026-10-09 (session 4)
 
 Read this first when starting a new Claude Code session in this folder.
 
@@ -162,6 +162,29 @@ Then issue an invitation with `curl -X POST /api/invitations -H 'content-type: a
   redirect allow-list (needed only for password-reset emails). Go-live moves to the General group's Pro team with
   the full cron schedule.
 
+### Session 4 (2026-10-09) — Week 2 core: requests, holds, queue, decisions
+
+- **Migration `20261009100000_booking_requests.sql`** (applied to the dev project): `submit_booking_request()`,
+  `apply_booking_transition()` (both security definer, atomic: row + hold + history + notification + audit), and
+  `request_policy()` (partner-safe read of SLA / hold / quote tunables). Error contract: `raise exception 'CODE[:detail]'`
+  mapped back to `DomainError` by `lib/requests/errors.ts`.
+- **Flow verified end to end in a browser** (Playwright, dev server, real synced listing): partner search → listing →
+  quote → `/requests/new` → submit (hold placed, `LLX-2026-000001`) → ops queue → counter-offer → partner accepts →
+  ops approves with a live Hostaway calendar re-check → partner sees Approved. Expire-holds job runs clean.
+- Partner pages: `/requests` (Open / Upcoming / History), `/requests/[id]` (status, stay, quote, timeline, counter-offer
+  accept/decline), `/requests/new`. Ops: `/admin/queue` (SLA bands), `/admin/bookings` (+status filter),
+  `/admin/bookings/[id]` (approve / counter / decline). Shared components in `components/requests`.
+- Domain additions: `lib/domain/requests.ts` (form validation, business-hours SLA via date-fns-tz, SLA bands, counter
+  validation, `applyOpsAdjustment` with a new `adjustment` line kind), state machine gained COUNTER_OFFERED → EXPIRED (system).
+- Design decisions: no DRAFT state in the UI (submit creates SUBMITTED directly); approve/decline/counter from SUBMITTED
+  auto-pass through UNDER_REVIEW; counter-offer = new `quotes` row (supersedes) + extended hold; partners cannot
+  withdraw a SUBMITTED request yet (no such transition in §10.1); emails are attempted after submit and skipped with a
+  warning while `RESEND_API_KEY` is a placeholder.
+- Test accounts on the dev project (passwords were given to the engineer in chat, never stored here):
+  `demo.partner@liveluxeau.com` (partner_admin, org "Demo Insurance Co", requires claim ref) and
+  `ops.test@liveluxeau.com` (livluxe_ops). Manager: `angel@liveluxeau.com` (livluxe_admin).
+- Admin nav trimmed to screens that exist (Queue, Bookings, Settings).
+
 ## Known gaps / follow-ups in this area
 
 - Spec §8.2 items not yet built: idle/absolute session timeouts (partner 12 h / 30 d, Livluxe 2 h / 7 d), email notice on
@@ -204,9 +227,10 @@ Development runs on the engineer's own Supabase project. Switch to Live Luxe's p
 1. Apply `20261008100000_job_leases.sql` in the SQL editor, then finish the near-calendar pass:
    `node scripts/run-job.mjs sync-calendar-near` until the run notes say "pass complete" (3 runs for 129 listings).
    Then eyeball `/search` with dates and a few listing pages for payload drift (`hostaway.parse_failed` in the log).
-2. Week 2: basket + booking request submission (DRAFT → SUBMITTED, hold, reference, quote persisted with price hash),
-   admin queue with approve / decline / counter, rate-card application in `priceStay`, partner-safe settings read,
-   Resend emails, `drain-webhooks` + `expire-holds` jobs.
+2. Week 2 remaining: partner rate cards applied in `priceStay` (+ `/admin/rate-cards`), Resend key + templates for
+   approved / declined / counter emails, `/team` and `/admin/partners` (invite UI over the existing API), SLA
+   escalation job, `drain-webhooks`, partner withdraw of a SUBMITTED request (needs a spec decision), basket
+   (multi-property, all-or-nothing) if still wanted for the pilot.
 3. Week 3: Stripe deposit/authorisation, invoices, check-in access pack release, reconcile jobs, pilot polish, cut over
    to the client's Supabase (checklist above) and deploy to Vercel.
 4. Business decisions in `docs/DECISIONS-REQUIRED.md` (GST treatment, rate card structure, hold policy, etc.).

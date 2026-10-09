@@ -6,16 +6,11 @@ import { isLivluxeRole } from "@/lib/domain/permissions";
 import { getMfaStatus } from "@/lib/auth/mfa";
 import { mfaStepUpRequired } from "@/lib/domain/auth";
 
+// Only screens that exist are linked; the rest (calendar, rate cards, reports,
+// integrations, audit) are added back as each one ships (spec §13.4).
 const NAV = [
   { href: "/admin/queue", label: "Queue" },
   { href: "/admin/bookings", label: "Bookings" },
-  { href: "/admin/calendar", label: "Calendar" },
-  { href: "/admin/partners", label: "Partners" },
-  { href: "/admin/rate-cards", label: "Rate cards" },
-  { href: "/admin/listings", label: "Listings" },
-  { href: "/admin/reports", label: "Reports" },
-  { href: "/admin/integrations", label: "Integrations" },
-  { href: "/admin/audit", label: "Audit" },
   { href: "/admin/settings", label: "Settings" },
 ];
 
