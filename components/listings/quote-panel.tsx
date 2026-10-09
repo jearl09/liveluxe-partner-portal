@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Calculator, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { AvailabilityResult } from "@/lib/domain/availability";
@@ -44,12 +45,15 @@ export function QuotePanel({
   currency,
   result,
   errors,
+  requestHref,
 }: {
   form: QuoteFormState;
   today: string;
   currency: string;
   result: { availability: AvailabilityResult; quote: Quote | null } | null;
   errors: string[];
+  /** Link to the submission form; null when the viewer cannot submit requests. */
+  requestHref: string | null;
 }) {
   return (
     <aside
@@ -183,9 +187,13 @@ export function QuotePanel({
             Indicative. Your organisation&apos;s contracted rates are applied when a request is submitted. GST shown at
             the placeholder rate pending accountant sign-off.
           </p>
-          <Button variant="gold" className="w-full" disabled title="Booking requests open next week">
-            Request to book
-          </Button>
+          {requestHref ? (
+            <Button asChild variant="gold" className="w-full">
+              <Link href={requestHref}>Request to book</Link>
+            </Button>
+          ) : (
+            <p className="text-ink-500 text-xs">Your role can view prices but not submit requests.</p>
+          )}
         </div>
       )}
 

@@ -81,6 +81,12 @@ export const TRANSITIONS: readonly Transition[] = [
     sideEffects: "New quote; extend hold; notify partner; pause SLA.",
   },
   { from: "COUNTER_OFFERED", to: "UNDER_REVIEW", actors: ["partner"], sideEffects: "Accept counter; resume SLA." },
+  {
+    from: "COUNTER_OFFERED",
+    to: "EXPIRED",
+    actors: ["system"],
+    sideEffects: "Hold lapsed before the partner answered; release hold; notify both sides.",
+  },
   { from: "COUNTER_OFFERED", to: "CANCELLED", actors: ["partner"], sideEffects: "Release hold; void authorisation." },
   {
     from: "UNDER_REVIEW",

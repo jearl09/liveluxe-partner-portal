@@ -15,6 +15,74 @@ type Row<T> = { Row: T; Insert: Partial<T>; Update: Partial<T>; Relationships: [
 
 export type DayStatus = "available" | "blocked" | "reserved" | "pending" | "unknown";
 
+export type BookingStatusDb =
+  | "DRAFT"
+  | "SUBMITTED"
+  | "UNDER_REVIEW"
+  | "COUNTER_OFFERED"
+  | "APPROVED"
+  | "AWAITING_PAYMENT"
+  | "CONFIRMED"
+  | "CHECKED_IN"
+  | "COMPLETED"
+  | "DECLINED"
+  | "EXPIRED"
+  | "CANCELLED"
+  | "FAILED";
+
+export type DeclineReasonDb =
+  | "no_availability"
+  | "unsuitable_property"
+  | "owner_block"
+  | "commercial_terms"
+  | "guest_profile"
+  | "maintenance"
+  | "other";
+
+/** public.booking_requests (§7.2). `nights` and `stay_range` are generated columns. */
+export type BookingRequestRow = {
+  id: string;
+  reference: string;
+  org_id: string;
+  listing_id: string;
+  quote_id: string | null;
+  created_by: string;
+  on_behalf_of: boolean;
+  assigned_to: string | null;
+  status: BookingStatusDb;
+  check_in: string;
+  check_out: string;
+  nights: number;
+  guests_adults: number;
+  guests_children: number;
+  guests_pets: number;
+  guest_name: string | null;
+  guest_email: string | null;
+  guest_phone: string | null;
+  claim_ref: string | null;
+  po_number: string | null;
+  cost_centre: string | null;
+  notes: string | null;
+  total_cents: number | null;
+  currency: string;
+  payment_mode: "prepay" | "deposit" | "net14" | "net30" | null;
+  hold_expires_at: string | null;
+  decision_due_at: string | null;
+  sla_paused_at: string | null;
+  decline_reason: DeclineReasonDb | null;
+  decline_notes: string | null;
+  hostaway_reservation_id: number | null;
+  checkin_released_at: string | null;
+  submitted_at: string | null;
+  approved_at: string | null;
+  approved_by: string | null;
+  confirmed_at: string | null;
+  declined_at: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 /** public.listings — Hostaway-synced catalogue (§6.6). geom columns are written as EWKT strings. */
 export type ListingRow = {
   id: string;
@@ -124,9 +192,75 @@ export interface Database {
       partner_orgs: Row<{
         id: string;
         name: string;
+        type: "insurance" | "corporate" | "government" | "other";
         status: string;
         stripe_customer_id: string | null;
         logo_url: string | null;
+        payment_terms: "prepay" | "deposit" | "net14" | "net30";
+        credit_limit_cents: number | null;
+        require_po_number: boolean;
+        require_claim_ref: boolean;
+        sla_hours: number | null;
+        quote_validity_hours: number | null;
+        default_po_number: string | null;
+        default_cost_centre: string | null;
+        is_internal: boolean;
+        email_domains: string[];
+        billing_email: string | null;
+      }>;
+      quotes: Row<{
+        id: string;
+        listing_id: string;
+        org_id: string;
+        created_by: string | null;
+        check_in: string;
+        check_out: string;
+        guests_adults: number;
+        guests_children: number;
+        guests_pets: number;
+        line_items: Json;
+        subtotal_cents: number;
+        tax_cents: number;
+        total_cents: number;
+        deposit_cents: number;
+        currency: string;
+        rate_card_id: string | null;
+        rate_card_version: number | null;
+        price_hash: string;
+        expires_at: string;
+        supersedes_id: string | null;
+        created_at: string;
+      }>;
+      inventory_holds: Row<{
+        id: string;
+        listing_id: string;
+        booking_id: string | null;
+        org_id: string;
+        stay_range: string;
+        hard: boolean;
+        expires_at: string;
+        created_at: string;
+      }>;
+      booking_status_history: Row<{
+        id: number;
+        booking_id: string;
+        from_status: BookingStatusDb | null;
+        to_status: BookingStatusDb;
+        actor_id: string | null;
+        actor_type: "partner" | "livluxe" | "system";
+        reason: string | null;
+        metadata: Json | null;
+        occurred_at: string;
+      }>;
+      booking_comments: Row<{
+        id: string;
+        booking_id: string;
+        author_id: string;
+        body: string;
+        visibility: "shared" | "internal";
+        deleted_at: string | null;
+        created_at: string;
+        updated_at: string;
       }>;
       notifications: Row<{
         id: string;
@@ -185,26 +319,7 @@ export interface Database {
         reservation_ref: string | null;
         source_synced_at: string;
       }>;
-      booking_requests: Row<{
-        id: string;
-        reference: string;
-        org_id: string;
-        listing_id: string;
-        status: string;
-        check_in: string;
-        check_out: string;
-        nights: number;
-        guest_name: string | null;
-        claim_ref: string | null;
-        po_number: string | null;
-        total_cents: number | null;
-        currency: string;
-        hold_expires_at: string | null;
-        decision_due_at: string | null;
-        checkin_released_at: string | null;
-        created_at: string;
-        updated_at: string;
-      }>;
+      booking_requests: Row<BookingRequestRow>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -215,6 +330,64 @@ export interface Database {
         Returns: boolean;
       };
       map_availability: { Args: { p_from: string; p_to: string }; Returns: unknown[] };
+      submit_booking_request: {
+        Args: {
+          p_listing_id: string;
+          p_check_in: string;
+          p_check_out: string;
+          p_adults: number;
+          p_children: number;
+          p_pets: number;
+          p_line_items: Json;
+          p_subtotal_cents: number;
+          p_tax_cents: number;
+          p_total_cents: number;
+          p_deposit_cents: number;
+          p_price_hash: string;
+          p_rate_card_id: string | null;
+          p_rate_card_version: number | null;
+          p_guest_name: string;
+          p_guest_email: string;
+          p_guest_phone: string;
+          p_claim_ref: string;
+          p_po_number: string;
+          p_cost_centre: string;
+          p_notes: string;
+          p_decision_due_at: string;
+        };
+        Returns: {
+          id: string;
+          reference: string;
+          hold_expires_at: string;
+          decision_due_at: string;
+          quote_id: string;
+        }[];
+      };
+      apply_booking_transition: {
+        Args: {
+          p_booking_id: string;
+          p_expected_from: BookingStatusDb;
+          p_to: BookingStatusDb;
+          p_reason?: string | null;
+          p_decline_reason?: DeclineReasonDb | null;
+          p_metadata?: Json | null;
+          p_new_check_in?: string | null;
+          p_new_check_out?: string | null;
+          p_new_total_cents?: number | null;
+          p_new_quote_id?: string | null;
+          p_extend_hold_hours?: number | null;
+        };
+        Returns: BookingRequestRow;
+      };
+      request_policy: {
+        Args: Record<string, never>;
+        Returns: {
+          sla_default_hours: number;
+          sla_business_hours: { start: string; end: string; timezone: string };
+          hold_duration_hours: number;
+          quote_validity_hours: number;
+        }[];
+      };
       search_available_listings: {
         Args: { p_check_in: string; p_check_out: string; p_guests?: number; p_pets?: number };
         Returns: ListingRow[];

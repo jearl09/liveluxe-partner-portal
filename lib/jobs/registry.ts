@@ -7,6 +7,7 @@
 import { log } from "@/lib/observability/logger";
 import { syncListings } from "./sync-listings";
 import { syncCalendar } from "./sync-calendar";
+import { expireHolds } from "./expire-holds";
 
 export interface JobResult {
   examined?: number;
@@ -50,7 +51,7 @@ export const JOBS: Record<string, { schedule: string; description: string; run: 
   "expire-holds": {
     schedule: "*/5 * * * *",
     description: "Release expired holds; cancel associated PaymentIntents.",
-    run: todo("expire-holds"),
+    run: expireHolds,
     critical: true,
   },
   "sla-escalation": {

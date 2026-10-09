@@ -10,3 +10,4 @@ export * from "./dates";
 export * from "./geo";
 export * from "./search";
 export * from "./sync";
+export * from "./requests";

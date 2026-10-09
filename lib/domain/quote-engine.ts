@@ -78,6 +78,7 @@ export type LineKind =
   | "mid_stay_clean"
   | "extra_guest_fee"
   | "pet_fee"
+  | "adjustment"
   | "tax";
 
 export interface QuoteLine {

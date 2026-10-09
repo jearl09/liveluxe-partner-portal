@@ -8,6 +8,8 @@ import { addDays, todayIn } from "@/lib/domain/dates";
 import { buildAvailabilityStrip, parseSearchParams, searchQueryString } from "@/lib/domain/search";
 import { formatMoney } from "@/lib/domain/money";
 import { getCalendarDays, getListing } from "@/lib/listings/load";
+import { getSessionClaims } from "@/lib/db/server";
+import { can } from "@/lib/domain/permissions";
 import { priceStay } from "@/lib/listings/price";
 
 const TZ = "Australia/Melbourne";
@@ -36,8 +38,9 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
   const sp = await searchParams;
   const today = todayIn(TZ);
 
-  const detail = await getListing(id);
+  const [detail, claims] = await Promise.all([getListing(id), getSessionClaims()]);
   if (!detail) notFound();
+  const canSubmit = !!claims && can(claims.role, "requests.submit");
   const { listing: l, images, amenities } = detail;
 
   // Dates/pets share the search parser; adults/children are specific to pricing.
@@ -193,6 +196,11 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
           currency={l.currency}
           errors={parsed.errors}
           result={priced ? { availability: priced.availability, quote: priced.quote } : null}
+          requestHref={
+            canSubmit && priced?.quote && form.checkIn && form.checkOut
+              ? `/requests/new?listingId=${id}&checkIn=${form.checkIn}&checkOut=${form.checkOut}&adults=${adults}&children=${children}&pets=${pets}`
+              : null
+          }
         />
       </div>
     </div>
