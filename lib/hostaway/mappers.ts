@@ -4,9 +4,19 @@
  * codes against the platform columns.
  */
 import { createHash } from "node:crypto";
-import DOMPurify from "isomorphic-dompurify";
+import sanitizeHtml from "sanitize-html";
 import type { HostawayListing, HostawayCalendarDay } from "./types";
 import type { CalendarDay, DayStatus } from "@/lib/domain/availability";
+
+/**
+ * Hostaway descriptions are host-authored HTML. Keep simple formatting only; no
+ * links, images, styles or scripts. Pure JS (no jsdom) so it runs on serverless.
+ */
+const SANITIZE: sanitizeHtml.IOptions = {
+  allowedTags: ["p", "br", "b", "strong", "i", "em", "u", "ul", "ol", "li", "h3", "h4"],
+  allowedAttributes: {},
+  disallowedTagsMode: "discard",
+};
 
 const toCents = (major: number | null | undefined): number | null =>
   major === null || major === undefined ? null : Math.round(major * 100);
@@ -77,7 +87,7 @@ export interface AccessDetailsRow {
 }
 
 export function mapListing(src: HostawayListing): { listing: ListingRow; access: AccessDetailsRow } {
-  const sanitize = (html: string | null | undefined) => (html ? DOMPurify.sanitize(html) : null);
+  const sanitize = (html: string | null | undefined) => (html ? sanitizeHtml(html, SANITIZE) : null);
 
   const listing: ListingRow = {
     hostaway_listing_id: src.id,
