@@ -28,6 +28,7 @@ export async function POST(req: Request) {
         { key: ipKey("reset", clientIp(req)), rule: SENSITIVE_ACTION_RATE_LIMITS.perIp },
       ],
       reqId,
+      { record: true },
     );
   } catch (e) {
     if (isDomainError(e) && e.code === "RATE_LIMITED")

@@ -9,7 +9,7 @@
 import { createServerSupabase, getSessionClaims } from "@/lib/db/server";
 import { log } from "@/lib/observability/logger";
 import { LOGIN_RATE_LIMITS, postLoginDestination, safeRedirectPath } from "@/lib/domain/auth";
-import { accountKey, assertWithinRateLimits, ipKey } from "@/lib/auth/rate-limit";
+import { accountKey, assertWithinRateLimits, ipKey, recordFailedAttempts } from "@/lib/auth/rate-limit";
 import { clientIp, formFields, redirectTo } from "@/lib/auth/request";
 import { getMfaStatus } from "@/lib/auth/mfa";
 import { isDomainError } from "@/lib/domain/errors";
@@ -24,14 +24,12 @@ export async function POST(req: Request) {
 
   if (!email || !password) return redirectTo(req, "/login", { error: "missing", next: safeNext });
 
+  const limits = [
+    { key: accountKey("login", email), rule: LOGIN_RATE_LIMITS.perAccount },
+    { key: ipKey("login", clientIp(req)), rule: LOGIN_RATE_LIMITS.perIp },
+  ];
   try {
-    await assertWithinRateLimits(
-      [
-        { key: accountKey("login", email), rule: LOGIN_RATE_LIMITS.perAccount },
-        { key: ipKey("login", clientIp(req)), rule: LOGIN_RATE_LIMITS.perIp },
-      ],
-      reqId,
-    );
+    await assertWithinRateLimits(limits, reqId);
   } catch (e) {
     if (isDomainError(e) && e.code === "RATE_LIMITED")
       return redirectTo(req, "/login", { error: "rate_limited", next: safeNext });
@@ -41,6 +39,7 @@ export async function POST(req: Request) {
   const supabase = await createServerSupabase();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
+    await recordFailedAttempts(limits); // only wrong passwords count toward the lockout
     log.warn("auth.sign_in_failed", { requestId: reqId, reason: error.code ?? error.message });
     return redirectTo(req, "/login", { error: "invalid", next: safeNext });
   }

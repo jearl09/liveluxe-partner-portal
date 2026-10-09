@@ -9,7 +9,7 @@ import { adminDb, appendAudit } from "@/lib/db/admin";
 import { log } from "@/lib/observability/logger";
 import { LOGIN_RATE_LIMITS, safeRedirectPath } from "@/lib/domain/auth";
 import { isDomainError } from "@/lib/domain/errors";
-import { assertWithinRateLimits, ipKey } from "@/lib/auth/rate-limit";
+import { assertWithinRateLimits, ipKey, recordFailedAttempts } from "@/lib/auth/rate-limit";
 import { clientIp, formFields, redirectTo, userAgent } from "@/lib/auth/request";
 import { requestId } from "@/lib/api/response";
 
@@ -28,14 +28,12 @@ export async function POST(req: Request) {
 
   if (!factorId || !/^\d{6}$/.test(code)) return redirectTo(req, back, { error: "code", next: safeNext });
 
+  const limits = [
+    { key: `mfa:account:${user.id}`, rule: LOGIN_RATE_LIMITS.perAccount },
+    { key: ipKey("mfa", clientIp(req)), rule: LOGIN_RATE_LIMITS.perIp },
+  ];
   try {
-    await assertWithinRateLimits(
-      [
-        { key: `mfa:account:${user.id}`, rule: LOGIN_RATE_LIMITS.perAccount },
-        { key: ipKey("mfa", clientIp(req)), rule: LOGIN_RATE_LIMITS.perIp },
-      ],
-      reqId,
-    );
+    await assertWithinRateLimits(limits, reqId);
   } catch (e) {
     if (isDomainError(e) && e.code === "RATE_LIMITED")
       return redirectTo(req, back, { error: "rate_limited", next: safeNext });
@@ -44,6 +42,7 @@ export async function POST(req: Request) {
 
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code });
   if (error) {
+    await recordFailedAttempts(limits);
     log.warn("auth.mfa_verify_failed", { requestId: reqId, userId: user.id, reason: error.code ?? error.message });
     return redirectTo(req, back, { error: "code", next: safeNext });
   }

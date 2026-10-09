@@ -44,6 +44,7 @@ export async function POST(req: Request) {
     await assertWithinRateLimits(
       [{ key: ipKey("invite", clientIp(req)), rule: SENSITIVE_ACTION_RATE_LIMITS.perIp }],
       reqId,
+      { record: true },
     );
   } catch (e) {
     if (isDomainError(e) && e.code === "RATE_LIMITED") return redirectTo(req, back, { error: "rate_limited" });
