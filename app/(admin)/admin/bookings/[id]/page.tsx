@@ -106,7 +106,7 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
           />
 
           <section className="border-cream-200 rounded-xl border bg-white p-5">
-            <h2 className="mb-3 font-serif text-lg">Partner details</h2>
+            <h2 className="mb-3 font-serif text-xl">Partner details</h2>
             <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-ink-500 text-xs">Organisation</dt>
@@ -152,7 +152,7 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
           </section>
 
           <section className="border-cream-200 rounded-xl border bg-white p-5">
-            <h2 className="mb-3 font-serif text-lg">Quote</h2>
+            <h2 className="mb-3 font-serif text-xl">Quote</h2>
             {d.quote ? (
               <QuoteLines
                 lines={d.quote.lines}
@@ -168,7 +168,7 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
           </section>
 
           <section className="border-cream-200 rounded-xl border bg-white p-5">
-            <h2 className="mb-3 font-serif text-lg">Timeline</h2>
+            <h2 className="mb-3 font-serif text-xl">Timeline</h2>
             <StatusTimeline history={d.history} showInternal />
           </section>
         </div>

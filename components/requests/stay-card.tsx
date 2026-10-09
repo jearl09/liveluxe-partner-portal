@@ -30,7 +30,7 @@ export function StayCard({
         )}
       </div>
       <div className="min-w-0 text-sm">
-        <p className="text-navy-900 font-serif text-lg leading-tight">{listing.name}</p>
+        <p className="text-navy-900 font-serif text-xl leading-tight">{listing.name}</p>
         {place && (
           <p className="text-ink-500 flex items-center gap-1 text-xs">
             <MapPin className="h-3 w-3" aria-hidden /> {place}

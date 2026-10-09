@@ -17,7 +17,7 @@ export function PasswordFields({ autoFocus = false }: { autoFocus?: boolean }) {
           autoFocus={autoFocus}
           className={inputClass}
         />
-        <span className="mt-1 block text-xs text-zinc-500">
+        <span className="text-ink-500 mt-1 block text-xs">
           At least {PASSWORD_POLICY.minLength} characters. It is checked against known data breaches.
         </span>
       </label>

@@ -8,7 +8,7 @@ export function Agenda({ entries }: { entries: AgendaEntry[] }) {
   return (
     <section aria-labelledby="agenda-heading" className="border-cream-200 rounded-lg border bg-white">
       <header className="border-cream-200 border-b px-5 py-4">
-        <h2 id="agenda-heading" className="font-serif text-lg">
+        <h2 id="agenda-heading" className="font-serif text-xl">
           This week
         </h2>
       </header>

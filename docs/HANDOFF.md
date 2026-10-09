@@ -185,6 +185,31 @@ Then issue an invitation with `curl -X POST /api/invitations -H 'content-type: a
   `ops.test@liveluxeau.com` (livluxe_ops). Manager: `angel@liveluxeau.com` (livluxe_admin).
 - Admin nav trimmed to screens that exist (Queue, Bookings, Settings).
 
+### Session 4 (cont.) — listing page UI pass (§13.3)
+
+- **Next 90 days** is now four month calendars (Monday-first, day numbers) instead of 90 dots: booked nights are
+  struck through, unsynced nights hatched, today ringed in gold, and the heading line names the longest open
+  stretch as check-in → check-out. Layout helpers `buildStripMonths` / `summariseStrip` live in `lib/domain/search.ts`.
+- **House rules**: Hostaway sends one paragraph with inline "1. … 2. …" numbering. `lib/domain/listing-content.ts`
+  (`parseHouseRules`, pure, tested) splits it into intro + numbered rules; a "Subject: detail" rule gets its subject
+  in navy. Real HTML lists and unnumbered prose still render as the sanitised HTML. Wording is never changed.
+- **Price a stay**: dates row → guests row → full-width button (no orphaned Pets field), result restates the stay in
+  words (en-AU dates, nights, guests) before the numbers, and the breakdown reuses `components/requests/quote-lines`.
+  Still a plain GET form; URL state, `priceStay` and `/requests/new` links are untouched.
+- Page grid is header / panel / details so on a phone the price panel follows the title instead of the house rules.
+
+### Session 4 (cont.) — type and alignment pass (portal-wide)
+
+- Fonts: **Newsreader** (headings, weight 500, optical sizes) and **DM Sans** (UI) replace Playfair Display and Inter;
+  Geist Mono stays for references and codes. Loaded through `next/font/google` in `app/layout.tsx` as
+  `--font-serif-brand` / `--font-sans-brand` / `--font-mono-brand`.
+- `app/globals.css` base layer now owns the field shape (40 px, cream border, gold focus ring with a soft halo) for every
+  text-like input, select and textarea, so forms match across pages; headings balance their line breaks, paragraphs avoid
+  orphans, and tables / definition lists use tabular figures. Money cells are right-aligned tabular sans, not monospace.
+- `formatDate` no longer emits the ICU comma ("Sun 18 Oct 2026"), which also fixes the weekday-stripping in both
+  requests tables. Section headings are `text-xl`; auth screens use brand tokens instead of zinc and serif titles.
+- Header is a fixed 64 px bar; the phone nav strip reuses `NavLinks` so it gets the same active state.
+
 ## Known gaps / follow-ups in this area
 
 - Spec §8.2 items not yet built: idle/absolute session timeouts (partner 12 h / 30 d, Livluxe 2 h / 7 d), email notice on

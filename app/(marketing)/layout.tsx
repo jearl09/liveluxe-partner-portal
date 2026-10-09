@@ -22,7 +22,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
         <Wordmark descriptor="Partner portal" tone="dark" className="relative" />
         <div className="relative my-12 max-w-md lg:my-0">
           <p className="eyebrow mb-4">Docklands, Melbourne</p>
-          <h1 className="font-serif text-4xl leading-[1.08] text-white lg:text-5xl">
+          <h1 className="font-serif text-4xl leading-[1.08] font-normal text-white lg:text-5xl">
             Long-stay apartments for the people you look after.
           </h1>
           <div className="gold-rule my-6" />

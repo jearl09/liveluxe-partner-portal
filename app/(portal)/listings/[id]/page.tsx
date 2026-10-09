@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, BedDouble, Bath, Users, PawPrint, Clock, MapPin } from "lucide-react";
 import { Gallery } from "@/components/listings/gallery";
 import { AvailabilityStrip } from "@/components/listings/availability-strip";
+import { HouseRules } from "@/components/listings/house-rules";
 import { QuotePanel } from "@/components/listings/quote-panel";
 import { addDays, todayIn } from "@/lib/domain/dates";
 import { buildAvailabilityStrip, parseSearchParams, searchQueryString } from "@/lib/domain/search";
@@ -68,43 +69,62 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
 
       <Gallery images={images} name={l.public_name} />
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
-        <div className="space-y-8">
-          <header>
-            {place && (
-              <p className="eyebrow mb-1 flex items-center gap-1">
-                <MapPin className="h-3 w-3" aria-hidden /> {place}
-              </p>
-            )}
-            <h1 className="text-navy-900 font-serif text-3xl tracking-tight">{l.public_name}</h1>
-            <ul className="text-ink-700 mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
-              {l.bedrooms !== null && (
-                <li className="flex items-center gap-1.5">
-                  <BedDouble className="h-4 w-4" aria-hidden /> {l.bedrooms} {l.bedrooms === 1 ? "bedroom" : "bedrooms"}
-                </li>
-              )}
-              {l.bathrooms !== null && (
-                <li className="flex items-center gap-1.5">
-                  <Bath className="h-4 w-4" aria-hidden /> {Number(l.bathrooms)}{" "}
-                  {Number(l.bathrooms) === 1 ? "bathroom" : "bathrooms"}
-                </li>
-              )}
-              {l.max_guests !== null && (
-                <li className="flex items-center gap-1.5">
-                  <Users className="h-4 w-4" aria-hidden /> sleeps {l.max_guests}
-                </li>
-              )}
+      {/*
+       * Two columns on laptops; on a phone the DOM order is title → price panel → details,
+       * so the quote a partner arrived for is not buried under the house rules.
+       */}
+      <div className="grid gap-8 lg:grid-cols-[1fr_380px] lg:grid-rows-[auto_1fr]">
+        <header>
+          {place && (
+            <p className="eyebrow mb-1 flex items-center gap-1">
+              <MapPin className="h-3 w-3" aria-hidden /> {place}
+            </p>
+          )}
+          <h1 className="text-navy-900 font-serif text-3xl tracking-tight">{l.public_name}</h1>
+          <ul className="text-ink-700 mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
+            {l.bedrooms !== null && (
               <li className="flex items-center gap-1.5">
-                <PawPrint className="h-4 w-4" aria-hidden />{" "}
-                {l.max_pets > 0 ? `up to ${l.max_pets} ${l.max_pets === 1 ? "pet" : "pets"}` : "no pets"}
+                <BedDouble className="h-4 w-4" aria-hidden /> {l.bedrooms} {l.bedrooms === 1 ? "bedroom" : "bedrooms"}
               </li>
-            </ul>
-            <p className="text-ink-500 mt-2 text-xs">The exact address is shared once a booking is approved.</p>
-          </header>
+            )}
+            {l.bathrooms !== null && (
+              <li className="flex items-center gap-1.5">
+                <Bath className="h-4 w-4" aria-hidden /> {Number(l.bathrooms)}{" "}
+                {Number(l.bathrooms) === 1 ? "bathroom" : "bathrooms"}
+              </li>
+            )}
+            {l.max_guests !== null && (
+              <li className="flex items-center gap-1.5">
+                <Users className="h-4 w-4" aria-hidden /> sleeps {l.max_guests}
+              </li>
+            )}
+            <li className="flex items-center gap-1.5">
+              <PawPrint className="h-4 w-4" aria-hidden />{" "}
+              {l.max_pets > 0 ? `up to ${l.max_pets} ${l.max_pets === 1 ? "pet" : "pets"}` : "no pets"}
+            </li>
+          </ul>
+          <p className="text-ink-500 mt-2 text-xs">The exact address is shared once a booking is approved.</p>
+        </header>
 
+        <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
+          <QuotePanel
+            form={form}
+            today={today}
+            currency={l.currency}
+            errors={parsed.errors}
+            result={priced ? { availability: priced.availability, quote: priced.quote } : null}
+            requestHref={
+              canSubmit && priced?.quote && form.checkIn && form.checkOut
+                ? `/requests/new?listingId=${id}&checkIn=${form.checkIn}&checkOut=${form.checkOut}&adults=${adults}&children=${children}&pets=${pets}`
+                : null
+            }
+          />
+        </div>
+
+        <div className="space-y-8">
           {l.description_html && (
             <section aria-labelledby="about-heading" className="space-y-2">
-              <h2 id="about-heading" className="font-serif text-lg">
+              <h2 id="about-heading" className="font-serif text-xl">
                 About this property
               </h2>
               {/* Sanitised with DOMPurify at sync time (lib/hostaway/mappers.ts). */}
@@ -115,10 +135,14 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
             </section>
           )}
 
-          <AvailabilityStrip days={buildAvailabilityStrip(strip, today, STRIP_DAYS)} currency={l.currency} />
+          <AvailabilityStrip
+            days={buildAvailabilityStrip(strip, today, STRIP_DAYS)}
+            currency={l.currency}
+            today={today}
+          />
 
           <section aria-labelledby="stay-heading" className="space-y-3">
-            <h2 id="stay-heading" className="font-serif text-lg">
+            <h2 id="stay-heading" className="font-serif text-xl">
               Stay details
             </h2>
             <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
@@ -161,7 +185,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
 
           {amenities.length > 0 && (
             <section aria-labelledby="amenities-heading" className="space-y-3">
-              <h2 id="amenities-heading" className="font-serif text-lg">
+              <h2 id="amenities-heading" className="font-serif text-xl">
                 Amenities
               </h2>
               <ul className="flex flex-wrap gap-2">
@@ -177,31 +201,8 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
             </section>
           )}
 
-          {l.house_rules && (
-            <section aria-labelledby="rules-heading" className="space-y-2">
-              <h2 id="rules-heading" className="font-serif text-lg">
-                House rules
-              </h2>
-              <div
-                className="prose-livluxe text-ink-700 text-sm leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: l.house_rules }}
-              />
-            </section>
-          )}
+          <HouseRules html={l.house_rules} />
         </div>
-
-        <QuotePanel
-          form={form}
-          today={today}
-          currency={l.currency}
-          errors={parsed.errors}
-          result={priced ? { availability: priced.availability, quote: priced.quote } : null}
-          requestHref={
-            canSubmit && priced?.quote && form.checkIn && form.checkOut
-              ? `/requests/new?listingId=${id}&checkIn=${form.checkIn}&checkOut=${form.checkOut}&adults=${adults}&children=${children}&pets=${pets}`
-              : null
-          }
-        />
       </div>
     </div>
   );

@@ -23,8 +23,8 @@ export default async function MfaVerifyPage({ searchParams }: PageProps<"/mfa/ve
 
   return (
     <form className="space-y-4" action="/api/auth/mfa/verify" method="post">
-      <h1 className="text-lg font-semibold">Enter your authenticator code</h1>
-      <p className="text-sm text-zinc-600">
+      <h1 className="text-navy-900 font-serif text-2xl">Enter your authenticator code</h1>
+      <p className="text-ink-700 text-sm">
         Open your authenticator app{factor.friendlyName ? ` (${factor.friendlyName})` : ""} and enter the current
         6-digit code for <strong>{claims.email}</strong>.
       </p>
@@ -49,7 +49,7 @@ export default async function MfaVerifyPage({ searchParams }: PageProps<"/mfa/ve
       <Button type="submit" className="w-full">
         Continue
       </Button>
-      <p className="text-center text-xs text-zinc-500">
+      <p className="text-ink-500 text-center text-xs">
         Lost your device? Contact a Livluxe administrator to reset your authenticator.{" "}
         <button type="submit" formAction="/api/auth/sign-out" formNoValidate className="underline">
           Sign out

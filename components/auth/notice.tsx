@@ -10,7 +10,7 @@ export function Notice({
   children: ReactNode;
 }) {
   const styles = {
-    info: "border-zinc-300 bg-zinc-50 text-zinc-800",
+    info: "border-cream-300 bg-cream-50 text-ink-900",
     warn: "border-amber-300 bg-amber-50 text-amber-900",
     error: "border-red-300 bg-red-50 text-red-900",
     success: "border-emerald-300 bg-emerald-50 text-emerald-900",
@@ -28,4 +28,4 @@ export const PASSWORD_ERRORS: Record<string, string> = {
   update_failed: "The password could not be saved. Please try again.",
 };
 
-export const inputClass = "w-full rounded-md border px-3 py-2";
+export const inputClass = "h-10 w-full rounded-md border px-3";

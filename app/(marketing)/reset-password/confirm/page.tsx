@@ -20,8 +20,8 @@ export default async function ResetConfirmPage({ searchParams }: PageProps<"/res
 
   return (
     <form className="space-y-4" action="/api/auth/reset-password/confirm" method="post">
-      <h1 className="text-lg font-semibold">Choose a new password</h1>
-      <p className="text-sm text-zinc-600">
+      <h1 className="text-navy-900 font-serif text-2xl">Choose a new password</h1>
+      <p className="text-ink-700 text-sm">
         Setting a new password for <strong>{data.user.email}</strong>. You will be asked to sign in again afterwards.
       </p>
       {error && <Notice tone="error">{error}</Notice>}

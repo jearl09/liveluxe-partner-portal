@@ -79,9 +79,9 @@
   --color-ink-700: var(--ink-700);
   --color-ink-500: var(--ink-500);
 
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-playfair), Georgia, "Times New Roman", serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-sans: var(--font-sans-brand), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-serif-brand), Georgia, "Times New Roman", serif;
+  --font-mono: var(--font-mono-brand), ui-monospace, monospace;
 
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
@@ -94,33 +94,100 @@
   }
   html {
     color-scheme: light;
+    -webkit-text-size-adjust: 100%;
   }
   body {
     background: var(--background);
     color: var(--foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Type: serif display for headings, set a touch tighter; prose wraps without orphans. */
+  h1,
+  h2,
+  h3,
+  .font-serif {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    letter-spacing: -0.012em;
   }
   h1,
   h2,
-  .font-serif {
-    font-family: var(--font-serif);
+  h3 {
+    text-wrap: balance;
   }
-  input,
+  h1 {
+    line-height: 1.12;
+  }
+  h2,
+  h3 {
+    line-height: 1.25;
+  }
+  p,
+  li,
+  dd {
+    text-wrap: pretty;
+  }
+  /* Figures line up in every column, list and total without opting in per cell. */
+  table,
+  dl,
+  time,
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+  a {
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--gold-400) 35%, white);
+  }
+
+  /* Fields: one shape for every text-like control, so forms line up whatever page they are on. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]),
   select,
   textarea {
     background: #fff;
     color: var(--foreground);
+    border: 1px solid var(--cream-300);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    min-height: 2.5rem;
+    padding-inline: 0.75rem;
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease;
+  }
+  textarea {
+    padding-block: 0.5rem;
+    line-height: 1.5;
+  }
+  input:not([type="checkbox"]):not([type="radio"]):hover,
+  select:hover,
+  textarea:hover {
+    border-color: color-mix(in oklab, var(--cream-300) 70%, var(--ink-500));
   }
   input::placeholder,
   textarea::placeholder {
-    color: var(--ink-500);
+    color: color-mix(in oklab, var(--ink-500) 75%, white);
   }
   input:focus-visible,
   select:focus-visible,
   textarea:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 1px;
+    outline: none;
+    border-color: var(--gold-500);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--gold-500) 22%, transparent);
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--navy-900);
   }
 }
 
@@ -129,7 +196,7 @@
   color: var(--gold-500);
   font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 

@@ -6,7 +6,7 @@ export function ActivityFeed({ events }: { events: ActivityEvent[] }) {
   return (
     <section aria-labelledby="activity-heading" className="border-cream-200 rounded-lg border bg-white">
       <header className="border-cream-200 border-b px-5 py-4">
-        <h2 id="activity-heading" className="font-serif text-lg">
+        <h2 id="activity-heading" className="font-serif text-xl">
           Recent activity
         </h2>
       </header>

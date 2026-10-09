@@ -11,14 +11,14 @@ export default async function ResetPasswordPage({ searchParams }: PageProps<"/re
 
   return (
     <form className="space-y-4" action="/api/auth/reset-password" method="post">
-      <h1 className="text-lg font-semibold">Reset your password</h1>
+      <h1 className="text-navy-900 font-serif text-2xl">Reset your password</h1>
       {sent ? (
         <Notice tone="success">
           If an account exists for that address, a reset link is on its way. It expires after one hour. Check your spam
           folder if it does not arrive.
         </Notice>
       ) : (
-        <p className="text-sm text-zinc-600">Enter the email address you sign in with and we will send a reset link.</p>
+        <p className="text-ink-700 text-sm">Enter the email address you sign in with and we will send a reset link.</p>
       )}
       {error === "rate_limited" && (
         <Notice tone="error">Too many reset requests. Please wait before trying again.</Notice>
@@ -34,7 +34,7 @@ export default async function ResetPasswordPage({ searchParams }: PageProps<"/re
       <Button type="submit" className="w-full">
         Send reset link
       </Button>
-      <p className="text-center text-xs text-zinc-500">
+      <p className="text-ink-500 text-center text-xs">
         <a href="/login" className="underline">
           Back to sign in
         </a>
