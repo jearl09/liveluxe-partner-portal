@@ -49,8 +49,8 @@ export default async function InvitePage({ params, searchParams }: PageProps<"/i
 
   return (
     <form className="space-y-4" action="/api/auth/accept-invite" method="post">
-      <h1 className="text-lg font-semibold">Join {inv.org_name}</h1>
-      <p className="text-sm text-zinc-600">
+      <h1 className="text-navy-900 font-serif text-2xl">Join {inv.org_name}</h1>
+      <p className="text-ink-700 text-sm">
         You have been invited as <strong>{ROLE_LABELS[inv.role] ?? inv.role}</strong>. Set a password to activate{" "}
         <strong>{inv.email}</strong>.
       </p>
@@ -64,7 +64,7 @@ export default async function InvitePage({ params, searchParams }: PageProps<"/i
       <Button type="submit" className="w-full">
         Activate account
       </Button>
-      <p className="text-center text-xs text-zinc-500">
+      <p className="text-ink-500 text-center text-xs">
         Invitations expire 7 days after they are sent. Already have an account?{" "}
         <a href="/login" className="underline">
           Sign in
@@ -83,7 +83,7 @@ function Invalid({ reason }: { reason: "not_found" | "expired" | "accepted" }) {
   }[reason];
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-semibold">Invitation unavailable</h1>
+      <h1 className="text-navy-900 font-serif text-2xl">Invitation unavailable</h1>
       <Notice tone="warn">{copy}</Notice>
       <a href="/login" className="block text-center text-sm underline">
         Go to sign in

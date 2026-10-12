@@ -146,6 +146,99 @@ export function buildAvailabilityStrip(days: readonly CalendarDay[], from: strin
   return out;
 }
 
+/**
+ * The strip laid out as month calendars (Monday-first weeks). Days outside the
+ * window are null so each month keeps its weekday alignment; a partner reads
+ * "the 14th to the 21st is open" instead of counting dots.
+ */
+export interface StripMonth {
+  /** "2026-10" — stable key. */
+  key: string;
+  /** "October 2026" (year shown so a window spanning New Year is unambiguous). */
+  label: string;
+  /** Rows of seven, Monday → Sunday. */
+  weeks: (StripDay | null)[][];
+}
+
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+/** 0 = Monday … 6 = Sunday, computed on the calendar date (never local time). */
+const mondayIndex = (isoDate: string): number => {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  return (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7;
+};
+
+export function buildStripMonths(days: readonly StripDay[]): StripMonth[] {
+  // Group by calendar month first (the strip is already in date order).
+  const groups: { key: string; days: StripDay[] }[] = [];
+  for (const d of days) {
+    const key = d.date.slice(0, 7);
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) last.days.push(d);
+    else groups.push({ key, days: [d] });
+  }
+
+  return groups.map(({ key, days: monthDays }) => {
+    const [y, m] = key.split("-").map(Number);
+    const weeks: (StripDay | null)[][] = [];
+    // Pad the first row so the first day lands on its weekday column.
+    let week: (StripDay | null)[] = Array.from({ length: mondayIndex(monthDays[0].date) }, () => null);
+    for (const d of monthDays) {
+      week.push(d);
+      if (week.length === 7) {
+        weeks.push(week);
+        week = [];
+      }
+    }
+    if (week.length) {
+      while (week.length < 7) week.push(null);
+      weeks.push(week);
+    }
+    return { key, label: `${MONTH_NAMES[m - 1]} ${y}`, weeks };
+  });
+}
+
+export interface StripSummary {
+  open: number;
+  total: number;
+  /** Longest run of consecutive open nights, or null when nothing is open. */
+  longestRun: { start: string; end: string; nights: number } | null;
+}
+
+/** Counts for the heading line: how many nights are open and the longest unbroken stretch. */
+export function summariseStrip(days: readonly StripDay[]): StripSummary {
+  type Run = { start: string; end: string; nights: number };
+  let open = 0;
+  let best: Run | null = null;
+  let run: Run | null = null;
+  for (const d of days) {
+    if (!(d.known && d.available)) {
+      run = null;
+      continue;
+    }
+    open++;
+    const next: Run = run
+      ? { start: run.start, end: d.date, nights: run.nights + 1 }
+      : { start: d.date, end: d.date, nights: 1 };
+    run = next;
+    if (!best || next.nights > best.nights) best = next;
+  }
+  return { open, total: days.length, longestRun: best };
+}
+
 /** Total pages for a result count. */
 export function pageCount(total: number, pageSize = SEARCH_PAGE_SIZE): number {
   return Math.max(1, Math.ceil(total / pageSize));

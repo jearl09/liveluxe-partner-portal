@@ -88,7 +88,7 @@ export default async function NewRequestPage({ searchParams }: PageProps<"/reque
           <input type="hidden" name="priceHash" value={quote?.priceHash ?? ""} />
 
           <section className="border-cream-200 space-y-4 rounded-xl border bg-white p-5">
-            <h2 className="font-serif text-lg">Guest</h2>
+            <h2 className="font-serif text-xl">Guest</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block text-xs font-medium">
                 Guest name <span className="text-gold-600">*</span>
@@ -113,7 +113,7 @@ export default async function NewRequestPage({ searchParams }: PageProps<"/reque
           </section>
 
           <section className="border-cream-200 space-y-4 rounded-xl border bg-white p-5">
-            <h2 className="font-serif text-lg">Your references</h2>
+            <h2 className="font-serif text-xl">Your references</h2>
             <div className="grid gap-4 sm:grid-cols-3">
               <label className="block text-xs font-medium">
                 Claim reference {org.require_claim_ref && <span className="text-gold-600">*</span>}
@@ -195,7 +195,7 @@ export default async function NewRequestPage({ searchParams }: PageProps<"/reque
           />
           {quote && (
             <div className="border-cream-200 rounded-xl border bg-white p-5">
-              <h2 className="mb-3 font-serif text-lg">Quote</h2>
+              <h2 className="mb-3 font-serif text-xl">Quote</h2>
               <QuoteLines
                 lines={quote.lines}
                 totalCents={quote.totalCents}

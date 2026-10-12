@@ -26,7 +26,8 @@ function RefMono({ r }: { r: RequestTableRow }) {
 function Dates({ r }: { r: RequestTableRow }) {
   return (
     <span className="text-sm">
-      {formatDate(r.checkIn).replace(/^\w+ /, "")} → {formatDate(r.checkOut).replace(/^\w+ /, "")}
+      <span className="whitespace-nowrap">{formatDate(r.checkIn).replace(/^\w+ /, "")}</span> →{" "}
+      <span className="whitespace-nowrap">{formatDate(r.checkOut).replace(/^\w+ /, "")}</span>
       <span className="text-ink-500 block text-xs">{r.nights} nights</span>
     </span>
   );
@@ -37,7 +38,7 @@ export function RequestsTable({ rows, firstTime }: { rows: RequestTableRow[]; fi
   return (
     <section aria-labelledby="requests-heading" className="border-cream-200 print-section rounded-lg border bg-white">
       <header className="border-cream-200 flex items-center justify-between border-b px-5 py-4">
-        <h2 id="requests-heading" className="font-serif text-lg">
+        <h2 id="requests-heading" className="font-serif text-xl">
           Requests in progress
         </h2>
         <Link href="/requests" className="text-navy-900 flex items-center gap-1 text-sm hover:underline print:hidden">

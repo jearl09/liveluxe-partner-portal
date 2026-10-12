@@ -16,7 +16,7 @@ export function DecisionPanel({ request: r, today }: { request: BookingRequestRo
   if (!decidable) {
     return (
       <div className="border-cream-200 rounded-xl border bg-white p-5 text-sm">
-        <h2 className="mb-2 font-serif text-lg">Decision</h2>
+        <h2 className="mb-2 font-serif text-xl">Decision</h2>
         <p className="text-ink-700">
           {r.status === "COUNTER_OFFERED"
             ? "Waiting for the partner to answer the counter-offer. The SLA clock is paused."
@@ -31,7 +31,7 @@ export function DecisionPanel({ request: r, today }: { request: BookingRequestRo
   return (
     <div className="space-y-4">
       <div className="border-cream-200 rounded-xl border bg-white p-5">
-        <h2 className="mb-1 font-serif text-lg">Approve</h2>
+        <h2 className="mb-1 font-serif text-xl">Approve</h2>
         <p className="text-ink-500 mb-3 text-xs">
           Re-checks live availability in Hostaway, then reserves the dates for this partner.
         </p>
@@ -44,7 +44,7 @@ export function DecisionPanel({ request: r, today }: { request: BookingRequestRo
       </div>
 
       <details className="border-cream-200 group rounded-xl border bg-white p-5">
-        <summary className="cursor-pointer font-serif text-lg">Counter-offer</summary>
+        <summary className="cursor-pointer font-serif text-xl">Counter-offer</summary>
         <form method="post" action={action} className="mt-3 space-y-3">
           <input type="hidden" name="action" value="counter" />
           <label className="block text-xs font-medium">
@@ -86,7 +86,7 @@ export function DecisionPanel({ request: r, today }: { request: BookingRequestRo
       </details>
 
       <details className="border-cream-200 rounded-xl border bg-white p-5">
-        <summary className="cursor-pointer font-serif text-lg">Decline</summary>
+        <summary className="cursor-pointer font-serif text-xl">Decline</summary>
         <form method="post" action={action} className="mt-3 space-y-3">
           <input type="hidden" name="action" value="decline" />
           <label className="block text-xs font-medium">

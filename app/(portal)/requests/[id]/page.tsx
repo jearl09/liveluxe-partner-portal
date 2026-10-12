@@ -74,7 +74,7 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
           aria-labelledby="counter-heading"
           className="border-gold-500 space-y-3 rounded-xl border-2 bg-white p-5"
         >
-          <h2 id="counter-heading" className="font-serif text-lg">
+          <h2 id="counter-heading" className="font-serif text-xl">
             Live Luxe proposed a change
           </h2>
           {typeof counter.metadata?.message === "string" && (
@@ -172,7 +172,7 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
           />
 
           <section className="border-cream-200 rounded-xl border bg-white p-5">
-            <h2 className="mb-3 font-serif text-lg">Details</h2>
+            <h2 className="mb-3 font-serif text-xl">Details</h2>
             <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-ink-500 text-xs">Guest</dt>
@@ -207,14 +207,14 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
           </section>
 
           <section className="border-cream-200 rounded-xl border bg-white p-5">
-            <h2 className="mb-3 font-serif text-lg">Timeline</h2>
+            <h2 className="mb-3 font-serif text-xl">Timeline</h2>
             <StatusTimeline history={d.history} />
           </section>
         </div>
 
         <aside className="lg:sticky lg:top-4 lg:self-start">
           <div className="border-cream-200 rounded-xl border bg-white p-5">
-            <h2 className="mb-3 font-serif text-lg">Quote</h2>
+            <h2 className="mb-3 font-serif text-xl">Quote</h2>
             {d.quote ? (
               <QuoteLines
                 lines={d.quote.lines}

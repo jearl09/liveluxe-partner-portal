@@ -1,77 +1,148 @@
-import type { StripDay } from "@/lib/domain/search";
+import { addDays } from "@/lib/domain/dates";
+import { buildStripMonths, summariseStrip, type StripDay } from "@/lib/domain/search";
 import { formatMoney } from "@/lib/domain/money";
-import { formatDate } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { cn, formatDate, formatDayMonth } from "@/lib/utils";
+
+const WEEKDAYS = [
+  ["M", "Monday"],
+  ["T", "Tuesday"],
+  ["W", "Wednesday"],
+  ["T", "Thursday"],
+  ["F", "Friday"],
+  ["S", "Saturday"],
+  ["S", "Sunday"],
+] as const;
+
+const hatched = "bg-[repeating-linear-gradient(135deg,transparent_0_3px,var(--cream-200)_3px_4px)]";
+
+/** Status in words, plus the nightly rate when the night is open and priced. */
+function describe(d: StripDay, currency: string): { word: string; price: string | null } {
+  if (!d.known) return { word: "not synced yet", price: null };
+  if (!d.available) return { word: "booked or blocked", price: null };
+  return { word: "open", price: d.priceCents ? formatMoney(d.priceCents, currency) : null };
+}
 
 /**
- * 90-day availability at a glance. Colour is paired with a text legend and each cell
- * carries its date and rate in a tooltip (§13.5: never colour alone).
+ * The next 90 nights as month calendars (§13.3). A partner placing a long stay needs
+ * actual dates — "open from the 16th" — not a count of dots. State is carried by the
+ * cell's form as well as its colour (§13.5): booked nights are struck through,
+ * unsynced nights are hatched, and today is ringed in gold.
  */
-export function AvailabilityStrip({ days, currency }: { days: StripDay[]; currency: string }) {
-  // Group by month for labels.
-  const groups: { label: string; days: StripDay[] }[] = [];
-  for (const d of days) {
-    const label = new Intl.DateTimeFormat("en-AU", { month: "short", timeZone: "UTC" }).format(
-      new Date(`${d.date}T00:00:00Z`),
-    );
-    const g = groups[groups.length - 1];
-    if (g && g.label === label) g.days.push(d);
-    else groups.push({ label, days: [d] });
-  }
-  const available = days.filter((d) => d.available).length;
+export function AvailabilityStrip({
+  days,
+  currency,
+  today,
+}: {
+  days: StripDay[];
+  currency: string;
+  /** Property-local ISO date; the cell is ringed so the eye finds the start of the window. */
+  today: string;
+}) {
+  const months = buildStripMonths(days);
+  const summary = summariseStrip(days);
+
+  const title = (d: StripDay) => {
+    const s = describe(d, currency);
+    return `${formatDate(d.date)} · ${s.word}${s.price ? ` · ${s.price}` : ""}`;
+  };
+
   return (
-    <section aria-labelledby="availability-heading" className="space-y-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="availability-heading" className="font-serif text-lg">
+    <section aria-labelledby="availability-heading" className="space-y-4">
+      <div>
+        <h2 id="availability-heading" className="font-serif text-xl">
           Next 90 days
         </h2>
-        <p className="text-ink-500 text-xs">
-          {available} of {days.length} nights open
+        <p className="text-ink-700 mt-1 text-sm">
+          {summary.open === 0 ? (
+            "No open nights in this window."
+          ) : (
+            <>
+              <span className="text-navy-900 font-medium">{summary.open}</span> of {summary.total} nights open.
+              {/* Shown as check-in → check-out, the same convention as every stay in the portal. */}
+              {summary.longestRun && summary.longestRun.nights > 1 && (
+                <>
+                  {" "}
+                  Longest open stretch:{" "}
+                  <span className="text-navy-900 font-medium">{summary.longestRun.nights} nights</span>,{" "}
+                  {formatDayMonth(summary.longestRun.start)} → {formatDayMonth(addDays(summary.longestRun.end, 1))}.
+                </>
+              )}
+            </>
+          )}
         </p>
       </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-3">
-        {groups.map((g) => (
-          <div key={g.label}>
-            <p className="text-ink-500 mb-1 text-[11px] tracking-wide uppercase">{g.label}</p>
-            <ul className="flex flex-wrap gap-1">
-              {g.days.map((d) => (
-                <li
-                  key={d.date}
-                  title={`${formatDate(d.date)} · ${
-                    !d.known
-                      ? "not synced"
-                      : d.available
-                        ? d.priceCents
-                          ? formatMoney(d.priceCents, currency)
-                          : "available"
-                        : "unavailable"
-                  }`}
-                  className={cn(
-                    "h-4 w-4 rounded-sm border",
-                    !d.known &&
-                      "border-cream-300 bg-[repeating-linear-gradient(45deg,transparent,transparent_3px,#e9e1d2_3px,#e9e1d2_4px)]",
-                    d.known && d.available && "border-emerald-300 bg-emerald-100",
-                    d.known && !d.available && "border-cream-300 bg-cream-200",
+
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-x-6 gap-y-5">
+        {months.map((m) => (
+          <table key={m.key} className="w-full table-fixed border-separate border-spacing-0.5 self-start">
+            <caption className="text-navy-900 mb-1.5 text-left text-sm font-medium">{m.label}</caption>
+            <thead>
+              <tr>
+                {WEEKDAYS.map(([letter, name]) => (
+                  <th key={name} scope="col" className="text-ink-500 h-6 text-center text-[11px] font-normal">
+                    <abbr title={name} className="no-underline">
+                      {letter}
+                    </abbr>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {m.weeks.map((week, wi) => (
+                <tr key={wi}>
+                  {week.map((d, di) =>
+                    d ? (
+                      <td
+                        key={d.date}
+                        title={title(d)}
+                        className={cn(
+                          "h-6.5 rounded-[3px] border text-center text-xs tabular-nums",
+                          d.known && d.available && "text-navy-900 border-cream-200 bg-white",
+                          d.known && !d.available && "text-ink-500 bg-cream-200 border-cream-200 line-through",
+                          !d.known && `text-ink-500 border-cream-200 ${hatched}`,
+                          d.date === today && "shadow-[inset_0_0_0_1.5px_var(--gold-500)]",
+                        )}
+                      >
+                        <span aria-hidden>{Number(d.date.slice(8, 10))}</span>
+                        <span className="sr-only">
+                          {title(d).replace(/ · /g, ", ")}
+                          {d.date === today ? ", today" : ""}
+                        </span>
+                      </td>
+                    ) : (
+                      <td key={`blank-${di}`} className="h-6.5" aria-hidden />
+                    ),
                   )}
-                >
-                  <span className="sr-only">
-                    {formatDate(d.date)}: {!d.known ? "not synced" : d.available ? "available" : "unavailable"}
-                  </span>
-                </li>
+                </tr>
               ))}
-            </ul>
-          </div>
+            </tbody>
+          </table>
         ))}
       </div>
-      <ul className="text-ink-500 flex flex-wrap gap-4 text-xs" aria-label="Legend">
+
+      <ul className="text-ink-500 flex flex-wrap gap-x-5 gap-y-1.5 text-xs" aria-label="Legend">
         <li className="flex items-center gap-1.5">
-          <span className="h-3 w-3 rounded-sm border border-emerald-300 bg-emerald-100" aria-hidden /> Available
+          <span className="border-cream-200 inline-block h-4 w-4 rounded-[3px] border bg-white" aria-hidden /> Open
         </li>
         <li className="flex items-center gap-1.5">
-          <span className="border-cream-300 bg-cream-200 h-3 w-3 rounded-sm border" aria-hidden /> Booked or blocked
+          <span
+            className="bg-cream-200 border-cream-200 inline-flex h-4 w-4 items-center justify-center rounded-[3px] border"
+            aria-hidden
+          >
+            <span className="bg-ink-500/60 block h-px w-2" />
+          </span>
+          Booked or blocked
         </li>
         <li className="flex items-center gap-1.5">
-          <span className="border-cream-300 h-3 w-3 rounded-sm border" aria-hidden /> Not synced yet
+          <span className={cn("border-cream-200 inline-block h-4 w-4 rounded-[3px] border", hatched)} aria-hidden /> Not
+          synced yet
+        </li>
+        <li className="flex items-center gap-1.5">
+          <span
+            className="border-cream-200 inline-block h-4 w-4 rounded-[3px] border bg-white shadow-[inset_0_0_0_1.5px_var(--gold-500)]"
+            aria-hidden
+          />{" "}
+          Today
         </li>
       </ul>
     </section>

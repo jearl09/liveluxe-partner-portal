@@ -19,7 +19,7 @@ export function Wordmark({
       className={cn("flex shrink-0 items-baseline gap-2 whitespace-nowrap", className)}
       aria-label="Live Luxe home"
     >
-      <span className={cn("font-serif text-xl tracking-tight", tone === "dark" ? "text-white" : "text-navy-900")}>
+      <span className={cn("font-serif text-[1.375rem] leading-none", tone === "dark" ? "text-white" : "text-navy-900")}>
         Live Luxe
       </span>
       {descriptor && <span className="eyebrow">{descriptor}</span>}

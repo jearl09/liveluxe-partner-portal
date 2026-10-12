@@ -21,7 +21,7 @@ export async function SecuritySettings({
     <section className="space-y-4 rounded-lg border bg-white p-4">
       <div>
         <h2 className="text-base font-semibold">Security</h2>
-        <p className="text-sm text-zinc-600">Password and two-factor authentication for your account.</p>
+        <p className="text-ink-700 text-sm">Password and two-factor authentication for your account.</p>
       </div>
 
       {flash?.mfa === "on" && <Notice tone="success">Two-factor authentication is on.</Notice>}
@@ -33,7 +33,7 @@ export async function SecuritySettings({
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
         <div className="text-sm">
           <div className="font-medium">Two-factor authentication (authenticator app)</div>
-          <div className="text-xs text-zinc-600">
+          <div className="text-ink-700 text-xs">
             {on
               ? `On · ${status.verifiedTotp[0]?.friendlyName ?? "authenticator"}. A 6-digit code is required at every sign-in.`
               : "Off · Optional. Adds a 6-digit code from an authenticator app at sign-in."}
@@ -56,7 +56,7 @@ export async function SecuritySettings({
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
         <div className="text-sm">
           <div className="font-medium">Password</div>
-          <div className="text-xs text-zinc-600">Change it by requesting a reset link to your email.</div>
+          <div className="text-ink-700 text-xs">Change it by requesting a reset link to your email.</div>
         </div>
         <Button asChild variant="outline" size="sm">
           <a href="/reset-password">Reset password</a>

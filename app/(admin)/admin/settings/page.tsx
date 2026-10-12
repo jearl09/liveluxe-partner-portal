@@ -18,7 +18,7 @@ export default async function AdminSettingsPage({ searchParams }: PageProps<"/ad
           error: typeof p.error === "string" ? p.error : undefined,
         }}
       />
-      <section className="rounded-lg border border-dashed p-6 text-sm text-zinc-500">
+      <section className="text-ink-500 rounded-lg border border-dashed p-6 text-sm">
         Business tunables (hold duration, SLA, deposit %, tax rules) are edited here from Phase 3.
       </section>
     </div>

@@ -18,7 +18,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
           error: typeof p.error === "string" ? p.error : undefined,
         }}
       />
-      <section className="rounded-lg border border-dashed p-6 text-sm text-zinc-500">
+      <section className="text-ink-500 rounded-lg border border-dashed p-6 text-sm">
         Organisation defaults and notification preferences arrive in Phase 2.
       </section>
     </div>

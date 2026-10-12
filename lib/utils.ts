@@ -22,7 +22,15 @@ export function formatTimestamp(iso: string, timeZone = "Australia/Melbourne", l
   }).format(new Date(iso));
 }
 
-/** Property-local calendar date → "Thu 12 Nov 2026". */
+/** Property-local calendar date → "12 Nov", for lists and ranges where the year is already clear from context. */
+export function formatDayMonth(isoDate: string, locale = "en-AU"): string {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: "UTC" }).format(
+    new Date(Date.UTC(y, m - 1, d)),
+  );
+}
+
+/** Property-local calendar date → "Thu 12 Nov 2026" (no comma after the weekday, whichever ICU build renders it). */
 export function formatDate(isoDate: string, locale = "en-AU"): string {
   const [y, m, d] = isoDate.split("-").map(Number);
   return new Intl.DateTimeFormat(locale, {
@@ -31,5 +39,7 @@ export function formatDate(isoDate: string, locale = "en-AU"): string {
     month: "short",
     year: "numeric",
     timeZone: "UTC",
-  }).format(new Date(Date.UTC(y, m - 1, d)));
+  })
+    .format(new Date(Date.UTC(y, m - 1, d)))
+    .replace(/^(\w+),/, "$1");
 }

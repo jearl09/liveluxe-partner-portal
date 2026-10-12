@@ -25,7 +25,7 @@ export function QuoteLines({
           {lines.map((l, i) => (
             <tr key={`${l.kind}-${i}`} className="border-cream-200 border-b last:border-0">
               <td className="text-ink-700 py-1.5 pr-2">{l.label}</td>
-              <td className="text-navy-900 py-1.5 text-right font-mono text-xs whitespace-nowrap">
+              <td className="text-navy-900 py-1.5 text-right text-sm whitespace-nowrap tabular-nums">
                 {l.amountCents < 0 ? "−" : ""}
                 {formatMoney(Math.abs(l.amountCents), currency)}
               </td>

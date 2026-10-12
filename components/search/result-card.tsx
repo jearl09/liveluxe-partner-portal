@@ -56,7 +56,7 @@ export function ResultCard({ item, href }: { item: SearchResultItem; href: strin
       </div>
       <div className="space-y-2 p-4">
         <div>
-          <h3 className="text-navy-900 font-serif text-lg leading-tight">
+          <h3 className="text-navy-900 font-serif text-xl leading-tight">
             <Link href={href} className="after:absolute after:inset-0 focus-visible:outline-none">
               {item.name}
             </Link>

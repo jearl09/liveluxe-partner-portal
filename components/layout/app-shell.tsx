@@ -48,8 +48,8 @@ export function AppShell({
       <header
         className={cn("border-b", dark ? "bg-navy-900 border-navy-800 text-white" : "bg-cream-100 border-cream-200")}
       >
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-4 py-3 md:px-6">
-          <div className="flex min-w-0 items-center gap-6">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-6 px-4 md:px-6">
+          <div className="flex min-w-0 items-center gap-8">
             <Wordmark
               href={dark ? "/admin/queue" : "/"}
               descriptor={dark ? "Operations" : "Partner portal"}
@@ -64,10 +64,15 @@ export function AppShell({
             )}
             <NavLinks items={nav} tone={tone} />
           </div>
-          <div className="flex items-center gap-4">
-            <div className={cn("hidden text-right text-xs lg:block", dark ? "text-white/80" : "text-ink-700")}>
+          <div className="flex shrink-0 items-center gap-4">
+            <div
+              className={cn(
+                "hidden text-right text-xs leading-tight lg:block",
+                dark ? "text-white/80" : "text-ink-700",
+              )}
+            >
               <div className="font-medium">{user.orgName ?? title}</div>
-              <div className={dark ? "text-white/60" : "text-ink-500"}>
+              <div className={cn("mt-0.5", dark ? "text-white/60" : "text-ink-500")}>
                 {user.email} · {ROLE_LABELS[user.role] ?? user.role}
               </div>
             </div>
@@ -75,7 +80,7 @@ export function AppShell({
               <button
                 type="submit"
                 className={cn(
-                  "rounded-md border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors",
+                  "h-9 rounded-md border px-3 text-xs font-medium whitespace-nowrap transition-colors",
                   dark
                     ? "border-white/20 text-white hover:bg-white/10"
                     : "border-cream-300 text-navy-900 hover:bg-white",
@@ -86,18 +91,14 @@ export function AppShell({
             </form>
           </div>
         </div>
-        <nav aria-label="Primary (mobile)" className="flex gap-4 overflow-x-auto px-4 pb-3 text-sm md:hidden">
-          {nav.map((n) => (
-            <a key={n.href} href={n.href} className={cn("whitespace-nowrap", dark ? "text-white/80" : "text-ink-700")}>
-              {n.label}
-            </a>
-          ))}
-        </nav>
+        <div className="px-4 md:hidden">
+          <NavLinks items={nav} tone={tone} variant="mobile" />
+        </div>
       </header>
       <main id="main" className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 md:px-6">
         {children}
       </main>
-      <footer className="border-cream-200 text-ink-500 border-t px-4 py-4 text-center text-xs">
+      <footer className="border-cream-200 text-ink-500 border-t px-4 py-5 text-center text-xs">
         Live Luxe Pty Ltd · ABN 16 678 772 613 · Partner bookings are confidential and subject to your agreement with
         Live Luxe.
       </footer>

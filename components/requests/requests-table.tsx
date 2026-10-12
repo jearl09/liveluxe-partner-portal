@@ -94,7 +94,7 @@ export function RequestsTable({
                 <span className="text-ink-500 block text-xs">{r.nights} nights</span>
               </td>
               <td className="text-navy-900 px-3 py-3 align-top">{r.guestName ?? "—"}</td>
-              <td className="px-3 py-3 text-right align-top font-mono text-xs whitespace-nowrap">
+              <td className="px-3 py-3 text-right align-top text-sm whitespace-nowrap tabular-nums">
                 {r.totalCents != null ? formatMoney(r.totalCents, r.currency) : "—"}
               </td>
               <td className="px-3 py-3 align-top">

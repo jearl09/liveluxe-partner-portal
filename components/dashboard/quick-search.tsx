@@ -9,7 +9,7 @@ export function QuickSearch({ lastSuburb }: { lastSuburb: string | null }) {
       aria-labelledby="quick-search-heading"
       className="bg-cream-100 border-cream-200 rounded-lg border p-5 md:p-6"
     >
-      <h2 id="quick-search-heading" className="font-serif text-lg">
+      <h2 id="quick-search-heading" className="font-serif text-xl">
         Quick search
       </h2>
       <form action="/search" method="get" className="mt-3 grid gap-3 md:grid-cols-[2fr_1fr_1fr_1fr_auto] md:items-end">
