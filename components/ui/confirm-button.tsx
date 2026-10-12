@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { Button, type ButtonProps } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { cn } from "@/lib/utils";
 
 /**
@@ -16,12 +17,13 @@ import { cn } from "@/lib/utils";
  */
 export function ConfirmButton({
   confirmLabel,
+  pendingLabel = "Working…",
   children,
   variant = "ghost",
   size = "sm",
   className,
   ...rest
-}: Omit<ButtonProps, "type" | "onClick"> & { confirmLabel: string; children: ReactNode }) {
+}: Omit<ButtonProps, "type" | "onClick"> & { confirmLabel: string; pendingLabel?: string; children: ReactNode }) {
   const [armed, setArmed] = useState(false);
 
   if (!armed) {
@@ -51,9 +53,16 @@ export function ConfirmButton({
         }
       }}
     >
-      <Button type="submit" variant="destructive" size={size} className="flex-1" autoFocus {...rest}>
+      <SubmitButton
+        variant="destructive"
+        size={size}
+        className="flex-1"
+        pendingLabel={pendingLabel}
+        autoFocus
+        {...rest}
+      >
         {confirmLabel}
-      </Button>
+      </SubmitButton>
       <Button type="button" variant="ghost" size={size} onClick={() => setArmed(false)}>
         Cancel
       </Button>

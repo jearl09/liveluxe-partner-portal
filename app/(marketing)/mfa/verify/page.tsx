@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Notice, inputClass } from "@/components/auth/notice";
 import { createServerSupabase, getSessionClaims } from "@/lib/db/server";
 import { getMfaStatus } from "@/lib/auth/mfa";
@@ -46,9 +46,9 @@ export default async function MfaVerifyPage({ searchParams }: PageProps<"/mfa/ve
           className={`${inputClass} font-mono tracking-[0.3em]`}
         />
       </label>
-      <Button type="submit" className="w-full">
+      <SubmitButton className="w-full" pendingLabel="Verifying…">
         Continue
-      </Button>
+      </SubmitButton>
       <p className="text-muted-foreground text-center text-xs">
         Lost your device? Contact a Livluxe administrator to reset your authenticator.{" "}
         <button type="submit" formAction="/api/auth/sign-out" formNoValidate className="underline">

@@ -47,14 +47,16 @@ export function RequestsTable({
   ops = false,
   emptyTitle,
   emptyHint,
+  now = new Date(),
 }: {
   rows: RequestListItem[];
   hrefFor: (r: RequestListItem) => string;
   ops?: boolean;
   emptyTitle: string;
   emptyHint: string;
+  /** The clock the SLA labels count from; the gallery pins it so screenshots are reproducible. */
+  now?: Date;
 }) {
-  const now = new Date();
   if (rows.length === 0) {
     return (
       <Panel className="px-5 py-14 text-center">
@@ -90,7 +92,9 @@ export function RequestsTable({
             >
               {ops && (
                 <td className={tdClass}>
-                  <Pill tone={BAND[r.band]}>{dueLabel(r, now)}</Pill>
+                  <Pill tone={BAND[r.band]} data-live="sla">
+                    {dueLabel(r, now)}
+                  </Pill>
                 </td>
               )}
               <td className={tdClass}>
@@ -147,7 +151,9 @@ export function RequestsTable({
             </div>
             {ops && (
               <div className="mt-2">
-                <Pill tone={BAND[r.band]}>{dueLabel(r, now)}</Pill>
+                <Pill tone={BAND[r.band]} data-live="sla">
+                  {dueLabel(r, now)}
+                </Pill>
               </div>
             )}
           </li>

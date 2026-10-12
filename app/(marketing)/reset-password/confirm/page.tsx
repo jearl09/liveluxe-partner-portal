@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Notice, PASSWORD_ERRORS } from "@/components/auth/notice";
 import { PasswordFields } from "@/components/auth/password-fields";
 import { createServerSupabase } from "@/lib/db/server";
@@ -26,9 +26,9 @@ export default async function ResetConfirmPage({ searchParams }: PageProps<"/res
       </p>
       {error && <Notice tone="error">{error}</Notice>}
       <PasswordFields autoFocus />
-      <Button type="submit" className="w-full">
+      <SubmitButton className="w-full" pendingLabel="Saving…">
         Save password
-      </Button>
+      </SubmitButton>
     </form>
   );
 }

@@ -53,6 +53,7 @@ export function AppShell({
         Skip to content
       </a>
       <header
+        data-app-chrome
         className={cn(
           "sticky top-0 z-40 border-b backdrop-blur-xl",
           dark ? "bg-navy-900/85 border-navy-800 text-white" : "bg-muted/85 border-border",
@@ -82,7 +83,7 @@ export function AppShell({
               )}
             >
               <div className="font-medium">{user.orgName ?? title}</div>
-              <div className={cn("mt-0.5", dark ? "text-white/60" : "text-muted-foreground")}>
+              <div className={cn("mt-0.5", dark ? "text-white/70" : "text-muted-foreground")}>
                 {user.email} · {ROLE_LABELS[user.role] ?? user.role}
               </div>
             </div>
@@ -107,7 +108,7 @@ export function AppShell({
       <main id="main" className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 md:px-6">
         {children}
       </main>
-      <footer className="border-border text-muted-foreground border-t px-4 py-5 text-center text-xs">
+      <footer data-app-chrome className="border-border text-muted-foreground border-t px-4 py-5 text-center text-xs">
         Live Luxe Pty Ltd · ABN 16 678 772 613 · Partner bookings are confidential and subject to your agreement with
         Live Luxe.
       </footer>

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Notice, inputClass } from "@/components/auth/notice";
 import { createServerSupabase, getSessionClaims } from "@/lib/db/server";
 import { getMfaStatus } from "@/lib/auth/mfa";
@@ -89,9 +89,9 @@ export default async function MfaEnrolPage({ searchParams }: PageProps<"/mfa/enr
           className={`${inputClass} font-mono tracking-[0.3em]`}
         />
       </label>
-      <Button type="submit" className="w-full">
+      <SubmitButton className="w-full" pendingLabel="Verifying…">
         Verify and turn on
-      </Button>
+      </SubmitButton>
       <p className="text-muted-foreground text-center text-xs">
         <a href={settingsPath} className="underline">
           Cancel

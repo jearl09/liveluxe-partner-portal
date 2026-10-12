@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Banner } from "@/components/ui/banner";
-import { Button } from "@/components/ui/button";
+import { PrintButton } from "@/components/ui/print-button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { GroupLabel, Panel, PanelHeading, PanelSection } from "@/components/ui/panel";
 import { StatusPill } from "@/components/ui/status-pill";
 import { Flash } from "@/components/requests/flash";
@@ -40,10 +41,18 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
   const holdLeft = r.hold_expires_at ? new Date(r.hold_expires_at).getTime() - now.getTime() : null;
 
   return (
-    <div className="space-y-6">
-      <Link href="/requests" className="text-foreground inline-flex items-center gap-1 text-sm hover:underline">
+    <div className="space-y-6 print:space-y-4">
+      <Link
+        href="/requests"
+        className="text-foreground inline-flex items-center gap-1 text-sm hover:underline print:hidden"
+      >
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> All requests
       </Link>
+
+      {/* Paper gets the letterhead the app chrome provides on screen. */}
+      <p className="print-only text-muted-foreground hidden border-b pb-3 text-xs">
+        Live Luxe · Partner booking request · {d.listing.name} · printed {formatTimestamp(new Date().toISOString())}
+      </p>
 
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -54,14 +63,19 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
             {d.createdByName && ` by ${d.createdByName}`}
           </p>
         </div>
-        <StatusPill status={r.status} className="text-sm" />
+        <div className="flex items-center gap-3">
+          <PrintButton />
+          <StatusPill status={r.status} className="text-sm" />
+        </div>
       </header>
 
-      <Flash
-        done={str(sp.submitted) ? "1" : str(sp.done) || undefined}
-        error={str(sp.error) || undefined}
-        refCode={str(sp.ref) || undefined}
-      />
+      <div className="print:hidden">
+        <Flash
+          done={str(sp.submitted) ? "1" : str(sp.done) || undefined}
+          error={str(sp.error) || undefined}
+          refCode={str(sp.ref) || undefined}
+        />
+      </div>
 
       {["SUBMITTED", "UNDER_REVIEW"].includes(r.status) && r.decision_due_at && (
         <Banner tone="info">
@@ -116,18 +130,18 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
             </p>
           )}
           {canAct && (
-            <div className="flex flex-wrap gap-2 pt-1">
+            <div className="flex flex-wrap gap-2 pt-1 print:hidden">
               <form method="post" action={`/api/requests/${r.id}/counter`}>
                 <input type="hidden" name="action" value="accept" />
-                <Button type="submit" variant="gold">
+                <SubmitButton variant="gold" pendingLabel="Accepting…">
                   Accept the proposal
-                </Button>
+                </SubmitButton>
               </form>
               <form method="post" action={`/api/requests/${r.id}/counter`}>
                 <input type="hidden" name="action" value="decline" />
-                <Button type="submit" variant="outline">
+                <SubmitButton variant="outline" pendingLabel="Closing…">
                   Decline and close
-                </Button>
+                </SubmitButton>
               </form>
             </div>
           )}
@@ -141,7 +155,7 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
             {DECLINE_REASON_LABELS[r.decline_reason ?? "other"] ?? "Other"}
             {r.decline_notes && ` — ${r.decline_notes}`}
           </p>
-          <p className="text-xs opacity-80">The dates have been released. You can search again for alternatives.</p>
+          <p className="text-xs">The dates have been released. You can search again for alternatives.</p>
         </Banner>
       )}
 
@@ -155,7 +169,7 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
         </Banner>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_380px] lg:items-start lg:gap-8">
+      <div className="grid gap-6 lg:grid-cols-[1fr_380px] lg:items-start lg:gap-8 print:grid-cols-1 print:gap-4">
         <Panel flush className="divide-border divide-y" aria-label="Request details">
           <PanelSection className="py-4">
             <StayCard
@@ -216,8 +230,8 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
           </PanelSection>
         </Panel>
 
-        <aside className="lg:sticky lg:top-20 lg:self-start">
-          <Panel aria-labelledby="quote-heading">
+        <aside className="lg:sticky lg:top-20 lg:self-start print:static">
+          <Panel aria-labelledby="quote-heading" className="print-keep">
             <PanelHeading id="quote-heading" title="Quote" className="mb-3" />
             {d.quote ? (
               <QuoteLines
@@ -234,6 +248,11 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
           </Panel>
         </aside>
       </div>
+
+      <p className="print-only text-muted-foreground hidden border-t pt-3 text-xs">
+        Live Luxe Pty Ltd · ABN 16 678 772 613 · Partner bookings are confidential and subject to your agreement with
+        Live Luxe.
+      </p>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { Banner } from "@/components/ui/banner";
+import { FLASH_KEYS, ScrubParams } from "@/components/ui/scrub-params";
 import { ErrorCodes, type ErrorCode } from "@/lib/domain/errors";
 
 const DONE: Record<string, string> = {
@@ -27,7 +28,10 @@ const EXTRA: Partial<Record<ErrorCode, string>> = {
   HOSTAWAY_UNAVAILABLE: "Live availability could not be checked. Try again in a minute; nothing was changed.",
 };
 
-/** One-line outcome banner driven by ?submitted= / ?done= / ?error= query params. */
+/**
+ * One-line outcome banner driven by ?submitted= / ?done= / ?error= query params. The
+ * params are scrubbed from the address bar once shown, so a refresh does not replay them.
+ */
 export function Flash({
   done,
   error,
@@ -40,18 +44,26 @@ export function Flash({
   refCode?: string;
 }) {
   if (done && DONE[done]) {
-    return <Banner tone="success">{DONE[done]}</Banner>;
+    return (
+      <>
+        <ScrubParams keys={FLASH_KEYS} />
+        <Banner tone="success">{DONE[done]}</Banner>
+      </>
+    );
   }
   if (error) {
     const code = (error in ErrorCodes ? error : "INTERNAL") as ErrorCode;
     return (
-      <Banner tone="error">
-        <p>
-          {ErrorCodes[code].message} {EXTRA[code] ?? ""}
-        </p>
-        {detail && <p className="text-xs opacity-80">{detail}</p>}
-        {refCode && <p className="font-mono text-xs opacity-80">Ref {refCode}</p>}
-      </Banner>
+      <>
+        <ScrubParams keys={FLASH_KEYS} />
+        <Banner tone="error">
+          <p>
+            {ErrorCodes[code].message} {EXTRA[code] ?? ""}
+          </p>
+          {detail && <p className="text-xs">{detail}</p>}
+          {refCode && <p className="font-mono text-xs">Ref {refCode}</p>}
+        </Banner>
+      </>
     );
   }
   return null;

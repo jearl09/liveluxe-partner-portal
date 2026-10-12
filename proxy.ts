@@ -10,6 +10,7 @@
  */
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { previewsAllowed } from "@/lib/preview";
 
 const PUBLIC_PATHS = [
   "/login",
@@ -21,8 +22,8 @@ const PUBLIC_PATHS = [
   "/api/webhooks",
   "/api/cron",
 ];
-// Design-review previews with sample data; the route itself 404s in production.
-if (process.env.VERCEL_ENV !== "production") PUBLIC_PATHS.push("/dev");
+// Design-review previews with sample data; the routes themselves 404 unless previews are allowed.
+if (previewsAllowed()) PUBLIC_PATHS.push("/dev");
 
 export async function proxy(request: NextRequest) {
   const requestId = request.headers.get("x-request-id") ?? `req_${crypto.randomUUID()}`;

@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { fieldClass, fieldClasses, fieldErrorClass, labelClass } from "@/components/ui/field";
 import { Panel, PanelHeading } from "@/components/ui/panel";
@@ -127,11 +127,13 @@ export function PeoplePanel({
                           <input type="hidden" name="action" value={u.status === "disabled" ? "enable" : "disable"} />
                           <input type="hidden" name="userId" value={u.id} />
                           {u.status === "disabled" ? (
-                            <Button type="submit" variant="ghost" size="sm">
+                            <SubmitButton variant="ghost" size="sm" pendingLabel="Restoring…">
                               Restore access
-                            </Button>
+                            </SubmitButton>
                           ) : (
-                            <ConfirmButton confirmLabel="Confirm removal">Remove access</ConfirmButton>
+                            <ConfirmButton confirmLabel="Confirm removal" pendingLabel="Removing…">
+                              Remove access
+                            </ConfirmButton>
                           )}
                         </form>
                       )}
@@ -159,7 +161,9 @@ export function PeoplePanel({
                 <form method="post" action={action}>
                   <input type="hidden" name="action" value="revoke" />
                   <input type="hidden" name="invitationId" value={i.id} />
-                  <ConfirmButton confirmLabel="Confirm revoke">Revoke</ConfirmButton>
+                  <ConfirmButton confirmLabel="Confirm revoke" pendingLabel="Revoking…">
+                    Revoke
+                  </ConfirmButton>
                 </form>
               </li>
             ))}
@@ -172,7 +176,7 @@ export function PeoplePanel({
         <form method="post" action={action} className="grid gap-3 sm:grid-cols-[1fr_220px_auto] sm:items-end">
           <input type="hidden" name="action" value="invite" />
           <label className={labelClass}>
-            Email <span className="text-accent">*</span>
+            Email <span className="text-accent-ink">*</span>
             <input
               name="email"
               type="email"
@@ -184,7 +188,7 @@ export function PeoplePanel({
             {errorFields.has("email") && <span className={fieldErrorClass}>Enter a valid email address.</span>}
           </label>
           <label className={labelClass}>
-            Role <span className="text-accent">*</span>
+            Role <span className="text-accent-ink">*</span>
             <select name="role" required defaultValue={values.role || roles[0]} className={`${fieldClass} mt-1`}>
               {roles.map((r) => (
                 <option key={r} value={r}>
@@ -193,9 +197,9 @@ export function PeoplePanel({
               ))}
             </select>
           </label>
-          <Button type="submit" variant="gold">
+          <SubmitButton variant="gold" pendingLabel="Sending invitation…">
             Send invitation
-          </Button>
+          </SubmitButton>
         </form>
         <dl className="text-muted-foreground mt-4 grid gap-x-6 gap-y-1 text-xs sm:grid-cols-2">
           {roles.map((r) => (

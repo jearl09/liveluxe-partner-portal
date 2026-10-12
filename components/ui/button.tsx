@@ -19,7 +19,7 @@ const buttonVariants = cva(
         outline: "border border-input bg-card text-strong hover:bg-muted",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "text-foreground hover:bg-muted hover:text-strong",
-        link: "text-accent underline-offset-4 hover:underline active:scale-100",
+        link: "text-accent-ink underline-offset-4 hover:underline active:scale-100",
       },
       size: {
         default: "h-11 px-4 py-2",
@@ -32,8 +32,8 @@ const buttonVariants = cva(
   },
 );
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
+/** `ref` rides along as an ordinary prop (React 19), so SubmitButton can reach its form. */
+export interface ButtonProps extends React.ComponentProps<"button">, VariantProps<typeof buttonVariants> {
   asChild?: boolean;
 }
 

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Clock } from "lucide-react";
 import { DecisionPanel } from "@/components/admin/decision-panel";
 import { Banner } from "@/components/ui/banner";
+import { PrintButton } from "@/components/ui/print-button";
 import { GroupLabel, Panel, PanelHeading, PanelSection } from "@/components/ui/panel";
 import { StatusPill } from "@/components/ui/status-pill";
 import { Flash } from "@/components/requests/flash";
@@ -45,10 +46,18 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
   const holdLeft = r.hold_expires_at ? new Date(r.hold_expires_at).getTime() - now.getTime() : null;
 
   return (
-    <div className="space-y-6">
-      <Link href="/admin/queue" className="text-foreground inline-flex items-center gap-1 text-sm hover:underline">
+    <div className="space-y-6 print:space-y-4">
+      <Link
+        href="/admin/queue"
+        className="text-foreground inline-flex items-center gap-1 text-sm hover:underline print:hidden"
+      >
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Queue
       </Link>
+
+      <p className="print-only text-muted-foreground hidden border-b pb-3 text-xs">
+        Live Luxe · Operations · {d.org?.name ?? "Partner"} · {d.listing.name} · printed{" "}
+        {formatTimestamp(new Date().toISOString())}
+      </p>
 
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -61,7 +70,10 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
           </p>
         </div>
         <div className="flex flex-col items-end gap-1">
-          <StatusPill status={r.status} className="text-sm" />
+          <div className="flex items-center gap-3">
+            <PrintButton />
+            <StatusPill status={r.status} className="text-sm" />
+          </div>
           {dueLeft !== null && ["SUBMITTED", "UNDER_REVIEW"].includes(r.status) && (
             <p className={cn("flex items-center gap-1 text-xs", BAND_TEXT[d.band])}>
               <Clock className="h-3 w-3" aria-hidden />
@@ -76,12 +88,14 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
         </div>
       </header>
 
-      <Flash
-        done={str(sp.done) || undefined}
-        error={str(sp.error) || undefined}
-        detail={str(sp.detail) || undefined}
-        refCode={str(sp.ref) || undefined}
-      />
+      <div className="print:hidden">
+        <Flash
+          done={str(sp.done) || undefined}
+          error={str(sp.error) || undefined}
+          detail={str(sp.detail) || undefined}
+          refCode={str(sp.ref) || undefined}
+        />
+      </div>
 
       {r.status === "DECLINED" && (
         <Banner tone="error">
@@ -90,7 +104,7 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
         </Banner>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_380px] lg:items-start lg:gap-8">
+      <div className="grid gap-6 lg:grid-cols-[1fr_380px] lg:items-start lg:gap-8 print:grid-cols-1 print:gap-4">
         <Panel flush className="divide-border divide-y" aria-label="Request details">
           <PanelSection className="py-4">
             <StayCard
@@ -164,9 +178,11 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
           </PanelSection>
         </Panel>
 
-        <aside className="space-y-6 lg:sticky lg:top-20 lg:self-start">
-          <DecisionPanel request={r} today={todayIn("Australia/Melbourne")} />
-          <Panel aria-labelledby="quote-heading">
+        <aside className="space-y-6 lg:sticky lg:top-20 lg:self-start print:static">
+          <div className="print:hidden">
+            <DecisionPanel request={r} today={todayIn("Australia/Melbourne")} />
+          </div>
+          <Panel aria-labelledby="quote-heading" className="print-keep">
             <PanelHeading id="quote-heading" title="Quote" className="mb-3" />
             {d.quote ? (
               <QuoteLines
@@ -183,6 +199,10 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
           </Panel>
         </aside>
       </div>
+
+      <p className="print-only text-muted-foreground hidden border-t pt-3 text-xs">
+        Live Luxe Pty Ltd · ABN 16 678 772 613 · Internal — contains partner and guest details.
+      </p>
     </div>
   );
 }

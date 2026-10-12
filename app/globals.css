@@ -31,7 +31,7 @@
   --gold-400: #cfa25c;
   --ink-900: #141a24;
   --ink-700: #3a4454;
-  --ink-500: #6b7484;
+  --ink-500: #5a6373; /* AA on cream-200, the darkest light surface it sits on */
 
   /* Dark palette, built down from the brand navy so the hue never drifts. */
   --d-canvas: #0b1422;
@@ -61,7 +61,10 @@
   --secondary-foreground: var(--navy-900);
   --accent: var(--gold-500);
   --accent-hover: var(--gold-600);
-  --accent-foreground: #ffffff;
+  /* Navy on gold reads at 5.6:1; white on the brand gold only 3.3:1, so filled gold carries navy text in both themes. */
+  --accent-foreground: var(--navy-950);
+  /* Gold as *text* on a light surface: the brand gold is a border and fill colour, not a type colour (2.9:1 on cream). */
+  --accent-ink: #8a6220;
   --muted: var(--cream-100);
   --muted-foreground: var(--ink-500);
   --border: var(--cream-200);
@@ -110,6 +113,7 @@
     --accent: var(--gold-400);
     --accent-hover: #dcb878;
     --accent-foreground: var(--navy-950);
+    --accent-ink: var(--gold-400);
     --muted: var(--d-raised);
     --muted-foreground: var(--d-muted);
     --border: var(--d-line);
@@ -124,7 +128,7 @@
     --bad: #fca5a5;
     --bad-bg: #38181a;
     --bad-border: #5e2a2c;
-    --destructive: #e5584d;
+    --destructive: #c73f33; /* 5.0:1 with white text */
     --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.35);
     --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.4), 0 1px 2px rgb(0 0 0 / 0.3);
     --shadow-md: 0 6px 18px rgb(0 0 0 / 0.45);
@@ -151,6 +155,7 @@
   --accent: var(--gold-400);
   --accent-hover: #dcb878;
   --accent-foreground: var(--navy-950);
+  --accent-ink: var(--gold-400);
   --muted: var(--d-raised);
   --muted-foreground: var(--d-muted);
   --border: var(--d-line);
@@ -165,7 +170,7 @@
   --bad: #fca5a5;
   --bad-bg: #38181a;
   --bad-border: #5e2a2c;
-  --destructive: #e5584d;
+  --destructive: #c73f33; /* 5.0:1 with white text */
   --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.35);
   --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.4), 0 1px 2px rgb(0 0 0 / 0.3);
   --shadow-md: 0 6px 18px rgb(0 0 0 / 0.45);
@@ -190,6 +195,7 @@
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-ink: var(--accent-ink);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-destructive: var(--destructive);
@@ -371,11 +377,16 @@
 
 /* Gold eyebrow label used across headings, matching the site's "DOCKLANDS, MELBOURNE" treatment. */
 .eyebrow {
-  color: var(--accent);
+  color: var(--accent-ink);
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
+}
+
+/* The same label on a fixed-navy surface (hero panel, admin header), where the brighter gold is the readable one. */
+.eyebrow-on-navy {
+  color: var(--gold-400);
 }
 
 .gold-rule {
@@ -405,15 +416,57 @@
 }
 
 /* Print: the requests table prints cleanly for claim files (§13.5). Always on paper white. */
+/*
+ * Print. A request detail printed or saved as a PDF is what a partner attaches to a
+ * claim file, so the page prints as a document: A4, black on white, no chrome, no
+ * controls, and no panel split across a page boundary. Only the app chrome is hidden
+ * by element — panels have their own <header>, which must print.
+ */
+@page {
+  size: A4;
+  margin: 16mm 14mm;
+}
 @media print {
-  :root {
+  /* Paper is light whatever the screen theme was. The dark selectors are repeated here so this wins on specificity. */
+  :root,
+  :root[data-theme="dark"],
+  :root:not([data-theme="light"]) {
     --background: #fff;
-    --card: #fff;
-    --foreground: #000;
+    --foreground: #222;
     --strong: #000;
-    --border: #ccc;
+    --card: #fff;
+    --card-foreground: #222;
+    --raised: #fff;
+    --sunken: #f3f3f3;
+    --primary: var(--navy-900);
+    --primary-foreground: #fff;
+    --secondary: #f3f3f3;
+    --secondary-foreground: var(--navy-900);
+    --accent: var(--gold-500);
+    --accent-foreground: var(--navy-950);
+    --accent-ink: #6b4b16;
+    --muted: #fff;
+    --muted-foreground: #555;
+    --border: #cfcfcf;
+    --input: #cfcfcf;
+    --ok: #047857;
+    --ok-bg: #ecfdf5;
+    --ok-border: #a7f3d0;
+    --warn: #92400e;
+    --warn-bg: #fffbeb;
+    --warn-border: #fcd34d;
+    --bad: #b42318;
+    --bad-bg: #fef2f2;
+    --bad-border: #fecaca;
+    --shadow-xs: none;
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: none;
   }
-  header,
+  html {
+    color-scheme: light;
+  }
+  [data-app-chrome],
   footer,
   nav,
   .print\:hidden {
@@ -421,11 +474,39 @@
   }
   body {
     background: #fff;
-    color: #000;
+    color: #222;
+    font-size: 11pt;
   }
   main {
     max-width: none;
     padding: 0;
+  }
+  h1 {
+    font-size: 20pt;
+  }
+  /* Keep each panel, section and timeline entry whole; let a long timeline flow across pages. */
+  .print-keep,
+  section,
+  li,
+  tr {
+    break-inside: avoid;
+  }
+  h2,
+  h3 {
+    break-after: avoid;
+  }
+  img {
+    max-width: 100%;
+  }
+  /* Form controls and their halos have no meaning on paper. */
+  input,
+  select,
+  textarea,
+  button {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
   }
   .print-section {
     border: 0;

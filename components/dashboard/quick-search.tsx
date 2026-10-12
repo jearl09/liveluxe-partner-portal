@@ -1,5 +1,5 @@
 import { Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { fieldClass, labelClass } from "@/components/ui/field";
 
 /** Quick search: start a search without leaving the page. GET form → /search keeps state in the URL (§13.2). */
@@ -32,9 +32,9 @@ export function QuickSearch({ lastSuburb }: { lastSuburb: string | null }) {
           Guests
           <input name="guests" type="number" min={1} max={16} defaultValue={2} className={`${fieldClass} mt-1`} />
         </label>
-        <Button type="submit">
+        <SubmitButton pendingLabel="Searching…">
           <Search className="h-4 w-4" aria-hidden /> Search
-        </Button>
+        </SubmitButton>
       </form>
     </section>
   );

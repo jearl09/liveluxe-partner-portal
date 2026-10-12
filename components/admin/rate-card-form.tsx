@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { fieldClasses, labelClass } from "@/components/ui/field";
 
 /**
@@ -21,7 +21,7 @@ export function RateCardForm({
     <form method="post" action={`/api/admin/rate-cards/${orgId}`} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <label className={labelClass}>
-          Card name <span className="text-accent">*</span>
+          Card name <span className="text-accent-ink">*</span>
           <input name="name" required maxLength={80} defaultValue={values.name} className={field("name")} />
         </label>
         <label className={labelClass}>
@@ -38,7 +38,7 @@ export function RateCardForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className={labelClass}>
-          Takes effect from <span className="text-accent">*</span>
+          Takes effect from <span className="text-accent-ink">*</span>
           <input
             name="validFrom"
             type="date"
@@ -94,9 +94,9 @@ export function RateCardForm({
         Publishing closes the current card the day before the new one starts. Quotes already issued keep the card
         version they were priced with.
       </p>
-      <Button type="submit" variant="gold">
+      <SubmitButton variant="gold" pendingLabel="Publishing…">
         Publish new version
-      </Button>
+      </SubmitButton>
     </form>
   );
 }

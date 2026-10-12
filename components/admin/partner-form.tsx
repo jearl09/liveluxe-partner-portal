@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { ORG_STATUS_LABELS, ORG_STATUSES, PARTNER_TYPE_LABELS, PARTNER_TYPES } from "@/lib/domain/partners";
 import { fieldClasses, labelClass } from "@/components/ui/field";
 
@@ -20,11 +20,11 @@ export function PartnerForm({
       {mode === "edit" && <input type="hidden" name="action" value="update" />}
       <div className="grid gap-4 sm:grid-cols-[1fr_180px] sm:items-end">
         <label className={labelClass}>
-          Organisation name <span className="text-accent">*</span>
+          Organisation name <span className="text-accent-ink">*</span>
           <input name="name" required maxLength={120} defaultValue={values.name} className={field("name")} />
         </label>
         <label className={labelClass}>
-          Type <span className="text-accent">*</span>
+          Type <span className="text-accent-ink">*</span>
           <select name="type" required defaultValue={values.type || "insurance"} className={field("type")}>
             {PARTNER_TYPES.map((t) => (
               <option key={t} value={t}>
@@ -118,9 +118,9 @@ export function PartnerForm({
         </label>
       </div>
 
-      <Button type="submit" variant="gold">
+      <SubmitButton variant="gold" pendingLabel="Saving…">
         {mode === "create" ? "Create partner" : "Save changes"}
-      </Button>
+      </SubmitButton>
     </form>
   );
 }

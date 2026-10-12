@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Notice, inputClass } from "@/components/auth/notice";
 import { safeRedirectPath } from "@/lib/domain/auth";
 
@@ -62,9 +62,9 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         <span className="mb-1 block font-medium">Password</span>
         <input name="password" type="password" required autoComplete="current-password" className={inputClass} />
       </label>
-      <Button type="submit" className="w-full">
+      <SubmitButton className="w-full" pendingLabel="Signing in…">
         Sign in
-      </Button>
+      </SubmitButton>
       <p className="text-muted-foreground text-center text-xs">
         <a href="/reset-password" className="underline">
           Forgotten your password?

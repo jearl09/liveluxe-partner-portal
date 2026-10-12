@@ -22,7 +22,9 @@ export function Wordmark({
       <span className={cn("font-serif text-[1.375rem] leading-none", tone === "dark" ? "text-white" : "text-strong")}>
         Live Luxe
       </span>
-      {descriptor && <span className="eyebrow hidden sm:inline">{descriptor}</span>}
+      {descriptor && (
+        <span className={cn("eyebrow hidden sm:inline", tone === "dark" && "eyebrow-on-navy")}>{descriptor}</span>
+      )}
     </Link>
   );
 }

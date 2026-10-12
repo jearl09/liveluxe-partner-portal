@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 const DUE_TONE = {
   navy: "text-strong",
-  gold: "text-accent font-medium",
+  gold: "text-accent-ink font-medium",
   muted: "text-muted-foreground",
   red: "text-bad font-medium",
 } as const;

@@ -7,9 +7,19 @@ import { createServerSupabase } from "@/lib/db/server";
 import type { BookingRequestRow } from "@/lib/db/types";
 import type { BookingStatus } from "@/lib/domain/booking-state-machine";
 import type { QuoteLine } from "@/lib/domain/quote-engine";
-import { QUEUE_STATUSES, requestBucket, slaBand, type SlaBand } from "@/lib/domain/requests";
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { BUCKET_STATUSES, QUEUE_STATUSES, slaBand, type RequestBucket, type SlaBand } from "@/lib/domain/requests";
+import {
+  DEFAULT_PAGE_SIZE,
+  clampPage,
+  ilikePattern,
+  pageRange,
+  paginate,
+  toPage,
+  type ListParams,
+  type Page,
+  type PageSize,
+} from "@/lib/domain/list-params";
+import { isUuid } from "@/lib/domain/ids";
 
 export interface RequestListItem {
   id: string;
@@ -125,49 +135,100 @@ async function decorate(rows: BookingRequestRow[], now: Date): Promise<RequestLi
   return rows.map((r) => toItem(r, byListing.get(r.listing_id), byOrg.get(r.org_id) ?? null, now));
 }
 
-/** Partner list, grouped by bucket. RLS limits it to the caller's org. */
-export async function listRequests(opts: { bucket?: "open" | "upcoming" | "history"; limit?: number } = {}) {
+/** Reference or guest-name search, applied in the database. */
+function withSearch<T extends { or: (f: string) => T }>(q: T, term: string): T {
+  if (!term) return q;
+  const pattern = ilikePattern(term);
+  return q.or(`reference.ilike.${pattern},guest_name.ilike.${pattern}`);
+}
+
+/**
+ * Partner list, one bucket at a time, paged in the database. RLS limits it to the
+ * caller's org. Sorted by last activity, then by id so a page boundary never shows a
+ * row twice or skips one when two rows share a timestamp.
+ */
+export async function listRequests(opts: {
+  bucket: RequestBucket;
+  page?: number;
+  pageSize?: PageSize;
+}): Promise<Page<RequestListItem>> {
+  const pageSize = opts.pageSize ?? DEFAULT_PAGE_SIZE;
   const supabase = await createServerSupabase();
-  const { data, error } = await supabase
-    .from("booking_requests")
-    .select("*")
-    .neq("status", "DRAFT")
+  const base = (head: boolean) =>
+    supabase.from("booking_requests").select("*", { count: "exact", head }).in("status", BUCKET_STATUSES[opts.bucket]);
+  // Two trips: the count fixes the page before the rows are fetched, so ?page=99 lands on the last page.
+  const { count, error: countError } = await base(true);
+  if (countError) throw new Error(`booking_requests count failed: ${countError.message}`);
+  const total = count ?? 0;
+  const page = clampPage(opts.page ?? 1, total, pageSize);
+  const { from, to } = pageRange(page, pageSize);
+  const { data, error } = await base(false)
     .order("updated_at", { ascending: false })
-    .limit(opts.limit ?? 200);
+    .order("id", { ascending: true })
+    .range(from, to);
   if (error) throw new Error(`booking_requests read failed: ${error.message}`);
-  const rows = (data ?? []).filter((r) => !opts.bucket || requestBucket(r.status) === opts.bucket);
-  return decorate(rows, new Date());
+  return toPage(await decorate(data ?? [], new Date()), total, page, pageSize);
 }
 
-/** Ops queue: waiting on Live Luxe, most urgent first (§13.4). */
-export async function listQueue() {
-  const supabase = await createServerSupabase();
-  const { data, error } = await supabase
-    .from("booking_requests")
-    .select("*")
-    .in("status", [...QUEUE_STATUSES])
-    .order("decision_due_at", { ascending: true, nullsFirst: false })
-    .limit(200);
-  if (error) throw new Error(`queue read failed: ${error.message}`);
-  return decorate(data ?? [], new Date());
+export interface QueueView extends Page<RequestListItem> {
+  /** How many of the (partner- and search-filtered) queue sit in each band, before the band filter. */
+  bandCounts: Record<SlaBand, number>;
 }
 
-/** Ops: every request, optionally by status. */
-export async function listAllRequests(opts: { status?: BookingStatus | "all"; limit?: number } = {}) {
+/**
+ * Ops queue: waiting on Live Luxe, most urgent first (§13.4). Partner and search
+ * filters run in the database; the SLA band is a function of the clock (80 % of the
+ * window elapsed, paused, breached) that PostgREST cannot express, so the queue —
+ * which is only ever the handful of requests awaiting a decision, never the history —
+ * is banded and paged here. The cap is a guard rail, not a page size.
+ */
+export async function listQueue(opts: Partial<ListParams> = {}): Promise<QueueView> {
   const supabase = await createServerSupabase();
   let q = supabase
     .from("booking_requests")
     .select("*")
-    .neq("status", "DRAFT")
-    .order("updated_at", { ascending: false });
-  if (opts.status && opts.status !== "all") q = q.eq("status", opts.status);
-  const { data, error } = await q.limit(opts.limit ?? 300);
+    .in("status", [...QUEUE_STATUSES])
+    .order("decision_due_at", { ascending: true, nullsFirst: false })
+    .order("id", { ascending: true })
+    .limit(1000);
+  if (opts.orgId) q = q.eq("org_id", opts.orgId);
+  q = withSearch(q, opts.q ?? "");
+  const { data, error } = await q;
+  if (error) throw new Error(`queue read failed: ${error.message}`);
+  const all = await decorate(data ?? [], new Date());
+  const bandCounts: Record<SlaBand, number> = { on_track: 0, at_risk: 0, breached: 0, paused: 0, none: 0 };
+  for (const r of all) bandCounts[r.band] += 1;
+  const rows = opts.band ? all.filter((r) => r.band === opts.band) : all;
+  return { ...paginate(rows, opts.page ?? 1, opts.pageSize ?? DEFAULT_PAGE_SIZE), bandCounts };
+}
+
+/** Ops: every request, optionally by status, partner and search term; paged in the database. */
+export async function listAllRequests(
+  opts: { status?: BookingStatus | "all" } & Partial<ListParams> = {},
+): Promise<Page<RequestListItem>> {
+  const pageSize = opts.pageSize ?? DEFAULT_PAGE_SIZE;
+  const supabase = await createServerSupabase();
+  const base = (head: boolean) => {
+    let q = supabase.from("booking_requests").select("*", { count: "exact", head }).neq("status", "DRAFT");
+    if (opts.status && opts.status !== "all") q = q.eq("status", opts.status);
+    if (opts.orgId) q = q.eq("org_id", opts.orgId);
+    return withSearch(q, opts.q ?? "");
+  };
+  const { count, error: countError } = await base(true);
+  if (countError) throw new Error(`booking_requests count failed: ${countError.message}`);
+  const total = count ?? 0;
+  const page = clampPage(opts.page ?? 1, total, pageSize);
+  const { from, to } = pageRange(page, pageSize);
+  const { data, error } = await base(false)
+    .order("updated_at", { ascending: false })
+    .order("id", { ascending: true })
+    .range(from, to);
   if (error) throw new Error(`booking_requests read failed: ${error.message}`);
-  return decorate(data ?? [], new Date());
+  return toPage(await decorate(data ?? [], new Date()), total, page, pageSize);
 }
 
 export async function getRequest(id: string): Promise<RequestDetail | null> {
-  if (!UUID.test(id)) return null;
+  if (!isUuid(id)) return null;
   const supabase = await createServerSupabase();
   const { data: r, error } = await supabase.from("booking_requests").select("*").eq("id", id).maybeSingle();
   if (error) throw new Error(`booking_requests read failed: ${error.message}`);

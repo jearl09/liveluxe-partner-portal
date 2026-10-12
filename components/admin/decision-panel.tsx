@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { fieldClass, labelClass } from "@/components/ui/field";
 import { Panel, PanelHeading, PanelSection } from "@/components/ui/panel";
@@ -42,9 +42,9 @@ export function DecisionPanel({ request: r, today }: { request: BookingRequestRo
         <PanelHeading id="decision-heading" title="Decision" className="mb-3" />
         <form method="post" action={action}>
           <input type="hidden" name="action" value="approve" />
-          <Button type="submit" variant="gold" className="w-full">
+          <SubmitButton variant="gold" className="w-full" pendingLabel="Approving…">
             Approve request
-          </Button>
+          </SubmitButton>
         </form>
         <p className="text-muted-foreground mt-2.5 text-xs">
           Re-checks live availability in Hostaway, then reserves the dates for this partner.
@@ -74,13 +74,13 @@ export function DecisionPanel({ request: r, today }: { request: BookingRequestRo
             </label>
           </div>
           <label className={labelClass}>
-            Message to the partner <span className="text-accent">*</span>
+            Message to the partner <span className="text-accent-ink">*</span>
             <textarea name="message" rows={3} required maxLength={1000} className={`${fieldClass} mt-1`} />
           </label>
           <p className="text-muted-foreground text-xs">Leave a field blank to keep it as it is.</p>
-          <Button type="submit" variant="outline" className="w-full">
+          <SubmitButton variant="outline" className="w-full" pendingLabel="Sending…">
             Send counter-offer
-          </Button>
+          </SubmitButton>
         </form>
       </Disclosure>
 
@@ -88,7 +88,7 @@ export function DecisionPanel({ request: r, today }: { request: BookingRequestRo
         <form method="post" action={action} className="space-y-3">
           <input type="hidden" name="action" value="decline" />
           <label className={labelClass}>
-            Reason <span className="text-accent">*</span>
+            Reason <span className="text-accent-ink">*</span>
             <select name="reason" required className={`${fieldClass} mt-1`} defaultValue="">
               <option value="" disabled>
                 Choose a reason
@@ -110,7 +110,13 @@ export function DecisionPanel({ request: r, today }: { request: BookingRequestRo
               placeholder="Optional. Suggest alternatives if you can."
             />
           </label>
-          <ConfirmButton variant="destructive" size="default" confirmLabel="Confirm decline" className="w-full">
+          <ConfirmButton
+            variant="destructive"
+            size="default"
+            confirmLabel="Confirm decline"
+            pendingLabel="Declining…"
+            className="w-full"
+          >
             Decline request
           </ConfirmButton>
         </form>

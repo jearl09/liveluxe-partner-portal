@@ -58,7 +58,7 @@ export function KpiRow({ kpis }: { kpis: Kpis }) {
                 <t.icon className="h-4 w-4" aria-hidden />
               </span>
             </div>
-            <p className={cn("mt-3 font-serif text-4xl", t.tone === "gold" ? "text-accent" : "text-strong")}>
+            <p className={cn("mt-3 font-serif text-4xl", t.tone === "gold" ? "text-accent-ink" : "text-strong")}>
               {t.value}
             </p>
             <p className="text-muted-foreground mt-1 text-xs">{t.hint}</p>

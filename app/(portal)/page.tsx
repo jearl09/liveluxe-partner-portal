@@ -104,7 +104,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
 
       {/* 6. Manual search fallback — below the fold on purpose */}
       <section className="bg-primary text-primary-foreground rounded-lg px-6 py-7 md:px-8 print:hidden">
-        <p className="eyebrow mb-1">Fallback</p>
+        <p className="eyebrow eyebrow-on-navy mb-1">Fallback</p>
         <h2 className="text-primary-foreground font-serif text-xl">Can&apos;t find the right property?</h2>
         <p className="mt-1 max-w-xl text-sm text-white/80">
           Tell us the dates, suburb and household and the operations team will run a manual search.

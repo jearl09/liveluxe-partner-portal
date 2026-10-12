@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Wordmark } from "@/components/layout/brand";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { AUTH_FLASH_KEYS, ScrubParams } from "@/components/ui/scrub-params";
 
 /**
  * Public auth surfaces: login, invite acceptance, password reset, MFA (§13.1).
@@ -24,7 +25,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
         />
         <Wordmark descriptor="Partner portal" tone="dark" className="relative" />
         <div className="relative my-12 max-w-md lg:my-0">
-          <p className="eyebrow mb-4">Docklands, Melbourne</p>
+          <p className="eyebrow eyebrow-on-navy mb-4">Docklands, Melbourne</p>
           <h1 className="font-serif text-4xl leading-[1.08] font-normal text-white lg:text-5xl">
             Long-stay apartments for the people you look after.
           </h1>
@@ -34,15 +35,17 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
             corporate and government placements.
           </p>
         </div>
-        <p className="eyebrow relative hidden lg:block">Invite-only · Confidential</p>
+        <p className="eyebrow eyebrow-on-navy relative hidden lg:block">Invite-only · Confidential</p>
       </aside>
-      <section className="bg-background relative flex items-center justify-center px-4 py-10 lg:px-12">
+      <main className="bg-background relative flex items-center justify-center px-4 py-10 lg:px-12">
         {/* These screens have no app chrome, so the theme control sits on the canvas itself. */}
         <div className="absolute top-4 right-4 lg:top-6 lg:right-6">
           <ThemeToggle />
         </div>
+        {/* "Password changed", "code not accepted" and friends are one-shot: shown, then dropped from the URL. */}
+        <ScrubParams keys={AUTH_FLASH_KEYS} />
         <div className="border-border bg-card w-full max-w-md rounded-2xl border p-8 shadow-md">{children}</div>
-      </section>
+      </main>
     </div>
   );
 }

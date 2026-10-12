@@ -2,7 +2,7 @@
 export default function PortalLoading() {
   const box = "bg-sunken/70 animate-pulse rounded-lg";
   return (
-    <div className="space-y-8" aria-busy="true" aria-label="Loading">
+    <div className="space-y-8" role="status" aria-busy="true" aria-label="Loading">
       <div className="space-y-3">
         <div className={`${box} h-3 w-20`} />
         <div className={`${box} h-9 w-72`} />

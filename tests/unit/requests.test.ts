@@ -135,3 +135,17 @@ describe("counter-offers", () => {
     expect(applyOpsAdjustment(quote, ctx, quote.totalCents)).toBe(quote);
   });
 });
+
+describe("BUCKET_STATUSES", () => {
+  it("partitions every non-draft status into exactly one bucket, matching requestBucket", async () => {
+    const { BUCKET_STATUSES } = await import("@/lib/domain/requests");
+    const { BOOKING_STATUSES } = await import("@/lib/domain/booking-state-machine");
+    const all = [...BUCKET_STATUSES.open, ...BUCKET_STATUSES.upcoming, ...BUCKET_STATUSES.history];
+    expect(new Set(all).size).toBe(all.length);
+    expect(all).not.toContain("DRAFT");
+    expect(all.length).toBe(BOOKING_STATUSES.length - 1);
+    for (const s of BUCKET_STATUSES.open) expect(requestBucket(s)).toBe("open");
+    for (const s of BUCKET_STATUSES.upcoming) expect(requestBucket(s)).toBe("upcoming");
+    for (const s of BUCKET_STATUSES.history) expect(requestBucket(s)).toBe("history");
+  });
+});

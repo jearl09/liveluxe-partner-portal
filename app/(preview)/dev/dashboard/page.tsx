@@ -9,16 +9,17 @@ import { QuickSearch } from "@/components/dashboard/quick-search";
 import { RequestsTable } from "@/components/dashboard/requests-table";
 import { demoActivity, demoRequests } from "@/lib/dashboard/demo";
 import { buildAgenda, buildRequestRows, computeKpis, deriveAttention, evaluateFreshness } from "@/lib/domain/dashboard";
+import { previewsAllowed } from "@/lib/preview";
 import { formatTimestamp } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard preview", robots: { index: false } };
 
 /**
  * DESIGN REVIEW ONLY — renders the partner dashboard with sample data and no session.
- * 404s in production. Remove once Phase 3 provides real data and a seeded partner account.
+ * 404s unless previews are allowed (lib/preview.ts). Remove once Phase 3 provides real data and a seeded partner account.
  */
 export default async function DashboardPreview({ searchParams }: PageProps<"/dev/dashboard">) {
-  if (process.env.VERCEL_ENV === "production") notFound();
+  if (!previewsAllowed()) notFound();
   const p = await searchParams;
   const now = new Date();
   const fmt = { timestamp: (iso: string) => formatTimestamp(iso) };

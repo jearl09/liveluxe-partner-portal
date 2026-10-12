@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { Notice } from "@/components/auth/notice";
 import { Panel, PanelHeading } from "@/components/ui/panel";
+import { ScrubParams } from "@/components/ui/scrub-params";
 import { createServerSupabase } from "@/lib/db/server";
 import { getMfaStatus } from "@/lib/auth/mfa";
 
@@ -31,6 +32,7 @@ export async function SecuritySettings({
 
       {(flash?.mfa || flash?.error) && (
         <div className="px-5 pt-4">
+          <ScrubParams keys={["mfa", "error"]} />
           {flash?.mfa === "on" && <Notice tone="success">Two-factor authentication is on.</Notice>}
           {flash?.mfa === "off" && <Notice tone="info">Two-factor authentication is off.</Notice>}
           {flash?.error === "mfa_off_failed" && (
@@ -52,7 +54,7 @@ export async function SecuritySettings({
           {on ? (
             <form action="/api/auth/mfa/unenroll" method="post">
               <input type="hidden" name="next" value={settingsPath} />
-              <ConfirmButton variant="outline" confirmLabel="Confirm turn off">
+              <ConfirmButton variant="outline" confirmLabel="Confirm turn off" pendingLabel="Turning off…">
                 Turn off
               </ConfirmButton>
             </form>

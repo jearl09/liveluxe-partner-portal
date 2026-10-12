@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Notice, PASSWORD_ERRORS, inputClass } from "@/components/auth/notice";
 import { PasswordFields } from "@/components/auth/password-fields";
 import { createServerSupabase } from "@/lib/db/server";
@@ -61,9 +61,9 @@ export default async function InvitePage({ params, searchParams }: PageProps<"/i
         <input name="fullName" type="text" autoComplete="name" maxLength={120} className={inputClass} />
       </label>
       <PasswordFields autoFocus />
-      <Button type="submit" className="w-full">
+      <SubmitButton className="w-full" pendingLabel="Creating your account…">
         Activate account
-      </Button>
+      </SubmitButton>
       <p className="text-muted-foreground text-center text-xs">
         Invitations expire 7 days after they are sent. Already have an account?{" "}
         <a href="/login" className="underline">

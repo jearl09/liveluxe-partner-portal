@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Notice, inputClass } from "@/components/auth/notice";
 
 export const metadata = { title: "Reset password" };
@@ -33,9 +33,9 @@ export default async function ResetPasswordPage({ searchParams }: PageProps<"/re
         <span className="mb-1 block font-medium">Email</span>
         <input name="email" type="email" required autoComplete="email" className={inputClass} />
       </label>
-      <Button type="submit" className="w-full">
+      <SubmitButton className="w-full" pendingLabel="Sending…">
         Send reset link
-      </Button>
+      </SubmitButton>
       <p className="text-muted-foreground text-center text-xs">
         <a href="/login" className="underline">
           Back to sign in

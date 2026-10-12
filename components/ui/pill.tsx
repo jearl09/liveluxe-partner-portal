@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export type PillTone = "ok" | "warn" | "bad" | "muted" | "neutral";
@@ -20,11 +20,12 @@ export function Pill({
   tone = "neutral",
   className,
   children,
+  ...rest
 }: {
   tone?: PillTone;
   className?: string;
   children: ReactNode;
-}) {
+} & Omit<ComponentPropsWithoutRef<"span">, "className" | "children">) {
   return (
     <span
       className={cn(
@@ -32,6 +33,7 @@ export function Pill({
         TONES[tone],
         className,
       )}
+      {...rest}
     >
       {children}
     </span>

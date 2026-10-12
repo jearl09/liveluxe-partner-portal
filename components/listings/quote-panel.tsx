@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { QuoteLines } from "@/components/requests/quote-lines";
 import type { AvailabilityResult } from "@/lib/domain/availability";
 import type { Quote } from "@/lib/domain/quote-engine";
@@ -139,9 +140,9 @@ export function QuotePanel({
               />
             </label>
           </fieldset>
-          <Button type="submit" className="w-full">
+          <SubmitButton className="w-full" pendingLabel="Pricing…">
             Get price
-          </Button>
+          </SubmitButton>
         </form>
 
         {errors.length > 0 && (

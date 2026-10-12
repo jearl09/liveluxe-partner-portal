@@ -2,9 +2,10 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Banner } from "@/components/ui/banner";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { PageHeader } from "@/components/ui/page-header";
 import { GroupLabel, Panel, PanelHeading, PanelSection } from "@/components/ui/panel";
+import { ScrubParams } from "@/components/ui/scrub-params";
 import { Flash } from "@/components/requests/flash";
 import { QuoteLines } from "@/components/requests/quote-lines";
 import { StayCard } from "@/components/requests/stay-card";
@@ -87,9 +88,13 @@ export default async function NewRequestPage({ searchParams }: PageProps<"/reque
         refCode={str(sp.ref) || undefined}
       />
       {errorFields.size > 0 && (
-        <Banner tone="error">
-          Please check {[...errorFields].map((f) => FIELD_LABELS[f] ?? f).join(", ")}. Nothing has been submitted yet.
-        </Banner>
+        <>
+          {/* The field list and the typed values stay in the URL (they are the form's state); only the outcome goes. */}
+          <ScrubParams keys={["error", "detail", "ref"]} />
+          <Banner tone="error">
+            Please check {[...errorFields].map((f) => FIELD_LABELS[f] ?? f).join(", ")}. Nothing has been submitted yet.
+          </Banner>
+        </>
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_380px] lg:items-start lg:gap-8">
@@ -107,7 +112,7 @@ export default async function NewRequestPage({ searchParams }: PageProps<"/reque
               <GroupLabel className="mb-3">Guest</GroupLabel>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className={labelClass}>
-                  Guest name <span className="text-accent">*</span>
+                  Guest name <span className="text-accent-ink">*</span>
                   <input
                     name="guestName"
                     required
@@ -152,7 +157,7 @@ export default async function NewRequestPage({ searchParams }: PageProps<"/reque
               <GroupLabel className="mb-3">Your references</GroupLabel>
               <div className="grid gap-4 sm:grid-cols-3">
                 <label className={labelClass}>
-                  Claim reference {org.require_claim_ref && <span className="text-accent">*</span>}
+                  Claim reference {org.require_claim_ref && <span className="text-accent-ink">*</span>}
                   <input
                     name="claimRef"
                     required={org.require_claim_ref}
@@ -164,7 +169,7 @@ export default async function NewRequestPage({ searchParams }: PageProps<"/reque
                   {errorFields.has("claimRef") && <span className={fieldErrorClass}>{FIELD_HINTS.claimRef}</span>}
                 </label>
                 <label className={labelClass}>
-                  PO number {org.require_po_number && <span className="text-accent">*</span>}
+                  PO number {org.require_po_number && <span className="text-accent-ink">*</span>}
                   <input
                     name="poNumber"
                     required={org.require_po_number}
@@ -215,9 +220,9 @@ export default async function NewRequestPage({ searchParams }: PageProps<"/reque
                 </span>
               </label>
               <div className="flex flex-wrap items-center gap-3">
-                <Button type="submit" variant="gold" className="w-full sm:w-auto" disabled={!quote}>
+                <SubmitButton variant="gold" className="w-full sm:w-auto" disabled={!quote} pendingLabel="Submitting…">
                   Submit request
-                </Button>
+                </SubmitButton>
                 {quote && (
                   <span className="text-muted-foreground text-xs">
                     Live Luxe replies within the decision window; you can track it under Requests.

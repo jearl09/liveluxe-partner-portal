@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 const TONES: Record<PillTone, string> = {
   "navy-outline": "border-primary/40 text-strong bg-card",
-  gold: "border-accent text-accent bg-card",
+  gold: "border-accent text-accent-ink bg-card",
   "gold-filled": "border-accent bg-accent text-accent-foreground",
   green: "border-ok-border bg-ok-bg text-ok",
   muted: "border-input bg-muted text-muted-foreground",
