@@ -249,3 +249,39 @@ export const DECLINE_REASON_LABELS: Record<string, string> = {
   maintenance: "Maintenance required",
   other: "Other",
 };
+
+// ---------------------------------------------------------------------------
+// SLA escalation ladder (§10.3, §21.2 sla-escalation)
+// ---------------------------------------------------------------------------
+
+/**
+ * The next rung of the escalation ladder that is due and has not been announced.
+ * Rungs are percentages of the SLA window elapsed (e.g. [50, 80, 100, 150]).
+ * Returns the highest due rung so a job that was down for a while announces once,
+ * at the current severity, instead of replaying every missed step.
+ */
+export function nextEscalationRung(
+  submittedAtIso: string | null,
+  decisionDueIso: string | null,
+  now: Date,
+  ladder: readonly number[],
+  announcedPct: number,
+  opts: { paused?: boolean } = {},
+): number | null {
+  if (opts.paused || !submittedAtIso || !decisionDueIso) return null;
+  const start = new Date(submittedAtIso).getTime();
+  const due = new Date(decisionDueIso).getTime();
+  const total = due - start;
+  if (!Number.isFinite(total) || total <= 0) return null;
+  const elapsedPct = ((now.getTime() - start) / total) * 100;
+  const due_ = ladder.filter((p) => p > announcedPct && elapsedPct >= p);
+  return due_.length ? Math.max(...due_) : null;
+}
+
+/** Ops-facing wording for a rung. */
+export function escalationLabel(pct: number): string {
+  if (pct >= 150) return "SLA breached by half the window again";
+  if (pct >= 100) return "SLA breached";
+  if (pct >= 80) return "SLA at risk";
+  return "Halfway through the SLA window";
+}

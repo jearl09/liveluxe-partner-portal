@@ -40,6 +40,21 @@ export type DeclineReasonDb =
   | "other";
 
 /** public.booking_requests (§7.2). `nights` and `stay_range` are generated columns. */
+export type RateCardRow = {
+  id: string;
+  org_id: string;
+  version: number;
+  name: string;
+  discount_pct: number;
+  fixed_rates: Json;
+  los_tiers: Json;
+  fee_overrides: Json;
+  /** Postgres daterange literal, e.g. "[2026-10-12,2027-01-01)" or "[2026-10-12,)". */
+  valid_range: string;
+  created_by: string | null;
+  created_at: string;
+};
+
 export type BookingRequestRow = {
   id: string;
   reference: string;
@@ -69,6 +84,7 @@ export type BookingRequestRow = {
   hold_expires_at: string | null;
   decision_due_at: string | null;
   sla_paused_at: string | null;
+  sla_escalation_pct: number;
   decline_reason: DeclineReasonDb | null;
   decline_notes: string | null;
   hostaway_reservation_id: number | null;
@@ -207,6 +223,13 @@ export interface Database {
         is_internal: boolean;
         email_domains: string[];
         billing_email: string | null;
+        billing_contact_name: string | null;
+        abn: string | null;
+        deposit_pct: number | null;
+        auto_approve_under_cents: number | null;
+        hard_holds: boolean;
+        created_at: string;
+        updated_at: string;
       }>;
       quotes: Row<{
         id: string;
@@ -282,7 +305,9 @@ export interface Database {
         mfa_enrolled: boolean;
         accepted_at: string | null;
         last_seen_at: string | null;
+        created_at: string;
       }>;
+      rate_cards: Row<RateCardRow>;
       invitations: Row<{
         id: string;
         org_id: string;
@@ -379,6 +404,21 @@ export interface Database {
         };
         Returns: BookingRequestRow;
       };
+      rate_card_for: { Args: { p_org_id: string; p_date: string }; Returns: RateCardRow[] };
+      rate_card_publish: {
+        Args: {
+          p_org_id: string;
+          p_name: string;
+          p_discount_pct: number;
+          p_los_tiers: Json;
+          p_fee_overrides: Json;
+          p_fixed_rates: Json;
+          p_valid_from: string;
+          p_valid_to?: string | null;
+        };
+        Returns: RateCardRow;
+      };
+      livluxe_ops_user_ids: { Args: Record<string, never>; Returns: string[] };
       request_policy: {
         Args: Record<string, never>;
         Returns: {

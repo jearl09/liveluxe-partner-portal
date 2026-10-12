@@ -64,7 +64,7 @@ export async function submitRequest(
   if (!validation.ok) throw new DomainError("VALIDATION_FAILED", { fields: validation.errors });
   const form: RequestFormInput = validation.values;
 
-  const priced = await priceStay(input.listingId, input.stay);
+  const priced = await priceStay(input.listingId, input.stay, { orgId: claims.org_id });
   if (!priced) throw new DomainError("NOT_FOUND", { listingId: input.listingId });
   assertAvailable(priced.availability, input.listingId);
   if (!priced.quote) throw new DomainError("VALIDATION_FAILED", { reason: "price_on_application" });

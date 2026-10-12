@@ -149,7 +149,7 @@ export async function counterOffer(
   const checkOut = input.newCheckOut ?? r.check_out;
   const stay = { checkIn, checkOut, adults: r.guests_adults, children: r.guests_children, pets: r.guests_pets };
 
-  const priced = await priceStay(r.listing_id, stay);
+  const priced = await priceStay(r.listing_id, stay, { orgId: r.org_id });
   if (!priced) throw new DomainError("NOT_FOUND", { listingId: r.listing_id });
   let quote = priced.quote;
   if (!quote) {

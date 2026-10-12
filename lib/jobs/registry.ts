@@ -8,6 +8,7 @@ import { log } from "@/lib/observability/logger";
 import { syncListings } from "./sync-listings";
 import { syncCalendar } from "./sync-calendar";
 import { expireHolds } from "./expire-holds";
+import { slaEscalation } from "./sla-escalation";
 
 export interface JobResult {
   examined?: number;
@@ -56,8 +57,8 @@ export const JOBS: Record<string, { schedule: string; description: string; run: 
   },
   "sla-escalation": {
     schedule: "*/10 * * * *",
-    description: "Escalation ladder at 50/80/100/150% of SLA.",
-    run: todo("sla-escalation"),
+    description: "Escalation ladder at 50/80/100/150% of SLA (settings: sla.escalation_pcts).",
+    run: slaEscalation,
   },
   "release-checkin": {
     schedule: "0 * * * *",

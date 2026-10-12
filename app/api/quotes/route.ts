@@ -35,7 +35,7 @@ export const POST = withApi<unknown>("/api/quotes", async (req, _ctx, { requestI
 
   const input = await parseBody(req, QuoteRequest);
 
-  const priced = await priceStay(input.listingId, input);
+  const priced = await priceStay(input.listingId, input, { orgId: claims.org_id });
   if (!priced) return fail("NOT_FOUND", requestId, { listingId: input.listingId });
 
   assertAvailable(priced.availability, input.listingId);

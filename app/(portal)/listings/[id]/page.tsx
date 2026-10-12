@@ -54,7 +54,11 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
   const [strip, priced] = await Promise.all([
     getCalendarDays(id, today, addDays(today, STRIP_DAYS - 1)),
     parsed.hasDates
-      ? priceStay(id, { checkIn: form.checkIn!, checkOut: form.checkOut!, adults, children, pets })
+      ? priceStay(
+          id,
+          { checkIn: form.checkIn!, checkOut: form.checkOut!, adults, children, pets },
+          { orgId: claims?.org_id },
+        )
       : null,
   ]);
 

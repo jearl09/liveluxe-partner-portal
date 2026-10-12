@@ -263,3 +263,35 @@ Development runs on the engineer's own Supabase project. Switch to Live Luxe's p
 ## Commands
 
 npm run dev · npm run typecheck · npm run lint · npm run test:unit · npm run guard:service-role · npm run build
+
+### Session 5 (12 Oct 2026) — rate cards, partners, team, decision emails, SLA escalation
+
+- **Rate cards (§9 layer 3)** are live in pricing: `priceStay(listingId, stay, { orgId })` resolves the card in force
+  on the check-in date via `rate_card_for()` (RLS: partners see only their own) and passes it to the quote engine, so
+  the "Partner rate card (x%)" line, LOS tiers and fee waivers appear in quotes, requests and counter-offers.
+  Ops screen `/admin/rate-cards` (overview) and `/admin/rate-cards/{orgId}` (versions + publish form) post to
+  `POST /api/admin/rate-cards/{orgId}` → `rate_card_publish()` (closes the current card the day before, bumps the
+  version, audits). Finance/admin only. Pure helpers + tests: `lib/domain/rate-cards.ts`.
+- **Partners** `/admin/partners` (list + create) and `/admin/partners/{id}` (settings, people, invitations, link to
+  rate card). Routes `POST /api/admin/partners`, `POST /api/admin/partners/{id}` (action=update|invite|revoke|
+  disable|enable). Live Luxe admin only. Validation: `lib/domain/partners.ts`.
+- **Team** `/team` for partners: admins invite/revoke/remove access, others see the list. `POST /api/team`.
+  Shared pieces: `lib/auth/invitations.ts` (issue/revoke/setUserStatus), `lib/auth/invite-link.ts`
+  (form actions), `components/team/people-panel.tsx`. The JSON `POST /api/invitations` now delegates to the same code.
+- **Invitations without email**: when Resend rejects the send, the invite is still created and the link is handed to
+  the inviter once via a 5-minute HttpOnly cookie (`llx_invite_link`) and shown on the page — never in the URL.
+  Remove this fallback once email is configured for real.
+- **Decision emails** (Appendix D): approved / declined / counter-offer templates in
+  `lib/notifications/templates/request-decision.tsx`, sent best-effort by `lib/requests/notify.ts` after each ops
+  decision. Nothing goes out until a working Resend key + verified sending domain exist.
+- **SLA escalation job** (`lib/jobs/sla-escalation.ts`, every 10 min on Pro; not in the Hobby cron set): ladder
+  from `settings.sla.escalation_pcts`, rung stored in `booking_requests.sla_escalation_pct` (claimed with a
+  conditional update so it fires once), Slack #bookings + `notifications` rows for every active ops/admin user.
+  Elapsed % is wall-clock between submitted_at and decision_due_at (the due time already accounts for business hours).
+- **Migration** `20261012100000_rate_cards_partners_sla.sql` (rate_card_for, rate_card_publish, sla_escalation_pct,
+  livluxe_ops_user_ids). Apply in the Supabase SQL editor, or `node scripts/db-apply.mjs <file>` when
+  `SUPABASE_DB_URL` in `.env.local` points at the cloud project (it currently points at a local Supabase).
+- Disabling a user takes effect at their next token refresh (≤ 1 h): the JWT hook only issues role claims for
+  `status = 'active'`. No forced sign-out yet.
+- Still open for Week 2 close-out: Resend key + DNS (GoDaddy), client Supabase/Vercel credentials for cut-over,
+  Angel's decisions on hold hours / deposit % / SLA (docs/DECISIONS-REQUIRED.md).

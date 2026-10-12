@@ -9,6 +9,15 @@ const DONE: Record<string, string> = {
   countered: "Counter-offer sent. The SLA clock is paused until the partner answers.",
   counter_accepted: "You accepted the counter-offer. Live Luxe will confirm shortly.",
   counter_declined: "You declined the counter-offer. The request is closed and the dates released.",
+  rate_card_published: "New rate card published. Quotes from its start date use it.",
+  partner_created: "Partner organisation created. Invite their first administrator below.",
+  partner_updated: "Partner settings saved.",
+  invited: "Invitation sent. It is valid for 7 days.",
+  invited_nomail:
+    "Invitation created, but email is not configured on this environment yet. Copy the link below and send it yourself; it is shown once.",
+  invitation_revoked: "Invitation revoked. The link no longer works.",
+  user_disabled: "Access removed. They can no longer sign in.",
+  user_enabled: "Access restored.",
 };
 
 const EXTRA: Partial<Record<ErrorCode, string>> = {

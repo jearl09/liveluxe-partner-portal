@@ -48,7 +48,10 @@ export default async function NewRequestPage({ searchParams }: PageProps<"/reque
   const pets = parsed.query.pets;
   const stay = { checkIn: parsed.query.checkIn!, checkOut: parsed.query.checkOut!, adults, children, pets };
 
-  const [priced, org] = await Promise.all([priceStay(listingId, stay), loadOrgRules(claims.org_id)]);
+  const [priced, org] = await Promise.all([
+    priceStay(listingId, stay, { orgId: claims.org_id }),
+    loadOrgRules(claims.org_id),
+  ]);
   if (!priced) notFound();
   const l = priced.detail.listing;
   const back = `/listings/${listingId}${searchQueryString({ checkIn: stay.checkIn, checkOut: stay.checkOut, pets })}&adults=${adults}&children=${children}`;

@@ -11,6 +11,8 @@ import { mfaStepUpRequired } from "@/lib/domain/auth";
 const NAV = [
   { href: "/admin/queue", label: "Queue" },
   { href: "/admin/bookings", label: "Bookings" },
+  { href: "/admin/partners", label: "Partners" },
+  { href: "/admin/rate-cards", label: "Rate cards" },
   { href: "/admin/settings", label: "Settings" },
 ];
 

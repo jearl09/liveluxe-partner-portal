@@ -12,6 +12,7 @@ import { can } from "@/lib/domain/permissions";
 import { validateCounterOffer } from "@/lib/domain/requests";
 import { log } from "@/lib/observability/logger";
 import { approve, counterOffer, decline, loadPolicy, startReview } from "@/lib/requests/decide";
+import { notifyPartnerOfDecision } from "@/lib/requests/notify";
 import { getRequest } from "@/lib/requests/load";
 
 export const runtime = "nodejs";
@@ -43,6 +44,7 @@ export async function POST(req: Request, ctx: Ctx) {
         return redirectTo(req, back, { done: "review" });
       case "approve":
         await approve(claims, id, reqId);
+        await notifyPartnerOfDecision(id, "approved", reqId);
         return redirectTo(req, back, { done: "approved" });
       case "decline": {
         const reason = (DECLINE_REASON_CODES as readonly string[]).includes(f.reason)
@@ -50,6 +52,7 @@ export async function POST(req: Request, ctx: Ctx) {
           : null;
         if (!reason) return redirectTo(req, back, { error: "VALIDATION_FAILED", detail: "decline_reason" });
         await decline(claims, id, { reason, notes: f.notes.slice(0, 1000) });
+        await notifyPartnerOfDecision(id, "declined", reqId);
         return redirectTo(req, back, { done: "declined" });
       }
       case "counter": {
@@ -65,6 +68,7 @@ export async function POST(req: Request, ctx: Ctx) {
         );
         if (!v.ok) return redirectTo(req, back, { error: "VALIDATION_FAILED", detail: v.errors.join(" ") });
         await counterOffer(claims, id, v.value, await loadPolicy());
+        await notifyPartnerOfDecision(id, "counter", reqId);
         return redirectTo(req, back, { done: "countered" });
       }
       default:
