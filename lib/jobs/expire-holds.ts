@@ -2,11 +2,12 @@
  * expire-holds — release lapsed soft holds (spec §7.2, §10.1 EXPIRED, §21.2).
  * Runs as the system actor through the service role: the SQL function sees no
  * auth.uid() and records actor_type = 'system'. Each request is its own
- * transaction; one failure does not stop the sweep. PaymentIntent cancellation
- * joins in week 3 with Stripe.
+ * transaction; one failure does not stop the sweep. Any uncaptured card hold is
+ * voided right after the transition (§11.3 payment_intent.canceled).
  */
 import { adminDb } from "@/lib/db/admin";
 import { assertTransition, type BookingStatus } from "@/lib/domain/booking-state-machine";
+import { voidBookingAuthorisations } from "@/lib/payments/intents";
 import { log } from "@/lib/observability/logger";
 import type { JobFn } from "./registry";
 
@@ -36,6 +37,7 @@ export const expireHolds: JobFn = async ({ requestId }) => {
       });
       if (tErr) throw new Error(tErr.message);
       expired++;
+      await voidBookingAuthorisations(b.id, "hold expired");
     } catch (e) {
       failed++;
       log.error("expire_holds.failed", {

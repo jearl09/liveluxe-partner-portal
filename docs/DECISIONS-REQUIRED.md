@@ -32,3 +32,13 @@ Track each decision here. A phase cannot start until its blocking decisions are 
 - **Insurance:** AIG Steadfast My Business Pack, policy 9984431CMB, public & products liability $20M, period 04/09/2026–04/09/2027.
   Relevant to the platform: partners' security questionnaires routinely ask for a certificate of currency — store it under
   `partner_documents` for the internal org and surface it from the admin console.
+
+## Build notes on decision #3 — payment modes (13 Oct 2026)
+
+What is built (Stripe sandbox, no real money):
+
+- **Mode A (prepay, default)**: card hold at request time, captured on approval, voided on decline/expiry. Ops cannot approve until the hold is in place.
+- **Mode C (net14 / net30)**: no card. Approval checks the org's credit limit against open invoices, then a Stripe invoice is emailed and the booking is **confirmed immediately** (confirm-now, pay-later). Please confirm this reading of credit terms; the alternative is to keep the booking in "Awaiting payment" until the invoice is paid.
+- **Mode B (deposit)**: not built. Needs the deposit % (settings `deposit.default_pct`, currently 20) and whether the balance invoice is due before check-in. Partners set to "deposit" are charged like prepay until then.
+
+Per-partner terms and credit limit are set by Live Luxe admins on the partner's page.

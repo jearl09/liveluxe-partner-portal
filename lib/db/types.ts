@@ -88,6 +88,7 @@ export type BookingRequestRow = {
   decline_reason: DeclineReasonDb | null;
   decline_notes: string | null;
   hostaway_reservation_id: number | null;
+  hostaway_write_key: string | null;
   checkin_released_at: string | null;
   submitted_at: string | null;
   approved_at: string | null;
@@ -95,6 +96,48 @@ export type BookingRequestRow = {
   confirmed_at: string | null;
   declined_at: string | null;
   cancelled_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** public.payments — mirror of one Stripe PaymentIntent (§11.2). Written only by webhook/job code. */
+export type PaymentRow = {
+  id: string;
+  booking_id: string;
+  stripe_payment_intent_id: string;
+  status: string;
+  mode: "authorise" | "charge";
+  amount_authorised_cents: number;
+  amount_captured_cents: number;
+  currency: string;
+  method_type: string | null;
+  card_brand: string | null;
+  card_last4: string | null;
+  authorised_at: string | null;
+  captured_at: string | null;
+  canceled_at: string | null;
+  failure_code: string | null;
+  failure_message: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** public.invoices — mirror of one Stripe Invoice (§11.5). Stripe hosts the PDF and payment page. */
+export type InvoiceRow = {
+  id: string;
+  booking_id: string | null;
+  org_id: string;
+  stripe_invoice_id: string;
+  number: string | null;
+  status: string;
+  amount_due_cents: number;
+  amount_paid_cents: number;
+  currency: string;
+  due_at: string | null;
+  hosted_url: string | null;
+  pdf_url: string | null;
+  sent_at: string | null;
+  paid_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -345,6 +388,8 @@ export interface Database {
         source_synced_at: string;
       }>;
       booking_requests: Row<BookingRequestRow>;
+      payments: Row<PaymentRow>;
+      invoices: Row<InvoiceRow>;
     };
     Views: Record<string, never>;
     Functions: {

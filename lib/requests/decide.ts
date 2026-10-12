@@ -5,6 +5,8 @@
  * atomic apply_booking_transition() function. Approval additionally re-checks live
  * availability against Hostaway (interactive priority) before engaging the
  * exclusion constraint, so a stale calendar can never produce a double booking.
+ * Approval is also gated on payment (§11.1): a card hold for mode A, the credit
+ * limit for mode C. Decline and withdrawal void any uncaptured hold.
  */
 import "server-only";
 import { createServerSupabase } from "@/lib/db/server";
@@ -12,6 +14,8 @@ import type { BookingRequestRow, DeclineReasonDb } from "@/lib/db/types";
 import { resolveAvailability } from "@/lib/domain/availability";
 import { assertTransition, type ActorType, type BookingStatus } from "@/lib/domain/booking-state-machine";
 import { DomainError } from "@/lib/domain/errors";
+import { formatMoney } from "@/lib/domain/money";
+import { approvalPaymentGate, creditCheck, paymentModeFor } from "@/lib/domain/payments";
 import type { SessionClaims } from "@/lib/domain/permissions";
 import { can, isLivluxeRole } from "@/lib/domain/permissions";
 import { applyOpsAdjustment, type CounterOfferInput } from "@/lib/domain/requests";
@@ -19,6 +23,10 @@ import { hostaway } from "@/lib/hostaway/api";
 import { mapCalendarDay } from "@/lib/hostaway/mappers";
 import { priceStay } from "@/lib/listings/price";
 import { log } from "@/lib/observability/logger";
+import { loadOrgBilling } from "@/lib/payments/customers";
+import { voidBookingAuthorisations } from "@/lib/payments/intents";
+import { outstandingInvoiceCents } from "@/lib/payments/invoices";
+import { orgPaymentTerms, paymentViewForBooking } from "@/lib/payments/load";
 import { rpcErrorToDomain } from "./errors";
 import { getRequest } from "./load";
 
@@ -107,6 +115,28 @@ async function assertLiveAvailability(detail: NonNullable<Awaited<ReturnType<typ
   }
 }
 
+/** §11.1: mode A needs a live card hold; mode C must fit the credit limit. */
+async function assertPaymentSecured(detail: NonNullable<Awaited<ReturnType<typeof getRequest>>>) {
+  const r = detail.request;
+  const mode = paymentModeFor(await orgPaymentTerms(r.org_id));
+  if (mode === "invoice") {
+    const [org, outstanding] = await Promise.all([loadOrgBilling(r.org_id), outstandingInvoiceCents(r.org_id)]);
+    const check = creditCheck({
+      outstandingCents: outstanding,
+      newCents: r.total_cents ?? 0,
+      limitCents: org.credit_limit_cents,
+    });
+    if (!check.ok)
+      throw new DomainError("CREDIT_LIMIT_EXCEEDED", {
+        detail: `Outstanding ${formatMoney(outstanding, r.currency)}; ${formatMoney(check.remainingCents ?? 0, r.currency)} of the limit remains.`,
+      });
+    return;
+  }
+  const view = await paymentViewForBooking(r.id);
+  const gate = approvalPaymentGate(mode, view.state);
+  if (!gate.ok) throw new DomainError("PAYMENT_NOT_AUTHORISED", { detail: gate.reason });
+}
+
 export async function approve(claims: SessionClaims, id: string, requestId: string): Promise<BookingRequestRow> {
   let d = await loadForOps(claims, id);
   if (d.request.status === "SUBMITTED") {
@@ -115,6 +145,7 @@ export async function approve(claims: SessionClaims, id: string, requestId: stri
   }
   if (d.request.status !== "UNDER_REVIEW")
     throw new DomainError("INVALID_STATE_TRANSITION", { from: d.request.status, to: "APPROVED" });
+  await assertPaymentSecured(d);
   await assertLiveAvailability(d, requestId);
   return transition(claims, d.request, "APPROVED", { reason: "approved", metadata: { liveCheck: "hostaway" } });
 }
@@ -129,7 +160,12 @@ export async function decline(
     await transition(claims, d.request, "UNDER_REVIEW", { reason: "review started" });
     d = (await getRequest(id))!;
   }
-  return transition(claims, d.request, "DECLINED", { reason: input.notes || null, declineReason: input.reason });
+  const row = await transition(claims, d.request, "DECLINED", {
+    reason: input.notes || null,
+    declineReason: input.reason,
+  });
+  await voidBookingAuthorisations(id, "declined");
+  return row;
 }
 
 /** Ops proposes different dates and/or a different total; a new quote row supersedes the old one. */
@@ -225,9 +261,10 @@ export async function respondToCounter(claims: SessionClaims, id: string, accept
   if (!d) throw new DomainError("NOT_FOUND", { id });
   if (d.request.status !== "COUNTER_OFFERED")
     throw new DomainError("INVALID_STATE_TRANSITION", { from: d.request.status });
-  return accept
-    ? transition(claims, d.request, "UNDER_REVIEW", { reason: "counter-offer accepted" })
-    : transition(claims, d.request, "CANCELLED", { reason: "counter-offer declined by partner" });
+  if (accept) return transition(claims, d.request, "UNDER_REVIEW", { reason: "counter-offer accepted" });
+  const row = await transition(claims, d.request, "CANCELLED", { reason: "counter-offer declined by partner" });
+  await voidBookingAuthorisations(id, "withdrawn by partner");
+  return row;
 }
 
 export async function loadPolicy(): Promise<{ holdDurationHours: number }> {

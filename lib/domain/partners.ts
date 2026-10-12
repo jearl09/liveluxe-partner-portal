@@ -3,6 +3,7 @@
  * for the create/update screen; business tunables left blank fall back to the
  * settings table at request time.
  */
+import { PAYMENT_TERMS, type PaymentTerms } from "./payments";
 
 export const PARTNER_TYPES = ["insurance", "corporate", "government", "other"] as const;
 export type PartnerType = (typeof PARTNER_TYPES)[number];
@@ -36,6 +37,8 @@ export const ORG_FORM_FIELDS = [
   "emailDomains",
   "requireClaimRef",
   "requirePoNumber",
+  "paymentTerms",
+  "creditLimit",
 ] as const;
 
 export interface PartnerOrgFormValues {
@@ -49,6 +52,9 @@ export interface PartnerOrgFormValues {
   requirePoNumber: boolean;
   /** Decision SLA in business hours; null = global default. */
   slaHours: number | null;
+  paymentTerms: PaymentTerms;
+  /** Mode C only; null = no limit. */
+  creditLimitCents: number | null;
   /** Comma-separated in the form; stored as an array. */
   emailDomains: string[];
 }
@@ -90,6 +96,18 @@ export function parsePartnerOrgForm(raw: Record<string, string | undefined>): Pa
     else slaHours = n;
   }
 
+  const paymentTerms = ((raw.paymentTerms ?? "prepay") || "prepay") as PaymentTerms;
+  if (!PAYMENT_TERMS.includes(paymentTerms)) add("paymentTerms", "Choose payment terms.");
+
+  const creditRaw = opt(raw.creditLimit)?.replace(/[,$\s]/g, "") ?? null;
+  let creditLimitCents: number | null = null;
+  if (creditRaw) {
+    const n = Number(creditRaw);
+    if (!Number.isFinite(n) || n < 0 || n > 10_000_000)
+      add("creditLimit", "Credit limit must be a dollar amount up to $10,000,000.");
+    else creditLimitCents = Math.round(n * 100);
+  }
+
   const emailDomains = (raw.emailDomains ?? "")
     .split(/[,\s]+/)
     .map((d) => d.trim().toLowerCase().replace(/^@/, ""))
@@ -109,6 +127,8 @@ export function parsePartnerOrgForm(raw: Record<string, string | undefined>): Pa
       requireClaimRef: raw.requireClaimRef === "on" || raw.requireClaimRef === "true",
       requirePoNumber: raw.requirePoNumber === "on" || raw.requirePoNumber === "true",
       slaHours,
+      paymentTerms,
+      creditLimitCents,
       emailDomains: [...new Set(emailDomains)],
     },
   };

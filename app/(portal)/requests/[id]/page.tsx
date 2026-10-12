@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/ui/status-pill";
+import { PaymentPanel } from "@/components/payments/payment-panel";
 import { Flash } from "@/components/requests/flash";
 import { QuoteLines } from "@/components/requests/quote-lines";
 import { StatusTimeline } from "@/components/requests/status-timeline";
@@ -10,8 +11,10 @@ import { StayCard } from "@/components/requests/stay-card";
 import { getSessionClaims } from "@/lib/db/server";
 import { humanizeDuration } from "@/lib/domain/dashboard";
 import { formatMoney } from "@/lib/domain/money";
+import { paymentModeFor } from "@/lib/domain/payments";
 import { can } from "@/lib/domain/permissions";
 import { DECLINE_REASON_LABELS } from "@/lib/domain/requests";
+import { orgPaymentTerms, paymentViewForBooking } from "@/lib/payments/load";
 import { getRequest } from "@/lib/requests/load";
 import { formatDate, formatTimestamp } from "@/lib/utils";
 
@@ -32,6 +35,9 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
   const d = await getRequest(id);
   if (!d) notFound();
   const r = d.request;
+  const [terms, pay] = await Promise.all([orgPaymentTerms(r.org_id), paymentViewForBooking(id)]);
+  const mode = paymentModeFor(terms);
+  const showPayment = !["DRAFT", "DECLINED", "EXPIRED", "CANCELLED", "FAILED", "COUNTER_OFFERED"].includes(r.status);
   const now = new Date();
   const canAct = can(claims.role, "requests.submit");
   const counter = r.status === "COUNTER_OFFERED" ? d.history.filter((h) => h.to === "COUNTER_OFFERED").at(-1) : null;
@@ -148,10 +154,44 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
         <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">
           <p className="font-medium">Approved</p>
           <p className="mt-1">
-            The dates are reserved. Payment and confirmation follow next; check-in details are released 48 hours before
-            arrival.
+            The dates are reserved. {mode === "invoice" ? "Your invoice is being issued" : "Payment is being finalised"}{" "}
+            and the booking confirms automatically in a moment.
           </p>
         </section>
+      )}
+
+      {r.status === "AWAITING_PAYMENT" && (
+        <section className="border-gold-500 rounded-xl border-2 bg-white p-5 text-sm">
+          <p className="text-navy-900 font-medium">Approved: payment needed to confirm</p>
+          <p className="text-ink-700 mt-1">
+            Live Luxe approved this request but the card could not be charged. Pay below to confirm the booking.
+            {holdLeft !== null && holdLeft > 0 && ` The dates stay reserved for ${humanizeDuration(holdLeft)}.`}
+          </p>
+        </section>
+      )}
+
+      {(r.status === "CONFIRMED" || r.status === "CHECKED_IN" || r.status === "COMPLETED") && (
+        <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">
+          <p className="font-medium">Confirmed</p>
+          <p className="mt-1">
+            The booking is locked in. Check-in details are released in the portal before arrival; your tax invoice is
+            under Invoices.
+          </p>
+        </section>
+      )}
+
+      {showPayment && (
+        <PaymentPanel
+          audience="partner"
+          bookingId={r.id}
+          status={r.status}
+          mode={mode}
+          state={pay.state}
+          payment={pay.row}
+          invoice={pay.invoice}
+          totalCents={r.total_cents}
+          currency={r.currency}
+        />
       )}
 
       <div className="grid gap-8 lg:grid-cols-[1fr_380px]">

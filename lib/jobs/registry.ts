@@ -9,6 +9,8 @@ import { syncListings } from "./sync-listings";
 import { syncCalendar } from "./sync-calendar";
 import { expireHolds } from "./expire-holds";
 import { slaEscalation } from "./sla-escalation";
+import { drainWebhooks } from "./drain-webhooks";
+import { checkAuthorisations } from "./check-authorisations";
 
 export interface JobResult {
   examined?: number;
@@ -47,7 +49,7 @@ export const JOBS: Record<string, { schedule: string; description: string; run: 
   "drain-webhooks": {
     schedule: "* * * * *",
     description: "Process queued webhook_events with FOR UPDATE SKIP LOCKED.",
-    run: todo("drain-webhooks"),
+    run: drainWebhooks,
   },
   "expire-holds": {
     schedule: "*/5 * * * *",
@@ -78,7 +80,7 @@ export const JOBS: Record<string, { schedule: string; description: string; run: 
   "check-authorisations": {
     schedule: "0 9 * * *",
     description: "Flag uncaptured authorisations older than 5 days.",
-    run: todo("check-authorisations"),
+    run: checkAuthorisations,
   },
   "invoice-dunning": {
     schedule: "0 10 * * *",

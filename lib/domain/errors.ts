@@ -14,6 +14,7 @@ export const ErrorCodes = {
   ORG_SUSPENDED: { http: 403, message: "Your organisation's account is suspended for new bookings." },
   PAYMENT_REQUIRES_ACTION: { http: 402, message: "Additional authentication is required to complete payment." },
   PAYMENT_FAILED: { http: 402, message: "Payment could not be authorised." },
+  PAYMENT_NOT_AUTHORISED: { http: 409, message: "The partner has not secured payment for this request yet." },
   HOSTAWAY_UNAVAILABLE: { http: 503, message: "Availability data is temporarily degraded. Writes are paused." },
   HOSTAWAY_WRITE_AMBIGUOUS: { http: 500, message: "Booking write outcome unknown; operations have been alerted." },
   INVALID_STATE_TRANSITION: { http: 409, message: "This action is no longer valid for the request's current status." },

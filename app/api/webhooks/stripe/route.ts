@@ -2,10 +2,13 @@
  * POST /api/webhooks/stripe — spec §11.3.
  *  - Signature verified against the RAW body (req.text(); no JSON middleware).
  *  - Persisted to webhook_events with a unique (source, external_id) → free idempotency.
- *  - Returns 200 fast; the drain-webhooks cron processes asynchronously.
+ *  - Returns 200 fast; processing runs after the response (next/server after()),
+ *    and the drain-webhooks cron retries anything that failed.
  *  - A booking is never confirmed from a client redirect; this is the only trusted signal.
  */
+import { after } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
+import { processWebhookEvent } from "@/lib/jobs/drain-webhooks";
 import { env } from "@/lib/env";
 import { adminDb } from "@/lib/db/admin";
 import { withApi, ok, fail } from "@/lib/api/response";
@@ -27,7 +30,7 @@ export const POST = withApi<unknown>("/api/webhooks/stripe", async (req, _ctx, {
     return fail("UNAUTHENTICATED", requestId, { reason: "bad_signature" });
   }
 
-  const { error } = await adminDb()
+  const { data: inserted, error } = await adminDb()
     .from("webhook_events")
     .insert({
       source: "stripe",
@@ -35,7 +38,9 @@ export const POST = withApi<unknown>("/api/webhooks/stripe", async (req, _ctx, {
       external_id: event.id,
       payload: event as never,
       state: "received",
-    });
+    })
+    .select("id")
+    .maybeSingle();
 
   // 23505 = unique violation → replayed delivery; record-and-skip, never reprocess.
   if (error && error.code !== "23505") {
@@ -43,5 +48,6 @@ export const POST = withApi<unknown>("/api/webhooks/stripe", async (req, _ctx, {
     return fail("INTERNAL", requestId);
   }
 
+  if (inserted) after(() => processWebhookEvent(inserted.id, requestId));
   return ok({ received: true, duplicate: error?.code === "23505" }, { requestId });
 });

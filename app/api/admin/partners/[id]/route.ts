@@ -55,6 +55,8 @@ export async function POST(req: Request, ctx: Ctx) {
       require_claim_ref: v.requireClaimRef,
       require_po_number: v.requirePoNumber,
       sla_hours: v.slaHours,
+      payment_terms: v.paymentTerms,
+      credit_limit_cents: v.creditLimitCents,
       email_domains: v.emailDomains,
       updated_at: new Date().toISOString(),
     })

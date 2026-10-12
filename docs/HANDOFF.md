@@ -295,3 +295,51 @@ npm run dev · npm run typecheck · npm run lint · npm run test:unit · npm run
   `status = 'active'`. No forced sign-out yet.
 - Still open for Week 2 close-out: Resend key + DNS (GoDaddy), client Supabase/Vercel credentials for cut-over,
   Angel's decisions on hold hours / deposit % / SLA (docs/DECISIONS-REQUIRED.md).
+
+### Session 6 (13 Oct 2026) — Stripe payments, confirmation, invoices
+
+Built against a Stripe **sandbox** (test keys in `.env.local` and on Vercel; the live keys are commented out in
+`.env.local` until David's sweeper moves them to Proton Pass). Nothing here charges a real card.
+
+- **Flow (mode A, §11.1 default)**: partner submits → request page shows a "Secure with a card hold" box →
+  `/requests/{id}/pay` renders the Stripe Payment Element (`components/payments/payment-form.tsx`) with a
+  manual-capture PaymentIntent from `GET /api/requests/{id}/pay` (`lib/payments/intents.ts`, get-or-create,
+  idempotent on booking+quote+attempt, one Stripe Customer per org via `lib/payments/customers.ts`). Stripe
+  redirects to `GET /api/requests/{id}/pay/return`, which re-fetches the intent from Stripe (never trusts the
+  query string) and mirrors it into `payments`. Ops see "Card held" on the booking page and in Slack #bookings;
+  **Approve is disabled until the card is held** (`approvalPaymentGate`, error `PAYMENT_NOT_AUTHORISED`).
+- **Approve → confirm** (`lib/payments/confirm.ts`, system actor, idempotent, called from the approve route, the
+  Stripe webhook and the drain job): capture the hold → `ensureHostawayReservation` (`lib/hostaway/reservations.ts`,
+  write key stored on the booking first; skipped outside production and reported as such) → `CONFIRMED` →
+  paid tax invoice in Stripe (`paid_out_of_band`, so every booking has an invoice number + PDF) → "Confirmed" email
+  (`lib/notifications/templates/payment.tsx`). If capture fails (lapsed hold, decline) the booking goes to
+  `AWAITING_PAYMENT`, the partner gets a "Payment needed" email with a pay link, and the same pay page charges
+  immediately; `payment_intent.succeeded` then confirms it.
+- **Mode C (net14/net30)**: no card. Approval checks the org's credit limit against open invoices
+  (`CREDIT_LIMIT_EXCEEDED`), then confirm issues a Stripe invoice (`send_invoice`, due in 14/30 days, custom fields:
+  booking, claim ref, PO, stay) and confirms immediately. `invoice.paid` just marks it paid. **Decision for Angel**
+  (DECISIONS-REQUIRED #3): confirm-now-pay-later is my reading of credit terms; the alternative is to hold the
+  booking in `AWAITING_PAYMENT` until the invoice is paid. **Mode B (deposit)** is not built: it needs the deposit %
+  decision; `deposit` partners are charged like `prepay` for now.
+- **Partner settings**: payment terms + credit limit on `/admin/partners/{id}` (`PAYMENT_TERMS` in
+  `lib/domain/payments.ts`).
+- **Partner invoices** `/invoices` (`lib/payments/load.ts#listInvoices`): number, booking, status, due, Stripe
+  hosted page (pay/view) and PDF. RLS already scopes `payments`/`invoices` by org.
+- **Webhooks**: `POST /api/webhooks/stripe` persists then processes right after the response (`after()` from
+  next/server) via `lib/jobs/drain-webhooks.ts#processWebhookEvent`; the `drain-webhooks` job retries
+  `received`/`failed` rows (max 5 attempts). Handlers in `lib/stripe/webhooks.ts`: amount_capturable_updated
+  (Slack "card held"), succeeded (→ confirm), payment_failed, canceled, requires_action, invoice.* (mirror; paid →
+  confirm), dispute.created (critical alert).
+- **Jobs**: `expire-holds` now voids uncaptured holds; `check-authorisations` (daily) Slack-alerts holds older
+  than 5 days still awaiting a decision (§11.4). Decline and partner withdrawal void the hold.
+- **Migration** `20261013100000_payments.sql` (booking_requests.hostaway_write_key; payments.mode/
+  failure_message/canceled_at/card_brand; indexes). Apply after `20261012100000_rate_cards_partners_sla.sql`.
+- **Tests**: `tests/unit/payments.test.ts` (10) + partners form update. 143 unit tests pass.
+- **To finish the Stripe setup** (user actions): (1) in the Stripe sandbox add a webhook endpoint
+  `https://<vercel-domain>/api/webhooks/stripe` subscribed to the events listed above and put its signing secret in
+  Vercel as `STRIPE_WEBHOOK_SECRET`; (2) for local dev run `npm run stripe:listen` and use the printed `whsec_` in
+  `.env.local`; (3) test card 4242 4242 4242 4242, any future expiry, any CVC. Without the webhook secret the return
+  URL still updates the screen (it re-fetches from Stripe), but Slack "card held" pings and the AWAITING_PAYMENT →
+  CONFIRMED path after a late payment rely on the webhook.
+- Not built yet: refunds/cancellation money flow, disputes evidence pack, reconcile-stripe, invoice dunning,
+  consolidated monthly invoices, saved payment methods (SetupIntent), Stripe Tax.

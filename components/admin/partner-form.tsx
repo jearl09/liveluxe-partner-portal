@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ORG_STATUS_LABELS, ORG_STATUSES, PARTNER_TYPE_LABELS, PARTNER_TYPES } from "@/lib/domain/partners";
+import { PAYMENT_TERMS, PAYMENT_TERMS_LABELS } from "@/lib/domain/payments";
 import { cn } from "@/lib/utils";
 
 const input = "border-cream-300 h-10 w-full rounded-md border bg-white px-3 text-sm";
@@ -64,6 +65,29 @@ export function PartnerForm({
             </select>
           </label>
         )}
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-[1fr_220px]">
+        <label className="block text-xs font-medium">
+          Payment terms
+          <select name="paymentTerms" defaultValue={values.paymentTerms || "prepay"} className={field("paymentTerms")}>
+            {PAYMENT_TERMS.map((t) => (
+              <option key={t} value={t}>
+                {PAYMENT_TERMS_LABELS[t]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-xs font-medium">
+          Credit limit (AUD, invoice terms)
+          <input
+            name="creditLimit"
+            inputMode="decimal"
+            placeholder="no limit"
+            defaultValue={values.creditLimit}
+            className={field("creditLimit")}
+          />
+        </label>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

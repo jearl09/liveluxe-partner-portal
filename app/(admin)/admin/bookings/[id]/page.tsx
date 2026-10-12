@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Clock } from "lucide-react";
 import { DecisionPanel } from "@/components/admin/decision-panel";
+import { PaymentPanel } from "@/components/payments/payment-panel";
 import { StatusPill } from "@/components/ui/status-pill";
 import { Flash } from "@/components/requests/flash";
 import { QuoteLines } from "@/components/requests/quote-lines";
@@ -9,7 +10,9 @@ import { StatusTimeline } from "@/components/requests/status-timeline";
 import { StayCard } from "@/components/requests/stay-card";
 import { humanizeDuration } from "@/lib/domain/dashboard";
 import { todayIn } from "@/lib/domain/dates";
+import { approvalPaymentGate, paymentModeFor } from "@/lib/domain/payments";
 import { DECLINE_REASON_LABELS } from "@/lib/domain/requests";
+import { orgPaymentTerms, paymentViewForBooking } from "@/lib/payments/load";
 import { getRequest } from "@/lib/requests/load";
 import { formatTimestamp } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -38,6 +41,9 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
   const d = await getRequest(id);
   if (!d) notFound();
   const r = d.request;
+  const [terms, pay] = await Promise.all([orgPaymentTerms(r.org_id), paymentViewForBooking(id)]);
+  const mode = paymentModeFor(terms);
+  const gate = approvalPaymentGate(mode, pay.state);
   const now = new Date();
   const dueLeft = r.decision_due_at ? new Date(r.decision_due_at).getTime() - now.getTime() : null;
   const holdLeft = r.hold_expires_at ? new Date(r.hold_expires_at).getTime() - now.getTime() : null;
@@ -151,6 +157,18 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
             </dl>
           </section>
 
+          <PaymentPanel
+            audience="ops"
+            bookingId={r.id}
+            status={r.status}
+            mode={mode}
+            state={pay.state}
+            payment={pay.row}
+            invoice={pay.invoice}
+            totalCents={r.total_cents}
+            currency={r.currency}
+          />
+
           <section className="border-cream-200 rounded-xl border bg-white p-5">
             <h2 className="mb-3 font-serif text-xl">Quote</h2>
             {d.quote ? (
@@ -174,7 +192,7 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
         </div>
 
         <aside className="lg:sticky lg:top-4 lg:self-start">
-          <DecisionPanel request={r} today={todayIn("Australia/Melbourne")} />
+          <DecisionPanel request={r} today={todayIn("Australia/Melbourne")} paymentGate={gate} />
         </aside>
       </div>
     </div>

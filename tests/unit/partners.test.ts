@@ -14,6 +14,8 @@ describe("parsePartnerOrgForm", () => {
       requirePoNumber: "",
       slaHours: "2",
       emailDomains: "nrma.com.au, @iag.com.au nrma.com.au",
+      paymentTerms: "net30",
+      creditLimit: "$250,000",
     });
     expect(r.ok).toBe(true);
     if (!r.ok) return;
@@ -27,6 +29,8 @@ describe("parsePartnerOrgForm", () => {
       requireClaimRef: true,
       requirePoNumber: false,
       slaHours: 2,
+      paymentTerms: "net30",
+      creditLimitCents: 25_000_000,
       emailDomains: ["nrma.com.au", "iag.com.au"],
     });
   });
@@ -39,6 +43,8 @@ describe("parsePartnerOrgForm", () => {
       expect(r.values.abn).toBeNull();
       expect(r.values.slaHours).toBeNull();
       expect(r.values.emailDomains).toEqual([]);
+      expect(r.values.paymentTerms).toBe("prepay");
+      expect(r.values.creditLimitCents).toBeNull();
     }
   });
 
@@ -51,11 +57,23 @@ describe("parsePartnerOrgForm", () => {
       billingEmail: "not-an-email",
       slaHours: "100",
       emailDomains: "nrma",
+      paymentTerms: "cash",
+      creditLimit: "-5",
     });
     expect(r.ok).toBe(false);
     if (r.ok) return;
     expect(Object.keys(r.errors).sort()).toEqual(
-      ["abn", "billingEmail", "emailDomains", "name", "slaHours", "status", "type"].sort(),
+      [
+        "abn",
+        "billingEmail",
+        "creditLimit",
+        "emailDomains",
+        "name",
+        "paymentTerms",
+        "slaHours",
+        "status",
+        "type",
+      ].sort(),
     );
   });
 });

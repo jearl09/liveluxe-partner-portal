@@ -33,6 +33,8 @@ export default async function PartnerDetailPage({ params, searchParams }: PagePr
     billingContactName: str(sp.billingContactName) || (org.billing_contact_name ?? ""),
     billingEmail: str(sp.billingEmail) || (org.billing_email ?? ""),
     emailDomains: str(sp.emailDomains) || org.email_domains.join(", "),
+    paymentTerms: str(sp.paymentTerms) || org.payment_terms,
+    creditLimit: str(sp.creditLimit) || (org.credit_limit_cents != null ? String(org.credit_limit_cents / 100) : ""),
     requireClaimRef: sp.requireClaimRef !== undefined ? str(sp.requireClaimRef) : org.require_claim_ref ? "on" : "",
     requirePoNumber: sp.requirePoNumber !== undefined ? str(sp.requirePoNumber) : org.require_po_number ? "on" : "",
   };

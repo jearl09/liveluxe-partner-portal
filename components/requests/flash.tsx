@@ -18,6 +18,12 @@ const DONE: Record<string, string> = {
   invitation_revoked: "Invitation revoked. The link no longer works.",
   user_disabled: "Access removed. They can no longer sign in.",
   user_enabled: "Access restored.",
+  card_held: "Card hold placed. Live Luxe will review the request; nothing is charged until approval.",
+  paid: "Payment received. Thank you.",
+  payment_pending: "Your payment is processing. This page updates once the bank confirms.",
+  confirmed: "Confirmed. Payment is captured, the invoice is issued and the booking is locked in.",
+  approved_payment_pending:
+    "Approved, but the card could not be charged. The partner has been emailed a payment link; the booking confirms automatically once they pay.",
 };
 
 const EXTRA: Partial<Record<ErrorCode, string>> = {
@@ -25,6 +31,10 @@ const EXTRA: Partial<Record<ErrorCode, string>> = {
   PRICE_CHANGED: "The price moved since you saw it. Review the new total and submit again.",
   DATES_HELD: "Another partner placed a hold on these dates seconds ago. Try different dates.",
   HOSTAWAY_UNAVAILABLE: "Live availability could not be checked. Try again in a minute; nothing was changed.",
+  PAYMENT_NOT_AUTHORISED: "Ask the partner to place a card hold from their request page, then approve.",
+  CREDIT_LIMIT_EXCEEDED: "Raise the credit limit on the partner's page, or decline.",
+  PAYMENT_FAILED: "Please try another card.",
+  PAYMENT_REQUIRES_ACTION: "Your bank asked for extra authentication and it was not completed. Please try again.",
 };
 
 /** One-line outcome banner driven by ?submitted= / ?done= / ?error= query params. */

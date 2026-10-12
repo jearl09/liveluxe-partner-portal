@@ -11,6 +11,7 @@ import { isDomainError } from "@/lib/domain/errors";
 import { can } from "@/lib/domain/permissions";
 import { validateCounterOffer } from "@/lib/domain/requests";
 import { log } from "@/lib/observability/logger";
+import { confirmBooking } from "@/lib/payments/confirm";
 import { approve, counterOffer, decline, loadPolicy, startReview } from "@/lib/requests/decide";
 import { notifyPartnerOfDecision } from "@/lib/requests/notify";
 import { getRequest } from "@/lib/requests/load";
@@ -42,10 +43,29 @@ export async function POST(req: Request, ctx: Ctx) {
       case "review":
         await startReview(claims, id);
         return redirectTo(req, back, { done: "review" });
-      case "approve":
+      case "approve": {
         await approve(claims, id, reqId);
-        await notifyPartnerOfDecision(id, "approved", reqId);
-        return redirectTo(req, back, { done: "approved" });
+        // Capture → Hostaway → CONFIRMED → invoice → email. Approval stands even if this step
+        // fails; the Stripe webhook and the drain job retry it.
+        try {
+          const out = await confirmBooking(id, reqId, "approval");
+          if (out.status === "CONFIRMED") return redirectTo(req, back, { done: "confirmed" });
+          if (out.status === "AWAITING_PAYMENT") return redirectTo(req, back, { done: "approved_payment_pending" });
+          await notifyPartnerOfDecision(id, "approved", reqId);
+          return redirectTo(req, back, { done: "approved", detail: out.note });
+        } catch (e) {
+          log.error("booking.confirm_after_approve_failed", {
+            requestId: reqId,
+            id,
+            error: e instanceof Error ? e.stack : String(e),
+          });
+          await notifyPartnerOfDecision(id, "approved", reqId);
+          return redirectTo(req, back, {
+            done: "approved",
+            detail: "Confirmation step failed and will be retried; ops have been alerted.",
+          });
+        }
+      }
       case "decline": {
         const reason = (DECLINE_REASON_CODES as readonly string[]).includes(f.reason)
           ? (f.reason as DeclineReasonDb)
