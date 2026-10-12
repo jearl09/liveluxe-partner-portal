@@ -1,18 +1,20 @@
 import Link from "next/link";
+import { Panel } from "@/components/ui/panel";
+import { Pill, type PillTone } from "@/components/ui/pill";
 import { StatusPill } from "@/components/ui/status-pill";
+import { tdClass, thClass, theadClass } from "@/components/ui/table";
 import { formatMoney } from "@/lib/domain/money";
 import { humanizeDuration } from "@/lib/domain/dashboard";
 import type { SlaBand } from "@/lib/domain/requests";
 import type { RequestListItem } from "@/lib/requests/load";
 import { formatDate } from "@/lib/utils";
-import { cn } from "@/lib/utils";
 
-const BAND: Record<SlaBand, string> = {
-  on_track: "bg-emerald-100 text-emerald-800",
-  at_risk: "bg-amber-100 text-amber-800",
-  breached: "bg-red-100 text-red-800",
-  paused: "bg-cream-200 text-ink-700",
-  none: "bg-cream-100 text-ink-500",
+const BAND: Record<SlaBand, PillTone> = {
+  on_track: "ok",
+  at_risk: "warn",
+  breached: "bad",
+  paused: "muted",
+  none: "neutral",
 };
 
 function dueLabel(r: RequestListItem, now: Date): string {
@@ -24,9 +26,20 @@ function dueLabel(r: RequestListItem, now: Date): string {
 
 const shortDate = (iso: string) => formatDate(iso).replace(/^\w+ /, "");
 
+function Reference({ r }: { r: RequestListItem }) {
+  return (
+    <span className="font-mono text-xs whitespace-nowrap">
+      <span className="text-strong">{r.reference}</span>
+      {(r.claimRef || r.poNumber) && <span className="text-muted-foreground block">{r.claimRef ?? r.poNumber}</span>}
+    </span>
+  );
+}
+
 /**
- * One table for both sides. `ops` adds the partner column and the SLA band;
- * the whole row is a link to the detail page for its side.
+ * One list for both sides. `ops` adds the partner column and the SLA band; the whole
+ * row is a link to the detail page for its side. Wide screens get the table; below
+ * `lg` each request becomes a stacked entry, because eight columns do not survive a
+ * phone and a sideways-scrolling table hides the status.
  */
 export function RequestsTable({
   rows,
@@ -44,66 +57,102 @@ export function RequestsTable({
   const now = new Date();
   if (rows.length === 0) {
     return (
-      <div className="border-cream-200 rounded-xl border bg-white px-5 py-14 text-center">
-        <p className="text-navy-900 font-medium">{emptyTitle}</p>
-        <p className="text-ink-500 mx-auto mt-1 max-w-md text-sm">{emptyHint}</p>
-      </div>
+      <Panel className="px-5 py-14 text-center">
+        <p className="text-strong font-medium">{emptyTitle}</p>
+        <p className="text-muted-foreground mx-auto mt-1 max-w-md text-sm">{emptyHint}</p>
+      </Panel>
     );
   }
+
+  const rowLink =
+    "after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset";
+
   return (
-    <div className="border-cream-200 overflow-hidden rounded-xl border bg-white">
-      <table className="w-full text-left text-sm">
-        <thead className="text-ink-500 text-xs tracking-wide uppercase">
-          <tr className="border-cream-200 border-b">
-            {ops && <th className="px-4 py-2.5 font-medium">SLA</th>}
-            <th className="px-4 py-2.5 font-medium">Reference</th>
-            {ops && <th className="px-3 py-2.5 font-medium">Partner</th>}
-            <th className="px-3 py-2.5 font-medium">Property</th>
-            <th className="px-3 py-2.5 font-medium">Dates</th>
-            <th className="px-3 py-2.5 font-medium">Guest</th>
-            <th className="px-3 py-2.5 text-right font-medium">Total</th>
-            <th className="px-3 py-2.5 font-medium">Status</th>
+    <Panel flush>
+      <table className="hidden w-full text-left text-sm lg:table">
+        <thead className={theadClass}>
+          <tr className="border-border border-b">
+            {ops && <th className={thClass}>SLA</th>}
+            <th className={thClass}>Reference</th>
+            {ops && <th className={thClass}>Partner</th>}
+            <th className={thClass}>Property</th>
+            <th className={thClass}>Dates</th>
+            <th className={thClass}>Guest</th>
+            <th className={`${thClass} text-right`}>Total</th>
+            <th className={thClass}>Status</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.id} className="border-cream-200 hover:bg-cream-50 relative border-b last:border-0">
+            <tr
+              key={r.id}
+              className="border-border hover:bg-muted/50 relative border-b transition-colors last:border-0"
+            >
               {ops && (
-                <td className="px-4 py-3 align-top">
-                  <span className={cn("inline-block rounded-full px-2 py-0.5 text-xs whitespace-nowrap", BAND[r.band])}>
-                    {dueLabel(r, now)}
-                  </span>
+                <td className={tdClass}>
+                  <Pill tone={BAND[r.band]}>{dueLabel(r, now)}</Pill>
                 </td>
               )}
-              <td className="px-4 py-3 align-top font-mono text-xs whitespace-nowrap">
-                <Link
-                  href={hrefFor(r)}
-                  className="text-navy-900 after:absolute after:inset-0 focus-visible:outline-none"
-                >
-                  {r.reference}
+              <td className={tdClass}>
+                <Link href={hrefFor(r)} className={rowLink} aria-label={`Open request ${r.reference}`}>
+                  <Reference r={r} />
                 </Link>
-                {(r.claimRef || r.poNumber) && <span className="text-ink-500 block">{r.claimRef ?? r.poNumber}</span>}
               </td>
-              {ops && <td className="text-navy-900 px-3 py-3 align-top">{r.orgName ?? "—"}</td>}
-              <td className="px-3 py-3 align-top">
-                <span className="text-navy-900">{r.propertyName}</span>
-                {r.suburb && <span className="text-ink-500 block text-xs">{r.suburb}</span>}
+              {ops && <td className={`${tdClass} text-strong`}>{r.orgName ?? "—"}</td>}
+              <td className={tdClass}>
+                <span className="text-strong">{r.propertyName}</span>
+                {r.suburb && <span className="text-muted-foreground block text-xs">{r.suburb}</span>}
               </td>
-              <td className="px-3 py-3 align-top whitespace-nowrap">
+              <td className={`${tdClass} whitespace-nowrap`}>
                 {shortDate(r.checkIn)} → {shortDate(r.checkOut)}
-                <span className="text-ink-500 block text-xs">{r.nights} nights</span>
+                <span className="text-muted-foreground block text-xs">{r.nights} nights</span>
               </td>
-              <td className="text-navy-900 px-3 py-3 align-top">{r.guestName ?? "—"}</td>
-              <td className="px-3 py-3 text-right align-top text-sm whitespace-nowrap tabular-nums">
+              <td className={`${tdClass} text-strong`}>{r.guestName ?? "—"}</td>
+              <td className={`${tdClass} text-right whitespace-nowrap tabular-nums`}>
                 {r.totalCents != null ? formatMoney(r.totalCents, r.currency) : "—"}
               </td>
-              <td className="px-3 py-3 align-top">
+              <td className={tdClass}>
                 <StatusPill status={r.status} />
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-    </div>
+
+      <ul className="divide-border divide-y lg:hidden">
+        {rows.map((r) => (
+          <li key={r.id} className="hover:bg-muted/50 relative px-5 py-4 transition-colors">
+            <div className="flex items-start justify-between gap-3">
+              <Link href={hrefFor(r)} className={rowLink} aria-label={`Open request ${r.reference}`}>
+                <Reference r={r} />
+              </Link>
+              <StatusPill status={r.status} />
+            </div>
+            <p className="text-strong mt-2 text-sm">
+              {r.propertyName}
+              {r.suburb && <span className="text-muted-foreground">, {r.suburb}</span>}
+            </p>
+            <p className="text-foreground mt-0.5 text-sm">
+              {shortDate(r.checkIn)} → {shortDate(r.checkOut)}
+              <span className="text-muted-foreground"> · {r.nights} nights</span>
+            </p>
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">
+              <span className="text-foreground">
+                {ops ? (r.orgName ?? "—") : (r.guestName ?? "—")}
+                {ops && r.guestName && <span className="text-muted-foreground"> · {r.guestName}</span>}
+              </span>
+              <span className="text-strong tabular-nums">
+                {r.totalCents != null ? formatMoney(r.totalCents, r.currency) : "—"}
+              </span>
+            </div>
+            {ops && (
+              <div className="mt-2">
+                <Pill tone={BAND[r.band]}>{dueLabel(r, now)}</Pill>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Panel>
   );
 }

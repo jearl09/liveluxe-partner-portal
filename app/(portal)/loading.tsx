@@ -1,6 +1,6 @@
 /** Skeletons at the same heights as the dashboard content (§13.5: no spinners). */
 export default function PortalLoading() {
-  const box = "bg-cream-200/70 animate-pulse rounded-lg";
+  const box = "bg-sunken/70 animate-pulse rounded-lg";
   return (
     <div className="space-y-8" aria-busy="true" aria-label="Loading">
       <div className="space-y-3">

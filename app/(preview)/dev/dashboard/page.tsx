@@ -50,8 +50,8 @@ export default async function DashboardPreview({ searchParams }: PageProps<"/dev
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="eyebrow mb-1">Dashboard</p>
-            <h1 className="text-navy-900 font-serif text-3xl tracking-tight">Good afternoon, Claudia.</h1>
-            <p className="text-ink-500 mt-1 text-sm">
+            <h1 className="text-strong font-serif text-3xl tracking-tight">Good afternoon, Claudia.</h1>
+            <p className="text-muted-foreground mt-1 text-sm">
               Acme Insurance · {kpis.activePlacements} placements active · {kpis.pendingWithLivluxe} requests pending
             </p>
             <div className="mt-3">
@@ -60,18 +60,18 @@ export default async function DashboardPreview({ searchParams }: PageProps<"/dev
           </div>
           <div className="flex gap-2">
             <a
-              className="border-input text-navy-900 h-10 rounded-md border bg-white px-4 py-2 text-sm font-medium"
+              className="border-input text-strong bg-card h-11 rounded-md border px-4 py-2 text-sm font-medium"
               href="#"
             >
               New request on behalf of…
             </a>
-            <a className="bg-navy-900 h-10 rounded-md px-4 py-2 text-sm font-medium text-white" href="#">
+            <a className="bg-primary text-primary-foreground h-11 rounded-md px-4 py-2 text-sm font-medium" href="#">
               Find a property
             </a>
           </div>
         </header>
         {freshness.state === "stale" && (
-          <div role="alert" className="rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+          <div role="alert" className="border-warn-border bg-warn-bg text-warn rounded-md border px-4 py-2 text-sm">
             Availability shown across the portal may be out of date. Quotes are re-checked before submission.
           </div>
         )}

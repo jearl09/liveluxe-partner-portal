@@ -5,10 +5,12 @@ import { ArrowLeft } from "lucide-react";
 import { PartnerForm } from "@/components/admin/partner-form";
 import { Flash } from "@/components/requests/flash";
 import { PeoplePanel } from "@/components/team/people-panel";
+import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
+import { Panel, PanelHeading } from "@/components/ui/panel";
 import { INVITE_LINK_COOKIE } from "@/lib/auth/invite-link";
 import { getSessionClaims } from "@/lib/db/server";
-import { PARTNER_TYPE_LABELS, type PartnerType } from "@/lib/domain/partners";
+import { ORG_STATUS_LABELS, PARTNER_TYPE_LABELS, type OrgStatus, type PartnerType } from "@/lib/domain/partners";
 import { can, USER_ROLES } from "@/lib/domain/permissions";
 import { getOrg, listOrgPeople } from "@/lib/partners/load";
 
@@ -40,17 +42,17 @@ export default async function PartnerDetailPage({ params, searchParams }: PagePr
 
   return (
     <div className="space-y-6">
-      <Link href="/admin/partners" className="text-ink-700 inline-flex items-center gap-1 text-sm hover:underline">
+      <Link href="/admin/partners" className="text-foreground inline-flex items-center gap-1 text-sm hover:underline">
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> All partners
       </Link>
       <PageHeader
         eyebrow={PARTNER_TYPE_LABELS[org.type as PartnerType]}
         title={org.name}
-        description={`Status: ${org.status}`}
+        description={`Status: ${ORG_STATUS_LABELS[org.status as OrgStatus] ?? org.status}`}
         actions={
-          <Link href={`/admin/rate-cards/${org.id}`} className="text-navy-900 text-sm underline underline-offset-4">
-            Rate card
-          </Link>
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/admin/rate-cards/${org.id}`}>Rate card</Link>
+          </Button>
         }
       />
       <Flash done={str(sp.done) || undefined} error={str(sp.error) || undefined} detail={str(sp.detail) || undefined} />
@@ -66,15 +68,15 @@ export default async function PartnerDetailPage({ params, searchParams }: PagePr
           errorFields={errorFields}
           values={{ email: str(sp.email), role: str(sp.role) }}
         />
-        <section className="border-cream-200 h-fit rounded-xl border bg-white p-5">
-          <h2 className="mb-3 font-serif text-lg">Settings</h2>
+        <Panel className="h-fit" aria-labelledby="org-settings-heading">
+          <PanelHeading id="org-settings-heading" title="Settings" />
           <PartnerForm
             action={`/api/admin/partners/${org.id}`}
             values={orgValues}
             errorFields={errorFields}
             mode="edit"
           />
-        </section>
+        </Panel>
       </div>
     </div>
   );

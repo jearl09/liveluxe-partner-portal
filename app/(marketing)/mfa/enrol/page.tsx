@@ -39,7 +39,7 @@ export default async function MfaEnrolPage({ searchParams }: PageProps<"/mfa/enr
   if (enrolError || !enrol) {
     return (
       <div className="space-y-4">
-        <h1 className="text-navy-900 font-serif text-2xl">Two-factor authentication</h1>
+        <h1 className="text-strong font-serif text-2xl">Two-factor authentication</h1>
         <Notice tone="error">
           Enrolment is not available right now ({enrolError?.message ?? "unknown error"}). If this persists, TOTP may
           not be enabled for this Supabase project: Authentication → Multi-Factor → TOTP.
@@ -55,8 +55,8 @@ export default async function MfaEnrolPage({ searchParams }: PageProps<"/mfa/enr
 
   return (
     <form className="space-y-4" action="/api/auth/mfa/verify" method="post">
-      <h1 className="text-navy-900 font-serif text-2xl">Set up two-factor authentication</h1>
-      <p className="text-ink-700 text-sm">
+      <h1 className="text-strong font-serif text-2xl">Set up two-factor authentication</h1>
+      <p className="text-foreground text-sm">
         Scan the code with Google Authenticator, 1Password, Authy or similar, then enter the 6-digit code it shows. You
         will be asked for a code each time you sign in.
       </p>
@@ -64,13 +64,14 @@ export default async function MfaEnrolPage({ searchParams }: PageProps<"/mfa/enr
         <Notice tone="error">That code was not accepted. Codes rotate every 30 seconds; try the current one.</Notice>
       )}
       {error === "rate_limited" && <Notice tone="error">Too many attempts. Please wait 15 minutes.</Notice>}
-      <div className="flex justify-center rounded-md border bg-white p-3">
+      {/* Always white: a QR code on a dark surface will not scan, whatever the theme. */}
+      <div className="border-border flex justify-center rounded-md border bg-white p-3">
         {/* eslint-disable-next-line @next/next/no-img-element -- inline SVG data URI, never optimised */}
         <img src={qrSrc} alt="Authenticator QR code" width={192} height={192} />
       </div>
-      <details className="text-ink-700 text-xs">
+      <details className="text-foreground text-xs">
         <summary className="cursor-pointer">Can&apos;t scan? Enter the key manually</summary>
-        <code className="bg-cream-100 mt-2 block rounded p-2 font-mono break-all">{enrol.totp.secret}</code>
+        <code className="bg-muted mt-2 block rounded p-2 font-mono break-all">{enrol.totp.secret}</code>
       </details>
       <input type="hidden" name="factorId" value={enrol.id} />
       <input type="hidden" name="mode" value="enrol" />
@@ -91,7 +92,7 @@ export default async function MfaEnrolPage({ searchParams }: PageProps<"/mfa/enr
       <Button type="submit" className="w-full">
         Verify and turn on
       </Button>
-      <p className="text-ink-500 text-center text-xs">
+      <p className="text-muted-foreground text-center text-xs">
         <a href={settingsPath} className="underline">
           Cancel
         </a>

@@ -40,8 +40,8 @@ export default async function BookingsPage({ searchParams }: PageProps<"/admin/b
             className={cn(
               "rounded-full border px-3 py-1 text-xs",
               status === f
-                ? "border-navy-900 bg-navy-900 text-white"
-                : "border-cream-300 text-ink-700 hover:bg-cream-50 bg-white",
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-input text-foreground hover:bg-background bg-card",
             )}
           >
             {f === "all" ? "All" : STATUS_LABELS[f]}

@@ -295,3 +295,46 @@ npm run dev · npm run typecheck · npm run lint · npm run test:unit · npm run
   `status = 'active'`. No forced sign-out yet.
 - Still open for Week 2 close-out: Resend key + DNS (GoDaddy), client Supabase/Vercel credentials for cut-over,
   Angel's decisions on hold hours / deposit % / SLA (docs/DECISIONS-REQUIRED.md).
+
+### Session 5 (cont.) — theme system: light and dark
+
+- `app/globals.css` is the whole design-token layer: brand scale, a dark palette built down from navy (`--d-*`),
+  role tokens (`--background`, `--card`, `--muted`, `--sunken`, `--raised`, `--strong`, `--foreground`,
+  `--muted-foreground`, `--border`, `--input`, `--primary`, `--accent`, `--ring`), status triplets
+  (`--ok/--warn/--bad` + `-bg` / `-border`), radii and `--ease-ios`. Dark is declared twice: under
+  `@media (prefers-color-scheme: dark) :root:not([data-theme="light"])` (system) and `:root[data-theme="dark"]` (forced).
+- Components use only the semantic utilities (`bg-card`, `text-strong`, `border-border`, `text-ok` …). Two surfaces
+  are deliberately fixed navy in both themes: the admin header (so ops staff always know which side they are on) and
+  the marketing hero panel. `bg-white` is reserved for things that must stay white (the MFA QR code).
+- `app/theme-script.ts` runs inline in `<head>` before paint and restores `localStorage["livluxe.theme"]`
+  (`light` | `dark` | `system`); `components/layout/theme-toggle.tsx` is the three-way control
+  (`useSyncExternalStore`, no flash, `.theme-switching` cross-fade for 220 ms). `color-scheme` flips native date pickers.
+
+### Session 5 (cont.) — professional design review
+
+Audit of every page in both themes at 1366 / 820 / 390, then the fixes. Nothing in business logic, routes or APIs changed.
+
+- **Shared primitives** in `components/ui/`: `Panel` / `PanelHeading` / `PanelSection` / `GroupLabel` (`panel.tsx`,
+  the one bordered surface — replaces ~30 hand-rolled card shells and settles one radius, `rounded-lg`);
+  `Banner` (`banner.tsx`, the one message strip — `Flash` and the auth `Notice` both render through it, with a lucide
+  icon per tone and `role=alert` only for errors); `Pill` (`pill.tsx`, tinted label for SLA bands and account / user
+  status — booking statuses keep the bordered `StatusPill`); `Table` + `theadClass/thClass/tdClass` (`table.tsx`,
+  sideways scroll on narrow screens); `ConfirmButton` (`confirm-button.tsx`, client — first press swaps the button in
+  place for a red "Confirm …" + Cancel, Escape cancels; no modal). `field.ts` gained `fieldClasses(invalid)`,
+  `invalidFieldClass`, `fieldErrorClass`; `labelClass` is now used everywhere.
+- **Heading tiers**: page title (serif 3xl, `PageHeader`) → panel heading (serif xl, `PanelHeading`) → group label
+  (sans sm medium, `GroupLabel`) → field label (xs medium, `labelClass`). Settings pages use `PageHeader` like the rest.
+- **Fewer cards**: request detail (partner and ops) is one divided panel — stay, guest/references, timeline — with the
+  quote (and on ops, the decision) in the aside. `DecisionPanel` is one panel: Approve as the primary action, Counter-
+  offer and Decline as disclosures with a chevron; Decline asks for a second press. The new-request form is one panel
+  with titled sections, invalid fields get a red ring plus an inline hint (`FIELD_HINTS`), and the generic
+  "validation failed" flash is suppressed when fields are named. Search's date hint is a plain line, not a third box.
+  Admin queue: the legend pills carry the counts (overdue / at risk / on track / waiting on partner).
+- **Responsive**: `RequestsTable` becomes a stacked list below `lg` (same pattern as the dashboard table); people,
+  partners and rate-card tables scroll sideways inside their panel. Sticky asides sit at `top-20`, clear of the 64 px
+  sticky header (they used to slide under it).
+- **Safeguards and a11y**: Remove access, Revoke invitation, Decline request and Turn off 2FA use `ConfirmButton`;
+  nav links and request tabs have visible focus rings; row-link tables show an inset focus ring; `aria-invalid` on
+  flagged fields; user status shows "Active / Invited / Access removed", org status uses its labels.
+- Temporary `app/(preview)/dev/kit` (component gallery with fixtures) was used for the screenshots and removed before
+  commit; recreate it if you need to eyeball components without a database.

@@ -23,9 +23,9 @@ export function QuoteLines({
         <caption className="sr-only">Price breakdown</caption>
         <tbody>
           {lines.map((l, i) => (
-            <tr key={`${l.kind}-${i}`} className="border-cream-200 border-b last:border-0">
-              <td className="text-ink-700 py-1.5 pr-2">{l.label}</td>
-              <td className="text-navy-900 py-1.5 text-right text-sm whitespace-nowrap tabular-nums">
+            <tr key={`${l.kind}-${i}`} className="border-border border-b last:border-0">
+              <td className="text-foreground py-1.5 pr-2">{l.label}</td>
+              <td className="text-strong py-1.5 text-right text-sm whitespace-nowrap tabular-nums">
                 {l.amountCents < 0 ? "−" : ""}
                 {formatMoney(Math.abs(l.amountCents), currency)}
               </td>
@@ -33,7 +33,7 @@ export function QuoteLines({
           ))}
           {lines.length === 0 && (
             <tr>
-              <td className="text-ink-500 py-1.5 text-xs" colSpan={2}>
+              <td className="text-muted-foreground py-1.5 text-xs" colSpan={2}>
                 Priced by Live Luxe
               </td>
             </tr>
@@ -41,13 +41,13 @@ export function QuoteLines({
         </tbody>
         <tfoot>
           <tr>
-            <td className="text-navy-900 pt-3 font-medium">Total</td>
-            <td className="text-navy-900 pt-3 text-right font-serif text-xl whitespace-nowrap">
+            <td className="text-strong pt-3 font-medium">Total</td>
+            <td className="text-strong pt-3 text-right font-serif text-xl whitespace-nowrap">
               {formatMoney(totalCents, currency)}
             </td>
           </tr>
           <tr>
-            <td className="text-ink-500 text-xs" colSpan={2}>
+            <td className="text-muted-foreground text-xs" colSpan={2}>
               {nights > 0 &&
                 `${formatMoney(Math.round(totalCents / nights), currency)} average per night · ${nights} nights`}
             </td>
@@ -55,7 +55,7 @@ export function QuoteLines({
         </tfoot>
       </table>
       {depositCents > 0 && (
-        <p className="text-ink-500 text-xs">
+        <p className="text-muted-foreground text-xs">
           Security deposit {formatMoney(depositCents, currency)} is authorised separately and only charged if needed.
         </p>
       )}

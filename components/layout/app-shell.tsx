@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { NavLinks } from "./nav-links";
+import { ThemeToggle } from "./theme-toggle";
 import { Wordmark } from "./brand";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +22,13 @@ const ROLE_LABELS: Record<string, string> = {
 /**
  * Shared chrome for the partner portal and the admin console (§13.5 Branding).
  * Partner tone: cream header like the public site. Admin tone: navy, so ops staff
- * always know which side of the system they are on.
+ * always know which side of the system they are on — which is why the admin header
+ * stays fixed navy in both themes rather than following the surface tokens. In dark
+ * mode the partner header would otherwise land on the same colour and lose the tell.
+ *
+ * The header sticks: on a long requests table the nav and the theme control should
+ * stay reachable, and a translucent blur behind it is the one place this UI borrows
+ * iOS's material directly.
  */
 export function AppShell({
   title,
@@ -41,12 +48,15 @@ export function AppShell({
     <div className="flex min-h-screen flex-col">
       <a
         href="#main"
-        className="focus:bg-accent sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded focus:px-3 focus:py-2 focus:text-white"
+        className="focus:bg-accent focus:text-accent-foreground sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:px-3 focus:py-2"
       >
         Skip to content
       </a>
       <header
-        className={cn("border-b", dark ? "bg-navy-900 border-navy-800 text-white" : "bg-cream-100 border-cream-200")}
+        className={cn(
+          "sticky top-0 z-40 border-b backdrop-blur-xl",
+          dark ? "bg-navy-900/85 border-navy-800 text-white" : "bg-muted/85 border-border",
+        )}
       >
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-6 px-4 md:px-6">
           <div className="flex min-w-0 items-center gap-8">
@@ -64,26 +74,25 @@ export function AppShell({
             )}
             <NavLinks items={nav} tone={tone} />
           </div>
-          <div className="flex shrink-0 items-center gap-4">
+          <div className="flex shrink-0 items-center gap-3">
             <div
               className={cn(
-                "hidden text-right text-xs leading-tight lg:block",
-                dark ? "text-white/80" : "text-ink-700",
+                "hidden text-right text-xs leading-tight 2xl:block",
+                dark ? "text-white/80" : "text-foreground",
               )}
             >
               <div className="font-medium">{user.orgName ?? title}</div>
-              <div className={cn("mt-0.5", dark ? "text-white/60" : "text-ink-500")}>
+              <div className={cn("mt-0.5", dark ? "text-white/60" : "text-muted-foreground")}>
                 {user.email} · {ROLE_LABELS[user.role] ?? user.role}
               </div>
             </div>
+            <ThemeToggle tone={tone} />
             <form action="/api/auth/sign-out" method="post">
               <button
                 type="submit"
                 className={cn(
-                  "h-9 rounded-md border px-3 text-xs font-medium whitespace-nowrap transition-colors",
-                  dark
-                    ? "border-white/20 text-white hover:bg-white/10"
-                    : "border-cream-300 text-navy-900 hover:bg-white",
+                  "ease-ios h-9 rounded-md border px-3 text-xs font-medium whitespace-nowrap transition-colors duration-150 active:scale-[0.97]",
+                  dark ? "border-white/20 text-white hover:bg-white/10" : "border-input text-strong hover:bg-card",
                 )}
               >
                 Sign out
@@ -98,7 +107,7 @@ export function AppShell({
       <main id="main" className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 md:px-6">
         {children}
       </main>
-      <footer className="border-cream-200 text-ink-500 border-t px-4 py-5 text-center text-xs">
+      <footer className="border-border text-muted-foreground border-t px-4 py-5 text-center text-xs">
         Live Luxe Pty Ltd · ABN 16 678 772 613 · Partner bookings are confidential and subject to your agreement with
         Live Luxe.
       </footer>

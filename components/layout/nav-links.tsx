@@ -37,12 +37,13 @@ export function NavLinks({
             href={n.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "relative rounded-md px-3 py-1.5 text-sm whitespace-nowrap transition-colors",
+              "focus-visible:ring-ring relative rounded-md px-3 text-sm whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:outline-none",
+              mobile ? "py-2" : "py-1.5",
               dark
                 ? "text-white/75 hover:bg-white/10 hover:text-white"
-                : "text-ink-700 hover:text-navy-900 hover:bg-white",
-              active && (dark ? "text-white" : "text-navy-900 font-medium"),
-              active && "after:bg-gold-500 after:absolute after:right-3 after:-bottom-px after:left-3 after:h-0.5",
+                : "text-foreground hover:text-strong hover:bg-card",
+              active && (dark ? "text-white" : "text-strong font-medium"),
+              active && "after:bg-accent after:absolute after:right-3 after:-bottom-px after:left-3 after:h-0.5",
             )}
           >
             {n.label}

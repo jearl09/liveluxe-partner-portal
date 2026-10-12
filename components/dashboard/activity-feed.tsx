@@ -1,22 +1,21 @@
 import Link from "next/link";
+import { Panel, PanelHeading } from "@/components/ui/panel";
 import type { ActivityEvent } from "@/lib/dashboard/types";
 
 /** Recent activity: last six events. Every timestamp carries its timezone; UTC on hover. */
 export function ActivityFeed({ events }: { events: ActivityEvent[] }) {
   return (
-    <section aria-labelledby="activity-heading" className="border-cream-200 rounded-lg border bg-white">
-      <header className="border-cream-200 border-b px-5 py-4">
-        <h2 id="activity-heading" className="font-serif text-xl">
-          Recent activity
-        </h2>
-      </header>
+    <Panel flush aria-labelledby="activity-heading">
+      <PanelHeading id="activity-heading" title="Recent activity" flush />
       {events.length === 0 ? (
-        <p className="text-ink-500 px-5 py-8 text-center text-sm">Decisions, comments and invoices will show here.</p>
+        <p className="text-muted-foreground px-5 py-8 text-center text-sm">
+          Decisions, comments and invoices will show here.
+        </p>
       ) : (
-        <ol className="divide-cream-200 divide-y">
+        <ol className="divide-border divide-y">
           {events.map((e) => (
             <li key={e.id} className="px-5 py-3 text-sm">
-              <p className="text-navy-900">
+              <p className="text-strong">
                 {e.verb}
                 {e.reference && (
                   <>
@@ -35,7 +34,7 @@ export function ActivityFeed({ events }: { events: ActivityEvent[] }) {
                   </>
                 )}
               </p>
-              <p className="text-ink-500 text-xs">
+              <p className="text-muted-foreground text-xs">
                 <time dateTime={e.atIso} title={`${e.atUtc} (UTC)`}>
                   {e.atLabel}
                 </time>
@@ -45,6 +44,6 @@ export function ActivityFeed({ events }: { events: ActivityEvent[] }) {
           ))}
         </ol>
       )}
-    </section>
+    </Panel>
   );
 }

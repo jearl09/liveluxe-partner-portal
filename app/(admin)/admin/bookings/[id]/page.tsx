@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Clock } from "lucide-react";
 import { DecisionPanel } from "@/components/admin/decision-panel";
+import { Banner } from "@/components/ui/banner";
+import { GroupLabel, Panel, PanelHeading, PanelSection } from "@/components/ui/panel";
 import { StatusPill } from "@/components/ui/status-pill";
 import { Flash } from "@/components/requests/flash";
 import { QuoteLines } from "@/components/requests/quote-lines";
@@ -24,11 +26,11 @@ export async function generateMetadata({ params }: PageProps<"/admin/bookings/[i
 
 const str = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
 const BAND_TEXT = {
-  on_track: "text-emerald-800",
-  at_risk: "text-amber-800",
-  breached: "text-red-800",
-  paused: "text-ink-700",
-  none: "text-ink-500",
+  on_track: "text-ok",
+  at_risk: "text-warn",
+  breached: "text-bad",
+  paused: "text-foreground",
+  none: "text-muted-foreground",
 } as const;
 
 /** Ops view of one request (§13.4): everything the partner sees plus org, SLA and the decision panel. */
@@ -44,15 +46,15 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
 
   return (
     <div className="space-y-6">
-      <Link href="/admin/queue" className="text-ink-700 inline-flex items-center gap-1 text-sm hover:underline">
+      <Link href="/admin/queue" className="text-foreground inline-flex items-center gap-1 text-sm hover:underline">
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Queue
       </Link>
 
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="eyebrow mb-1">{d.org?.name ?? "Partner"}</p>
-          <h1 className="text-navy-900 font-serif text-3xl tracking-tight">{r.reference}</h1>
-          <p className="text-ink-500 mt-1 text-sm">
+          <h1 className="text-strong font-serif text-3xl tracking-tight">{r.reference}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
             Submitted {r.submitted_at ? formatTimestamp(r.submitted_at) : "—"}
             {d.createdByName && ` by ${d.createdByName}`}
             {d.assignedToName && ` · assigned to ${d.assignedToName}`}
@@ -69,7 +71,7 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
             </p>
           )}
           {holdLeft !== null && holdLeft > 0 && (
-            <p className="text-ink-500 text-xs">Hold expires in {humanizeDuration(holdLeft)}</p>
+            <p className="text-muted-foreground text-xs">Hold expires in {humanizeDuration(holdLeft)}</p>
           )}
         </div>
       </header>
@@ -82,53 +84,58 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
       />
 
       {r.status === "DECLINED" && (
-        <p className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+        <Banner tone="error">
           Declined: {DECLINE_REASON_LABELS[r.decline_reason ?? "other"]}
           {r.decline_notes && ` — ${r.decline_notes}`}
-        </p>
+        </Banner>
       )}
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
-        <div className="space-y-6">
-          <StayCard
-            listing={{
-              name: d.listing.name,
-              suburb: d.listing.suburb,
-              state: d.listing.state,
-              imageUrl: d.listing.imageUrl,
-            }}
-            checkIn={r.check_in}
-            checkOut={r.check_out}
-            nights={r.nights}
-            adults={r.guests_adults}
-            childGuests={r.guests_children}
-            pets={r.guests_pets}
-          />
+      <div className="grid gap-6 lg:grid-cols-[1fr_380px] lg:items-start lg:gap-8">
+        <Panel flush className="divide-border divide-y" aria-label="Request details">
+          <PanelSection className="py-4">
+            <StayCard
+              plain
+              listing={{
+                name: d.listing.name,
+                suburb: d.listing.suburb,
+                state: d.listing.state,
+                imageUrl: d.listing.imageUrl,
+              }}
+              checkIn={r.check_in}
+              checkOut={r.check_out}
+              nights={r.nights}
+              adults={r.guests_adults}
+              childGuests={r.guests_children}
+              pets={r.guests_pets}
+            />
+          </PanelSection>
 
-          <section className="border-cream-200 rounded-xl border bg-white p-5">
-            <h2 className="mb-3 font-serif text-xl">Partner details</h2>
+          <PanelSection>
+            <GroupLabel className="mb-3">Partner and guest</GroupLabel>
             <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
               <div>
-                <dt className="text-ink-500 text-xs">Organisation</dt>
-                <dd className="text-navy-900">
+                <dt className="text-muted-foreground text-xs">Organisation</dt>
+                <dd className="text-strong">
                   {d.org?.name ?? "—"}
-                  {r.payment_mode && <span className="text-ink-500 block text-xs">Terms: {r.payment_mode}</span>}
+                  {r.payment_mode && (
+                    <span className="text-muted-foreground block text-xs">Terms: {r.payment_mode}</span>
+                  )}
                 </dd>
               </div>
               <div>
-                <dt className="text-ink-500 text-xs">Guest</dt>
-                <dd className="text-navy-900">
+                <dt className="text-muted-foreground text-xs">Guest</dt>
+                <dd className="text-strong">
                   {r.guest_name ?? "—"}
                   {(r.guest_email || r.guest_phone) && (
-                    <span className="text-ink-500 block text-xs">
+                    <span className="text-muted-foreground block text-xs">
                       {[r.guest_email, r.guest_phone].filter(Boolean).join(" · ")}
                     </span>
                   )}
                 </dd>
               </div>
               <div>
-                <dt className="text-ink-500 text-xs">References</dt>
-                <dd className="text-navy-900 font-mono text-xs">
+                <dt className="text-muted-foreground text-xs">References</dt>
+                <dd className="text-strong font-mono text-xs">
                   {[
                     r.claim_ref && `Claim ${r.claim_ref}`,
                     r.po_number && `PO ${r.po_number}`,
@@ -139,20 +146,28 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
                 </dd>
               </div>
               <div>
-                <dt className="text-ink-500 text-xs">Hostaway listing</dt>
-                <dd className="text-navy-900 font-mono text-xs">{d.listing.hostawayListingId}</dd>
+                <dt className="text-muted-foreground text-xs">Hostaway listing</dt>
+                <dd className="text-strong font-mono text-xs">{d.listing.hostawayListingId}</dd>
               </div>
               {r.notes && (
                 <div className="sm:col-span-2">
-                  <dt className="text-ink-500 text-xs">Partner notes</dt>
-                  <dd className="text-ink-700 whitespace-pre-line">{r.notes}</dd>
+                  <dt className="text-muted-foreground text-xs">Partner notes</dt>
+                  <dd className="text-foreground whitespace-pre-line">{r.notes}</dd>
                 </div>
               )}
             </dl>
-          </section>
+          </PanelSection>
 
-          <section className="border-cream-200 rounded-xl border bg-white p-5">
-            <h2 className="mb-3 font-serif text-xl">Quote</h2>
+          <PanelSection>
+            <GroupLabel className="mb-3">Timeline</GroupLabel>
+            <StatusTimeline history={d.history} showInternal />
+          </PanelSection>
+        </Panel>
+
+        <aside className="space-y-6 lg:sticky lg:top-20 lg:self-start">
+          <DecisionPanel request={r} today={todayIn("Australia/Melbourne")} />
+          <Panel aria-labelledby="quote-heading">
+            <PanelHeading id="quote-heading" title="Quote" className="mb-3" />
             {d.quote ? (
               <QuoteLines
                 lines={d.quote.lines}
@@ -163,18 +178,9 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
                 compact
               />
             ) : (
-              <p className="text-ink-500 text-sm">No quote stored.</p>
+              <p className="text-muted-foreground text-sm">No quote stored.</p>
             )}
-          </section>
-
-          <section className="border-cream-200 rounded-xl border bg-white p-5">
-            <h2 className="mb-3 font-serif text-xl">Timeline</h2>
-            <StatusTimeline history={d.history} showInternal />
-          </section>
-        </div>
-
-        <aside className="lg:sticky lg:top-4 lg:self-start">
-          <DecisionPanel request={r} today={todayIn("Australia/Melbourne")} />
+          </Panel>
         </aside>
       </div>
     </div>

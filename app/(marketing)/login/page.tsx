@@ -24,7 +24,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const next = safeRedirectPath(params.next);
   return (
     <form className="space-y-4" action="/api/auth/sign-in" method="post">
-      <h1 className="text-navy-900 font-serif text-2xl">Partner sign in</h1>
+      <h1 className="text-strong font-serif text-2xl">Partner sign in</h1>
       {hookOff && (
         <Notice tone="warn">
           <p>
@@ -51,7 +51,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           See docs/GETTING-STARTED.md.
         </Notice>
       )}
-      <p className="text-ink-700 text-sm">
+      <p className="text-foreground text-sm">
         Access is by invitation only. Contact your organisation&apos;s administrator if you need an account.
       </p>
       <label className="block text-sm">
@@ -65,7 +65,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       <Button type="submit" className="w-full">
         Sign in
       </Button>
-      <p className="text-ink-500 text-center text-xs">
+      <p className="text-muted-foreground text-center text-xs">
         <a href="/reset-password" className="underline">
           Forgotten your password?
         </a>

@@ -1,8 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ORG_STATUS_LABELS, ORG_STATUSES, PARTNER_TYPE_LABELS, PARTNER_TYPES } from "@/lib/domain/partners";
-import { cn } from "@/lib/utils";
-
-const input = "border-cream-300 h-10 w-full rounded-md border bg-white px-3 text-sm";
+import { fieldClasses, labelClass } from "@/components/ui/field";
 
 /** Create or edit a partner organisation (§13.4 "Partners"). Plain form post; the server validates. */
 export function PartnerForm({
@@ -16,17 +14,17 @@ export function PartnerForm({
   errorFields: Set<string>;
   mode: "create" | "edit";
 }) {
-  const field = (name: string) => cn(input, "mt-1", errorFields.has(name) && "border-red-400 ring-1 ring-red-300");
+  const field = (name: string) => fieldClasses(errorFields.has(name));
   return (
     <form method="post" action={action} className="space-y-4">
       {mode === "edit" && <input type="hidden" name="action" value="update" />}
-      <div className="grid gap-4 sm:grid-cols-[1fr_180px]">
-        <label className="block text-xs font-medium">
-          Organisation name <span className="text-gold-600">*</span>
+      <div className="grid gap-4 sm:grid-cols-[1fr_180px] sm:items-end">
+        <label className={labelClass}>
+          Organisation name <span className="text-accent">*</span>
           <input name="name" required maxLength={120} defaultValue={values.name} className={field("name")} />
         </label>
-        <label className="block text-xs font-medium">
-          Type <span className="text-gold-600">*</span>
+        <label className={labelClass}>
+          Type <span className="text-accent">*</span>
           <select name="type" required defaultValue={values.type || "insurance"} className={field("type")}>
             {PARTNER_TYPES.map((t) => (
               <option key={t} value={t}>
@@ -37,12 +35,12 @@ export function PartnerForm({
         </label>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <label className="block text-xs font-medium">
+      <div className="grid gap-4 sm:grid-cols-3 sm:items-end">
+        <label className={labelClass}>
           ABN
           <input name="abn" inputMode="numeric" defaultValue={values.abn} className={field("abn")} />
         </label>
-        <label className="block text-xs font-medium">
+        <label className={labelClass}>
           Decision SLA (business hours)
           <input
             name="slaHours"
@@ -53,7 +51,7 @@ export function PartnerForm({
           />
         </label>
         {mode === "edit" && (
-          <label className="block text-xs font-medium">
+          <label className={labelClass}>
             Status
             <select name="status" defaultValue={values.status || "active"} className={field("status")}>
               {ORG_STATUSES.map((s) => (
@@ -67,7 +65,7 @@ export function PartnerForm({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block text-xs font-medium">
+        <label className={labelClass}>
           Billing contact
           <input
             name="billingContactName"
@@ -75,7 +73,7 @@ export function PartnerForm({
             className={field("billingContactName")}
           />
         </label>
-        <label className="block text-xs font-medium">
+        <label className={labelClass}>
           Billing email
           <input
             name="billingEmail"
@@ -86,7 +84,7 @@ export function PartnerForm({
         </label>
       </div>
 
-      <label className="block text-xs font-medium">
+      <label className={labelClass}>
         Email domains (comma separated)
         <input
           name="emailDomains"
@@ -94,7 +92,7 @@ export function PartnerForm({
           defaultValue={values.emailDomains}
           className={field("emailDomains")}
         />
-        <span className="text-ink-500 mt-1 block font-normal">
+        <span className="text-muted-foreground mt-1 block font-normal">
           Used later to warn when an invitation goes outside the partner.
         </span>
       </label>

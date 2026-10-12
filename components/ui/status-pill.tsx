@@ -3,12 +3,12 @@ import type { BookingStatus } from "@/lib/domain/booking-state-machine";
 import { cn } from "@/lib/utils";
 
 const TONES: Record<PillTone, string> = {
-  "navy-outline": "border-navy-900/40 text-navy-900 bg-white",
-  gold: "border-gold-500 text-gold-600 bg-white",
-  "gold-filled": "border-gold-500 bg-gold-500 text-white",
-  green: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  muted: "border-cream-300 bg-cream-100 text-ink-500",
-  red: "border-red-200 bg-red-50 text-red-800",
+  "navy-outline": "border-primary/40 text-strong bg-card",
+  gold: "border-accent text-accent bg-card",
+  "gold-filled": "border-accent bg-accent text-accent-foreground",
+  green: "border-ok-border bg-ok-bg text-ok",
+  muted: "border-input bg-muted text-muted-foreground",
+  red: "border-bad-border bg-bad-bg text-bad",
 };
 
 /** Booking status pill — the one mapping used everywhere (§10 states, §13.5: never colour alone). */

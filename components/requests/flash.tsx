@@ -1,4 +1,4 @@
-import { CheckCircle2, AlertTriangle } from "lucide-react";
+import { Banner } from "@/components/ui/banner";
 import { ErrorCodes, type ErrorCode } from "@/lib/domain/errors";
 
 const DONE: Record<string, string> = {
@@ -40,29 +40,18 @@ export function Flash({
   refCode?: string;
 }) {
   if (done && DONE[done]) {
-    return (
-      <p
-        role="status"
-        className="flex items-start gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
-      >
-        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> {DONE[done]}
-      </p>
-    );
+    return <Banner tone="success">{DONE[done]}</Banner>;
   }
   if (error) {
     const code = (error in ErrorCodes ? error : "INTERNAL") as ErrorCode;
     return (
-      <p
-        role="alert"
-        className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
-      >
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-        <span>
+      <Banner tone="error">
+        <p>
           {ErrorCodes[code].message} {EXTRA[code] ?? ""}
-          {detail && <span className="block text-xs opacity-80">{detail}</span>}
-          {refCode && <span className="block font-mono text-xs opacity-80">Ref {refCode}</span>}
-        </span>
-      </p>
+        </p>
+        {detail && <p className="text-xs opacity-80">{detail}</p>}
+        {refCode && <p className="font-mono text-xs opacity-80">Ref {refCode}</p>}
+      </Banner>
     );
   }
   return null;

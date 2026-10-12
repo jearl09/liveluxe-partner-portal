@@ -16,20 +16,20 @@ export function StatCard({
   tone?: "navy" | "gold";
 }) {
   return (
-    <div className="border-cream-200 rounded-xl border bg-white p-5">
+    <div className="border-border bg-card rounded-lg border p-5">
       <div className="flex items-center justify-between">
-        <p className="text-ink-700 text-sm font-medium">{label}</p>
+        <p className="text-foreground text-sm font-medium">{label}</p>
         <span
           className={cn(
             "flex h-8 w-8 items-center justify-center rounded-full",
-            tone === "gold" ? "bg-gold-500/10 text-gold-600" : "bg-navy-900/5 text-navy-900",
+            tone === "gold" ? "bg-accent/10 text-accent" : "bg-primary/5 text-strong",
           )}
         >
           <Icon className="h-4 w-4" aria-hidden />
         </span>
       </div>
-      <p className="text-navy-900 mt-3 font-serif text-4xl">{value}</p>
-      {hint && <p className="text-ink-500 mt-1 text-xs">{hint}</p>}
+      <p className="text-strong mt-3 font-serif text-4xl">{value}</p>
+      {hint && <p className="text-muted-foreground mt-1 text-xs">{hint}</p>}
     </div>
   );
 }

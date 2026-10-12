@@ -1,13 +1,23 @@
 @import "tailwindcss";
 
 /*
- * Live Luxe brand tokens (§13.5 Branding) — taken from the public Docklands site:
- * deep navy surfaces, warm cream chrome, antique gold accent, serif display type.
- * These are the shadcn/ui token names so every component picks them up.
- * Light theme only for now: partner and ops screens are read in daylight on laptops;
- * an OS dark preference must not wash the UI out.
+ * Live Luxe design tokens (§13.5 Branding).
+ *
+ * The palette is the public Docklands site's: deep navy, warm cream, antique gold,
+ * serif display type. The craft — surface layering, radii, restrained shadow, the
+ * 44 px touch floor — follows Apple's HIG, which is why this reads as a native app
+ * rather than a web template.
+ *
+ * Two themes. Components never name a raw colour; they name a ROLE (card, border,
+ * muted-foreground, strong) and the role is remapped below. That is what makes dark
+ * mode a 25-line block instead of a rewrite of every file.
+ *
+ * Resolution order: an explicit choice on <html data-theme> always wins, otherwise
+ * the operating system decides. app/theme-script.ts sets the attribute before first
+ * paint so the page never flashes the wrong theme.
  */
 :root {
+  /* Brand scale — fixed values, identical in both themes. */
   --navy-950: #0b1422;
   --navy-900: #101c2c;
   --navy-800: #182840;
@@ -23,39 +33,162 @@
   --ink-700: #3a4454;
   --ink-500: #6b7484;
 
+  /* Dark palette, built down from the brand navy so the hue never drifts. */
+  --d-canvas: #0b1422;
+  --d-surface: #16233a;
+  --d-raised: #1d2d47;
+  --d-sunken: #080f1a;
+  --d-strong: #f0ece3;
+  --d-body: #c6cbd4;
+  --d-muted: #8d97a6;
+  --d-line: #26354e;
+  --d-line-strong: #35486a;
+
+  /* ---- Roles: light ---- */
   --background: var(--cream-50);
-  --foreground: var(--ink-900);
+  --foreground: var(--ink-700);
+  --strong: var(--navy-900);
   --card: #ffffff;
-  --card-foreground: var(--ink-900);
+  --card-foreground: var(--ink-700);
+  --raised: #ffffff;
+  --sunken: var(--cream-200);
   --popover: #ffffff;
-  --popover-foreground: var(--ink-900);
+  --popover-foreground: var(--ink-700);
   --primary: var(--navy-900);
+  --primary-hover: var(--navy-800);
   --primary-foreground: #ffffff;
   --secondary: var(--cream-100);
   --secondary-foreground: var(--navy-900);
   --accent: var(--gold-500);
+  --accent-hover: var(--gold-600);
   --accent-foreground: #ffffff;
   --muted: var(--cream-100);
   --muted-foreground: var(--ink-500);
-  --destructive: #b42318;
   --border: var(--cream-200);
   --input: var(--cream-300);
   --ring: var(--gold-500);
-  --radius: 0.5rem;
+
+  /* Status. Background, text and edge move together so a pill is never a guess. */
+  --ok: #047857;
+  --ok-bg: #ecfdf5;
+  --ok-border: #a7f3d0;
+  --warn: #92400e;
+  --warn-bg: #fffbeb;
+  --warn-border: #fcd34d;
+  --bad: #b42318;
+  --bad-bg: #fef2f2;
+  --bad-border: #fecaca;
+  --destructive: var(--bad);
+
+  /* Elevation. Light leans on shadow, dark on a lighter surface plus a hairline. */
+  --shadow-xs: 0 1px 2px rgb(16 28 44 / 0.05);
+  --shadow-sm: 0 1px 3px rgb(16 28 44 / 0.07), 0 1px 2px rgb(16 28 44 / 0.04);
+  --shadow-md: 0 4px 14px rgb(16 28 44 / 0.08);
+  --shadow-lg: 0 16px 40px rgb(16 28 44 / 0.12);
+
+  /* iOS sits between the web's 6 px and a pill; controls 10, panels 14, cards 18. */
+  --radius: 0.625rem;
+}
+
+/* No explicit choice: follow the operating system. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --background: var(--d-canvas);
+    --foreground: var(--d-body);
+    --strong: var(--d-strong);
+    --card: var(--d-surface);
+    --card-foreground: var(--d-body);
+    --raised: var(--d-raised);
+    --sunken: var(--d-sunken);
+    --popover: var(--d-raised);
+    --popover-foreground: var(--d-body);
+    --primary: #2b4169;
+    --primary-hover: #35507d;
+    --primary-foreground: var(--d-strong);
+    --secondary: var(--d-raised);
+    --secondary-foreground: var(--d-strong);
+    --accent: var(--gold-400);
+    --accent-hover: #dcb878;
+    --accent-foreground: var(--navy-950);
+    --muted: var(--d-raised);
+    --muted-foreground: var(--d-muted);
+    --border: var(--d-line);
+    --input: var(--d-line-strong);
+    --ring: var(--gold-400);
+    --ok: #6ee7b7;
+    --ok-bg: #0f2f28;
+    --ok-border: #1f5247;
+    --warn: #fbbf24;
+    --warn-bg: #33270c;
+    --warn-border: #5c4414;
+    --bad: #fca5a5;
+    --bad-bg: #38181a;
+    --bad-border: #5e2a2c;
+    --destructive: #e5584d;
+    --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.35);
+    --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.4), 0 1px 2px rgb(0 0 0 / 0.3);
+    --shadow-md: 0 6px 18px rgb(0 0 0 / 0.45);
+    --shadow-lg: 0 20px 48px rgb(0 0 0 / 0.55);
+  }
+}
+
+/* An explicit choice wins over the operating system. */
+:root[data-theme="dark"] {
+  --background: var(--d-canvas);
+  --foreground: var(--d-body);
+  --strong: var(--d-strong);
+  --card: var(--d-surface);
+  --card-foreground: var(--d-body);
+  --raised: var(--d-raised);
+  --sunken: var(--d-sunken);
+  --popover: var(--d-raised);
+  --popover-foreground: var(--d-body);
+  --primary: #2b4169;
+  --primary-hover: #35507d;
+  --primary-foreground: var(--d-strong);
+  --secondary: var(--d-raised);
+  --secondary-foreground: var(--d-strong);
+  --accent: var(--gold-400);
+  --accent-hover: #dcb878;
+  --accent-foreground: var(--navy-950);
+  --muted: var(--d-raised);
+  --muted-foreground: var(--d-muted);
+  --border: var(--d-line);
+  --input: var(--d-line-strong);
+  --ring: var(--gold-400);
+  --ok: #6ee7b7;
+  --ok-bg: #0f2f28;
+  --ok-border: #1f5247;
+  --warn: #fbbf24;
+  --warn-bg: #33270c;
+  --warn-border: #5c4414;
+  --bad: #fca5a5;
+  --bad-bg: #38181a;
+  --bad-border: #5e2a2c;
+  --destructive: #e5584d;
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.35);
+  --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.4), 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-md: 0 6px 18px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 20px 48px rgb(0 0 0 / 0.55);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-strong: var(--strong);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-raised: var(--raised);
+  --color-sunken: var(--sunken);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
   --color-accent-foreground: var(--accent-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
@@ -64,6 +197,17 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  --color-ok: var(--ok);
+  --color-ok-bg: var(--ok-bg);
+  --color-ok-border: var(--ok-border);
+  --color-warn: var(--warn);
+  --color-warn-bg: var(--warn-bg);
+  --color-warn-border: var(--warn-border);
+  --color-bad: var(--bad);
+  --color-bad-bg: var(--bad-bg);
+  --color-bad-border: var(--bad-border);
+
+  /* Fixed brand values, for the places that stay navy or gold in both themes. */
   --color-navy-950: var(--navy-950);
   --color-navy-900: var(--navy-900);
   --color-navy-800: var(--navy-800);
@@ -83,9 +227,19 @@
   --font-serif: var(--font-serif-brand), Georgia, "Times New Roman", serif;
   --font-mono: var(--font-mono-brand), ui-monospace, monospace;
 
-  --radius-sm: calc(var(--radius) - 2px);
+  --radius-sm: 0.5rem;
   --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 4px);
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.125rem;
+  --radius-2xl: 1.375rem;
+
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+
+  /* One curve for everything that moves, as iOS uses one. */
+  --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @layer base {
@@ -93,8 +247,17 @@
     border-color: var(--border);
   }
   html {
+    /* Flips native controls — date pickers above all, which this portal is full of. */
     color-scheme: light;
     -webkit-text-size-adjust: 100%;
+  }
+  @media (prefers-color-scheme: dark) {
+    html:not([data-theme="light"]) {
+      color-scheme: dark;
+    }
+  }
+  html[data-theme="dark"] {
+    color-scheme: dark;
   }
   body {
     background: var(--background);
@@ -112,6 +275,7 @@
     font-family: var(--font-serif);
     font-weight: 500;
     letter-spacing: -0.012em;
+    color: var(--strong);
   }
   h1,
   h2,
@@ -146,24 +310,25 @@
     cursor: pointer;
   }
   ::selection {
-    background: color-mix(in oklab, var(--gold-400) 35%, white);
+    background: color-mix(in oklab, var(--accent) 32%, var(--card));
+    color: var(--strong);
   }
 
   /* Fields: one shape for every text-like control, so forms line up whatever page they are on. */
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]),
   select,
   textarea {
-    background: #fff;
-    color: var(--foreground);
-    border: 1px solid var(--cream-300);
+    background: var(--card);
+    color: var(--strong);
+    border: 1px solid var(--input);
     border-radius: var(--radius-md);
     font-size: 0.875rem;
     line-height: 1.25rem;
-    min-height: 2.5rem;
+    min-height: 2.75rem; /* 44 px — Apple's touch floor, and easier to hit with a mouse too. */
     padding-inline: 0.75rem;
     transition:
-      border-color 150ms ease,
-      box-shadow 150ms ease;
+      border-color 150ms var(--ease-ios),
+      box-shadow 150ms var(--ease-ios);
   }
   textarea {
     padding-block: 0.5rem;
@@ -172,28 +337,41 @@
   input:not([type="checkbox"]):not([type="radio"]):hover,
   select:hover,
   textarea:hover {
-    border-color: color-mix(in oklab, var(--cream-300) 70%, var(--ink-500));
+    border-color: color-mix(in oklab, var(--input) 70%, var(--muted-foreground));
   }
   input::placeholder,
   textarea::placeholder {
-    color: color-mix(in oklab, var(--ink-500) 75%, white);
+    color: color-mix(in oklab, var(--muted-foreground) 80%, var(--card));
   }
   input:focus-visible,
   select:focus-visible,
   textarea:focus-visible {
     outline: none;
-    border-color: var(--gold-500);
-    box-shadow: 0 0 0 3px color-mix(in oklab, var(--gold-500) 22%, transparent);
+    border-color: var(--ring);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 24%, transparent);
   }
   input[type="checkbox"],
   input[type="radio"] {
-    accent-color: var(--navy-900);
+    accent-color: var(--accent);
+  }
+  /* The calendar glyph in a date field is black by default and vanishes on dark. */
+  ::-webkit-calendar-picker-indicator {
+    opacity: 0.55;
+    cursor: pointer;
+  }
+  :root[data-theme="dark"] ::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) ::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+    }
   }
 }
 
 /* Gold eyebrow label used across headings, matching the site's "DOCKLANDS, MELBOURNE" treatment. */
 .eyebrow {
-  color: var(--gold-500);
+  color: var(--accent);
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.18em;
@@ -203,18 +381,38 @@
 .gold-rule {
   width: 3.5rem;
   height: 2px;
-  background: var(--gold-500);
+  background: var(--accent);
+}
+
+/*
+ * Theme switch. Repainting every surface at once reads as a glitch, so the switch
+ * is given one short cross-fade — and only while it is happening, so nothing else
+ * in the UI inherits a colour transition it did not ask for.
+ */
+.theme-switching * {
+  transition:
+    background-color 180ms var(--ease-ios),
+    border-color 180ms var(--ease-ios),
+    color 180ms var(--ease-ios) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *,
+  .theme-switching * {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
 }
 
-/* Print: the requests table prints cleanly for claim files (§13.5). */
+/* Print: the requests table prints cleanly for claim files (§13.5). Always on paper white. */
 @media print {
+  :root {
+    --background: #fff;
+    --card: #fff;
+    --foreground: #000;
+    --strong: #000;
+    --border: #ccc;
+  }
   header,
   footer,
   nav,
@@ -223,6 +421,7 @@
   }
   body {
     background: #fff;
+    color: #000;
   }
   main {
     max-width: none;
@@ -230,6 +429,7 @@
   }
   .print-section {
     border: 0;
+    box-shadow: none;
   }
   .print-section table {
     display: table !important;
@@ -257,7 +457,7 @@
   list-style: decimal;
 }
 .prose-livluxe strong {
-  color: var(--navy-900);
+  color: var(--strong);
 }
 .prose-livluxe a {
   text-decoration: underline;

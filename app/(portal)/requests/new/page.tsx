@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
+import { GroupLabel, Panel, PanelHeading, PanelSection } from "@/components/ui/panel";
 import { Flash } from "@/components/requests/flash";
 import { QuoteLines } from "@/components/requests/quote-lines";
 import { StayCard } from "@/components/requests/stay-card";
@@ -12,6 +14,7 @@ import { can } from "@/lib/domain/permissions";
 import { parseSearchParams, searchQueryString } from "@/lib/domain/search";
 import { priceStay } from "@/lib/listings/price";
 import { loadOrgRules } from "@/lib/requests/submit";
+import { fieldClasses, fieldErrorClass, labelClass } from "@/components/ui/field";
 
 export const metadata = { title: "Request to book" };
 
@@ -21,13 +24,21 @@ const int = (v: string | string[] | undefined, fallback: number, min: number, ma
   return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
 };
 
-const input = "border-cream-300 h-10 w-full rounded-md border bg-white px-3 text-sm";
 const FIELD_LABELS: Record<string, string> = {
   guestName: "Guest name",
   guestEmail: "Guest email",
   claimRef: "Claim reference",
   poNumber: "PO number",
   acceptTerms: "Confirmation",
+};
+
+/** What to fix, next to the field itself, when the server sends the form back. */
+const FIELD_HINTS: Record<string, string> = {
+  guestName: "Enter the guest's name.",
+  guestEmail: "Enter a valid email address, or leave it blank.",
+  claimRef: "Your organisation requires a claim reference.",
+  poNumber: "Your organisation requires a PO number.",
+  acceptTerms: "Tick the confirmation to submit.",
 };
 
 /**
@@ -60,7 +71,7 @@ export default async function NewRequestPage({ searchParams }: PageProps<"/reque
 
   return (
     <div className="space-y-6">
-      <Link href={back} className="text-ink-700 inline-flex items-center gap-1 text-sm hover:underline">
+      <Link href={back} className="text-foreground inline-flex items-center gap-1 text-sm hover:underline">
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Back to property
       </Link>
       <PageHeader
@@ -69,19 +80,20 @@ export default async function NewRequestPage({ searchParams }: PageProps<"/reque
         description={`Submitting on behalf of ${org.name}.`}
       />
 
+      {/* A validation bounce names its fields once, here, and again beside each field below. */}
       <Flash
-        error={str(sp.error) || undefined}
+        error={errorFields.size > 0 && str(sp.error) === "VALIDATION_FAILED" ? undefined : str(sp.error) || undefined}
         detail={str(sp.detail) || undefined}
         refCode={str(sp.ref) || undefined}
       />
       {errorFields.size > 0 && (
-        <p className="text-sm text-red-900">
-          Please fix: {[...errorFields].map((f) => FIELD_LABELS[f] ?? f).join(", ")}.
-        </p>
+        <Banner tone="error">
+          Please check {[...errorFields].map((f) => FIELD_LABELS[f] ?? f).join(", ")}. Nothing has been submitted yet.
+        </Banner>
       )}
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
-        <form method="post" action="/api/requests" className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-[1fr_380px] lg:items-start lg:gap-8">
+        <form method="post" action="/api/requests">
           <input type="hidden" name="listingId" value={listingId} />
           <input type="hidden" name="checkIn" value={stay.checkIn} />
           <input type="hidden" name="checkOut" value={stay.checkOut} />
@@ -90,98 +102,138 @@ export default async function NewRequestPage({ searchParams }: PageProps<"/reque
           <input type="hidden" name="pets" value={pets} />
           <input type="hidden" name="priceHash" value={quote?.priceHash ?? ""} />
 
-          <section className="border-cream-200 space-y-4 rounded-xl border bg-white p-5">
-            <h2 className="font-serif text-xl">Guest</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block text-xs font-medium">
-                Guest name <span className="text-gold-600">*</span>
-                <input
-                  name="guestName"
-                  required
-                  defaultValue={str(sp.guestName)}
-                  className={`${input} mt-1`}
-                  maxLength={120}
-                />
-              </label>
-              <label className="block text-xs font-medium">
-                Guest email
-                <input name="guestEmail" type="email" defaultValue={str(sp.guestEmail)} className={`${input} mt-1`} />
-              </label>
-              <label className="block text-xs font-medium">
-                Guest phone
-                <input name="guestPhone" defaultValue={str(sp.guestPhone)} className={`${input} mt-1`} maxLength={40} />
-              </label>
-            </div>
-            <p className="text-ink-500 text-xs">Guest details are shared with Live Luxe only for this stay.</p>
-          </section>
-
-          <section className="border-cream-200 space-y-4 rounded-xl border bg-white p-5">
-            <h2 className="font-serif text-xl">Your references</h2>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <label className="block text-xs font-medium">
-                Claim reference {org.require_claim_ref && <span className="text-gold-600">*</span>}
-                <input
-                  name="claimRef"
-                  required={org.require_claim_ref}
-                  defaultValue={str(sp.claimRef)}
-                  className={`${input} mt-1`}
-                  maxLength={60}
-                />
-              </label>
-              <label className="block text-xs font-medium">
-                PO number {org.require_po_number && <span className="text-gold-600">*</span>}
-                <input
-                  name="poNumber"
-                  required={org.require_po_number}
-                  defaultValue={str(sp.poNumber) || (org.default_po_number ?? "")}
-                  className={`${input} mt-1`}
-                  maxLength={60}
-                />
-              </label>
-              <label className="block text-xs font-medium">
-                Cost centre
-                <input
-                  name="costCentre"
-                  defaultValue={str(sp.costCentre) || (org.default_cost_centre ?? "")}
-                  className={`${input} mt-1`}
-                  maxLength={60}
-                />
-              </label>
-            </div>
-            <label className="block text-xs font-medium">
-              Notes for Live Luxe
-              <textarea
-                name="notes"
-                rows={3}
-                defaultValue={str(sp.notes)}
-                className="border-cream-300 mt-1 w-full rounded-md border bg-white px-3 py-2 text-sm"
-                maxLength={2000}
-                placeholder="Access needs, arrival time, anything the team should know"
-              />
-            </label>
-          </section>
-
-          <section className="border-cream-200 space-y-3 rounded-xl border bg-white p-5">
-            <label className="flex items-start gap-3 text-sm">
-              <input name="acceptTerms" type="checkbox" required className="mt-1" />
-              <span>
-                I confirm the stay details and the quoted total, and that this request is made under {org.name}&apos;s
-                agreement with Live Luxe. The dates are held for Live Luxe&apos;s decision; nothing is charged until
-                approval.
-              </span>
-            </label>
-            <Button type="submit" variant="gold" className="w-full sm:w-auto" disabled={!quote}>
-              Submit request
-            </Button>
-            {!quote && (
-              <p className="text-sm text-red-900">
-                This stay can no longer be priced online for these dates. Go back and choose different dates.
+          <Panel flush className="divide-border divide-y">
+            <PanelSection className="py-5">
+              <GroupLabel className="mb-3">Guest</GroupLabel>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className={labelClass}>
+                  Guest name <span className="text-accent">*</span>
+                  <input
+                    name="guestName"
+                    required
+                    defaultValue={str(sp.guestName)}
+                    aria-invalid={errorFields.has("guestName") || undefined}
+                    className={fieldClasses(errorFields.has("guestName"))}
+                    maxLength={120}
+                    autoComplete="off"
+                  />
+                  {errorFields.has("guestName") && <span className={fieldErrorClass}>{FIELD_HINTS.guestName}</span>}
+                </label>
+                <label className={labelClass}>
+                  Guest email
+                  <input
+                    name="guestEmail"
+                    type="email"
+                    defaultValue={str(sp.guestEmail)}
+                    aria-invalid={errorFields.has("guestEmail") || undefined}
+                    className={fieldClasses(errorFields.has("guestEmail"))}
+                    autoComplete="off"
+                  />
+                  {errorFields.has("guestEmail") && <span className={fieldErrorClass}>{FIELD_HINTS.guestEmail}</span>}
+                </label>
+                <label className={labelClass}>
+                  Guest phone
+                  <input
+                    name="guestPhone"
+                    type="tel"
+                    defaultValue={str(sp.guestPhone)}
+                    className={fieldClasses()}
+                    maxLength={40}
+                    autoComplete="off"
+                  />
+                </label>
+              </div>
+              <p className="text-muted-foreground mt-3 text-xs">
+                Guest details are shared with Live Luxe only for this stay.
               </p>
-            )}
-          </section>
+            </PanelSection>
+
+            <PanelSection className="py-5">
+              <GroupLabel className="mb-3">Your references</GroupLabel>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <label className={labelClass}>
+                  Claim reference {org.require_claim_ref && <span className="text-accent">*</span>}
+                  <input
+                    name="claimRef"
+                    required={org.require_claim_ref}
+                    defaultValue={str(sp.claimRef)}
+                    aria-invalid={errorFields.has("claimRef") || undefined}
+                    className={fieldClasses(errorFields.has("claimRef"))}
+                    maxLength={60}
+                  />
+                  {errorFields.has("claimRef") && <span className={fieldErrorClass}>{FIELD_HINTS.claimRef}</span>}
+                </label>
+                <label className={labelClass}>
+                  PO number {org.require_po_number && <span className="text-accent">*</span>}
+                  <input
+                    name="poNumber"
+                    required={org.require_po_number}
+                    defaultValue={str(sp.poNumber) || (org.default_po_number ?? "")}
+                    aria-invalid={errorFields.has("poNumber") || undefined}
+                    className={fieldClasses(errorFields.has("poNumber"))}
+                    maxLength={60}
+                  />
+                  {errorFields.has("poNumber") && <span className={fieldErrorClass}>{FIELD_HINTS.poNumber}</span>}
+                </label>
+                <label className={labelClass}>
+                  Cost centre
+                  <input
+                    name="costCentre"
+                    defaultValue={str(sp.costCentre) || (org.default_cost_centre ?? "")}
+                    className={fieldClasses()}
+                    maxLength={60}
+                  />
+                </label>
+              </div>
+              <label className={`${labelClass} mt-4`}>
+                Notes for Live Luxe
+                <textarea
+                  name="notes"
+                  rows={3}
+                  defaultValue={str(sp.notes)}
+                  className={fieldClasses()}
+                  maxLength={2000}
+                  placeholder="Access needs, arrival time, anything the team should know"
+                />
+              </label>
+            </PanelSection>
+
+            <PanelSection className="bg-muted/40 space-y-4 rounded-b-lg py-5">
+              <label className="flex items-start gap-3 text-sm">
+                <input
+                  name="acceptTerms"
+                  type="checkbox"
+                  required
+                  className="mt-0.5 h-4 w-4"
+                  aria-invalid={errorFields.has("acceptTerms") || undefined}
+                />
+                <span className="text-foreground">
+                  I confirm the stay details and the quoted total, and that this request is made under {org.name}&apos;s
+                  agreement with Live Luxe. The dates are held for Live Luxe&apos;s decision; nothing is charged until
+                  approval.
+                  {errorFields.has("acceptTerms") && <span className={fieldErrorClass}>{FIELD_HINTS.acceptTerms}</span>}
+                </span>
+              </label>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button type="submit" variant="gold" className="w-full sm:w-auto" disabled={!quote}>
+                  Submit request
+                </Button>
+                {quote && (
+                  <span className="text-muted-foreground text-xs">
+                    Live Luxe replies within the decision window; you can track it under Requests.
+                  </span>
+                )}
+              </div>
+              {!quote && (
+                <p className="text-bad text-sm">
+                  This stay can no longer be priced online for these dates. Go back and choose different dates.
+                </p>
+              )}
+            </PanelSection>
+          </Panel>
         </form>
 
-        <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
+        <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
           <StayCard
             listing={{
               name: l.public_name,
@@ -197,8 +249,8 @@ export default async function NewRequestPage({ searchParams }: PageProps<"/reque
             pets={pets}
           />
           {quote && (
-            <div className="border-cream-200 rounded-xl border bg-white p-5">
-              <h2 className="mb-3 font-serif text-xl">Quote</h2>
+            <Panel aria-labelledby="quote-heading">
+              <PanelHeading id="quote-heading" title="Quote" className="mb-3" />
               <QuoteLines
                 lines={quote.lines}
                 totalCents={quote.totalCents}
@@ -207,10 +259,10 @@ export default async function NewRequestPage({ searchParams }: PageProps<"/reque
                 nights={quote.nights}
                 compact
               />
-              <p className="text-ink-500 mt-3 text-xs">
+              <p className="text-muted-foreground mt-3 text-xs">
                 Indicative until your contracted rates are applied. GST at the placeholder rate pending sign-off.
               </p>
-            </div>
+            </Panel>
           )}
         </aside>
       </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Sans, Newsreader, Geist_Mono } from "next/font/google";
+import { THEME_SCRIPT } from "./theme-script";
 import "./globals.css";
 
 /**
@@ -19,7 +20,16 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en-AU" className={`${sans.variable} ${serif.variable} ${mono.variable} h-full`}>
+    // suppressHydrationWarning: the inline script below sets data-theme before React
+    // hydrates, so the server's <html> and the client's legitimately differ.
+    <html
+      lang="en-AU"
+      className={`${sans.variable} ${serif.variable} ${mono.variable} h-full`}
+      suppressHydrationWarning
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="bg-background text-foreground flex min-h-full flex-col">{children}</body>
     </html>
   );
