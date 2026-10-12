@@ -1,7 +1,5 @@
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-
-const input = "border-cream-300 h-10 w-full rounded-md border bg-white px-3 text-sm";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { fieldClasses, labelClass } from "@/components/ui/field";
 
 /**
  * Publish a new rate-card version for one organisation (§9 layer 3). Plain form
@@ -18,15 +16,15 @@ export function RateCardForm({
   values: Record<string, string>;
   errorFields: Set<string>;
 }) {
-  const field = (name: string) => cn(input, "mt-1", errorFields.has(name) && "border-red-400 ring-1 ring-red-300");
+  const field = (name: string) => fieldClasses(errorFields.has(name));
   return (
     <form method="post" action={`/api/admin/rate-cards/${orgId}`} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block text-xs font-medium">
-          Card name <span className="text-gold-600">*</span>
+        <label className={labelClass}>
+          Card name <span className="text-accent-ink">*</span>
           <input name="name" required maxLength={80} defaultValue={values.name} className={field("name")} />
         </label>
-        <label className="block text-xs font-medium">
+        <label className={labelClass}>
           Discount on nightly rate (%)
           <input
             name="discountPct"
@@ -39,8 +37,8 @@ export function RateCardForm({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block text-xs font-medium">
-          Takes effect from <span className="text-gold-600">*</span>
+        <label className={labelClass}>
+          Takes effect from <span className="text-accent-ink">*</span>
           <input
             name="validFrom"
             type="date"
@@ -50,31 +48,28 @@ export function RateCardForm({
             className={field("validFrom")}
           />
         </label>
-        <label className="block text-xs font-medium">
+        <label className={labelClass}>
           Ends (optional, exclusive)
           <input name="validTo" type="date" min={today} defaultValue={values.validTo} className={field("validTo")} />
         </label>
       </div>
 
-      <label className="block text-xs font-medium">
+      <label className={labelClass}>
         Extra length-of-stay tiers, one per line as <span className="font-mono">nights:percent</span>
         <textarea
           name="losTiers"
           rows={3}
           placeholder={"90:5\n180:8"}
           defaultValue={values.losTiers}
-          className={cn(
-            "border-cream-300 mt-1 w-full rounded-md border bg-white px-3 py-2 font-mono text-sm",
-            errorFields.has("losTiers") && "border-red-400 ring-1 ring-red-300",
-          )}
+          className={fieldClasses(errorFields.has("losTiers"), "font-mono")}
         />
-        <span className="text-ink-500 mt-1 block font-normal">
+        <span className="text-muted-foreground mt-1 block font-normal">
           Hostaway&apos;s own weekly and monthly discounts still apply; the single best tier wins.
         </span>
       </label>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block text-xs font-medium">
+        <label className={labelClass}>
           Waive cleaning fee from (nights)
           <input
             name="cleaningFeeFromNights"
@@ -95,13 +90,13 @@ export function RateCardForm({
         </label>
       </div>
 
-      <p className="text-ink-500 text-xs">
+      <p className="text-muted-foreground text-xs">
         Publishing closes the current card the day before the new one starts. Quotes already issued keep the card
         version they were priced with.
       </p>
-      <Button type="submit" variant="gold">
+      <SubmitButton variant="gold" pendingLabel="Publishing…">
         Publish new version
-      </Button>
+      </SubmitButton>
     </form>
   );
 }

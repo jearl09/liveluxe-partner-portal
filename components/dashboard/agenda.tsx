@@ -1,21 +1,20 @@
 import Link from "next/link";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import type { AgendaEntry } from "@/lib/domain/dashboard";
+import { Panel, PanelHeading } from "@/components/ui/panel";
 import { cn } from "@/lib/utils";
 
 /** This week: 7-day vertical agenda of arrivals (navy) and departures (muted). */
 export function Agenda({ entries }: { entries: AgendaEntry[] }) {
   return (
-    <section aria-labelledby="agenda-heading" className="border-cream-200 rounded-lg border bg-white">
-      <header className="border-cream-200 border-b px-5 py-4">
-        <h2 id="agenda-heading" className="font-serif text-xl">
-          This week
-        </h2>
-      </header>
+    <Panel flush aria-labelledby="agenda-heading">
+      <PanelHeading id="agenda-heading" title="This week" flush />
       {entries.length === 0 ? (
-        <p className="text-ink-500 px-5 py-8 text-center text-sm">No arrivals or departures in the next 7 days.</p>
+        <p className="text-muted-foreground px-5 py-8 text-center text-sm">
+          No arrivals or departures in the next 7 days.
+        </p>
       ) : (
-        <ol className="divide-cream-200 divide-y">
+        <ol className="divide-border divide-y">
           {entries.map((e, i) => {
             const newDay = i === 0 || entries[i - 1]!.dateIso !== e.dateIso;
             const In = e.direction === "in";
@@ -26,7 +25,7 @@ export function Agenda({ entries }: { entries: AgendaEntry[] }) {
                   className="focus-visible:ring-ring flex gap-3 px-5 py-3 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
                 >
                   <span
-                    className={cn("w-16 shrink-0 text-xs", newDay ? "text-navy-900 font-medium" : "text-transparent")}
+                    className={cn("w-16 shrink-0 text-xs", newDay ? "text-strong font-medium" : "text-transparent")}
                     aria-hidden={!newDay}
                   >
                     {e.dayLabel}
@@ -34,7 +33,7 @@ export function Agenda({ entries }: { entries: AgendaEntry[] }) {
                   <span
                     className={cn(
                       "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
-                      In ? "bg-navy-900 text-white" : "bg-cream-200 text-ink-500",
+                      In ? "bg-primary text-primary-foreground" : "bg-sunken text-muted-foreground",
                     )}
                     aria-label={In ? "Check-in" : "Check-out"}
                   >
@@ -45,14 +44,14 @@ export function Agenda({ entries }: { entries: AgendaEntry[] }) {
                     )}
                   </span>
                   <span className="min-w-0 text-sm">
-                    <span className="text-navy-900 font-medium">{e.guestSurname}</span>
-                    <span className="text-ink-700"> · {e.propertyName}</span>
-                    {e.suburb && <span className="text-ink-500">, {e.suburb}</span>}
+                    <span className="text-strong font-medium">{e.guestSurname}</span>
+                    <span className="text-foreground"> · {e.propertyName}</span>
+                    {e.suburb && <span className="text-muted-foreground">, {e.suburb}</span>}
                     {e.accessNote && (
                       <span
                         className={cn(
                           "block text-xs",
-                          e.accessNote.startsWith("Access") ? "text-emerald-700" : "text-ink-500",
+                          e.accessNote.startsWith("Access") ? "text-ok" : "text-muted-foreground",
                         )}
                       >
                         {e.accessNote}
@@ -65,6 +64,6 @@ export function Agenda({ entries }: { entries: AgendaEntry[] }) {
           })}
         </ol>
       )}
-    </section>
+    </Panel>
   );
 }

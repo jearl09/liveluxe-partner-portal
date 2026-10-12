@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, BedDouble, Bath, Users, PawPrint, Clock, MapPin } from "lucide-react";
 import { Gallery } from "@/components/listings/gallery";
 import { AvailabilityStrip } from "@/components/listings/availability-strip";
+import { PropertyDescription } from "@/components/listings/description";
 import { HouseRules } from "@/components/listings/house-rules";
 import { QuotePanel } from "@/components/listings/quote-panel";
 import { addDays, todayIn } from "@/lib/domain/dates";
@@ -67,7 +68,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
 
   return (
     <div className="space-y-8">
-      <Link href={backHref} className="text-ink-700 inline-flex items-center gap-1 text-sm hover:underline">
+      <Link href={backHref} className="text-foreground inline-flex items-center gap-1 text-sm hover:underline">
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Back to search
       </Link>
 
@@ -84,8 +85,8 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
               <MapPin className="h-3 w-3" aria-hidden /> {place}
             </p>
           )}
-          <h1 className="text-navy-900 font-serif text-3xl tracking-tight">{l.public_name}</h1>
-          <ul className="text-ink-700 mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
+          <h1 className="text-strong font-serif text-3xl tracking-tight">{l.public_name}</h1>
+          <ul className="text-foreground mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
             {l.bedrooms !== null && (
               <li className="flex items-center gap-1.5">
                 <BedDouble className="h-4 w-4" aria-hidden /> {l.bedrooms} {l.bedrooms === 1 ? "bedroom" : "bedrooms"}
@@ -107,7 +108,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
               {l.max_pets > 0 ? `up to ${l.max_pets} ${l.max_pets === 1 ? "pet" : "pets"}` : "no pets"}
             </li>
           </ul>
-          <p className="text-ink-500 mt-2 text-xs">The exact address is shared once a booking is approved.</p>
+          <p className="text-muted-foreground mt-2 text-xs">The exact address is shared once a booking is approved.</p>
         </header>
 
         <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
@@ -126,18 +127,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
         </div>
 
         <div className="space-y-8">
-          {l.description_html && (
-            <section aria-labelledby="about-heading" className="space-y-2">
-              <h2 id="about-heading" className="font-serif text-xl">
-                About this property
-              </h2>
-              {/* Sanitised with DOMPurify at sync time (lib/hostaway/mappers.ts). */}
-              <div
-                className="prose-livluxe text-ink-700 text-sm leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: l.description_html }}
-              />
-            </section>
-          )}
+          <PropertyDescription html={l.description_html} />
 
           <AvailabilityStrip
             days={buildAvailabilityStrip(strip, today, STRIP_DAYS)}
@@ -151,33 +141,31 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
             </h2>
             <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
               <div>
-                <dt className="text-ink-500 flex items-center gap-1 text-xs">
+                <dt className="text-muted-foreground flex items-center gap-1 text-xs">
                   <Clock className="h-3 w-3" aria-hidden /> Check-in
                 </dt>
-                <dd className="text-navy-900">
+                <dd className="text-strong">
                   {time(l.checkin_from)
                     ? `from ${time(l.checkin_from)}${time(l.checkin_to) ? ` to ${time(l.checkin_to)}` : ""}`
                     : "By arrangement"}
                 </dd>
               </div>
               <div>
-                <dt className="text-ink-500 flex items-center gap-1 text-xs">
+                <dt className="text-muted-foreground flex items-center gap-1 text-xs">
                   <Clock className="h-3 w-3" aria-hidden /> Check-out
                 </dt>
-                <dd className="text-navy-900">
-                  {time(l.checkout_by) ? `by ${time(l.checkout_by)}` : "By arrangement"}
-                </dd>
+                <dd className="text-strong">{time(l.checkout_by) ? `by ${time(l.checkout_by)}` : "By arrangement"}</dd>
               </div>
               <div>
-                <dt className="text-ink-500 text-xs">Minimum stay</dt>
-                <dd className="text-navy-900">
+                <dt className="text-muted-foreground text-xs">Minimum stay</dt>
+                <dd className="text-strong">
                   {l.min_nights} {l.min_nights === 1 ? "night" : "nights"}
                   {l.max_nights ? ` · up to ${l.max_nights} nights` : ""}
                 </dd>
               </div>
               <div>
-                <dt className="text-ink-500 text-xs">Fees</dt>
-                <dd className="text-navy-900">
+                <dt className="text-muted-foreground text-xs">Fees</dt>
+                <dd className="text-strong">
                   Cleaning {l.cleaning_fee_cents ? formatMoney(l.cleaning_fee_cents, l.currency) : "included"}
                   {l.extra_person_fee_cents > 0 &&
                     ` · extra guest ${formatMoney(l.extra_person_fee_cents, l.currency)}/night above ${l.guests_included}`}
@@ -196,7 +184,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
                 {amenities.map((a) => (
                   <li
                     key={a.code}
-                    className="border-cream-300 text-ink-700 rounded-full border bg-white px-3 py-1 text-xs"
+                    className="border-input text-foreground bg-card rounded-full border px-3 py-1 text-xs"
                   >
                     {a.label ?? `Amenity ${a.code}`}
                   </li>

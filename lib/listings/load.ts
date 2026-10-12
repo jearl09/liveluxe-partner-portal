@@ -7,6 +7,7 @@ import "server-only";
 import { createServerSupabase } from "@/lib/db/server";
 import type { ListingRow } from "@/lib/db/types";
 import type { CalendarDay } from "@/lib/domain/availability";
+import { isUuid } from "@/lib/domain/ids";
 import {
   SEARCH_PAGE_SIZE,
   pageCount,
@@ -14,8 +15,6 @@ import {
   type PriceSummary,
   type SearchQuery,
 } from "@/lib/domain/search";
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface ListingImage {
   url: string;
@@ -35,7 +34,7 @@ export interface ListingDetail {
 }
 
 export async function getListing(id: string): Promise<ListingDetail | null> {
-  if (!UUID.test(id)) return null;
+  if (!isUuid(id)) return null;
   const supabase = await createServerSupabase();
   const { data: listing, error } = await supabase.from("listings").select("*").eq("id", id).maybeSingle();
   if (error) throw new Error(`listing read failed: ${error.message}`);

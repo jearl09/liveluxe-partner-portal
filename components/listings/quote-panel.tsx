@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { QuoteLines } from "@/components/requests/quote-lines";
 import type { AvailabilityResult } from "@/lib/domain/availability";
 import type { Quote } from "@/lib/domain/quote-engine";
 import { guestsSummary } from "@/lib/domain/requests";
 import { formatDate, formatDayMonth } from "@/lib/utils";
-
-const input = "border-cream-300 h-10 w-full rounded-md border bg-white px-3 text-sm";
-const label = "text-ink-700 block text-xs font-medium";
+import { fieldClass, labelClass } from "@/components/ui/field";
 
 export interface QuoteFormState {
   checkIn: string | null;
@@ -63,46 +62,48 @@ export function QuotePanel({
   const stay = result && form.checkIn && form.checkOut ? { checkIn: form.checkIn, checkOut: form.checkOut } : null;
 
   return (
-    <aside className="border-cream-200 sticky top-4 rounded-xl border bg-white" aria-labelledby="quote-heading">
+    <aside className="border-border bg-card sticky top-20 rounded-lg border" aria-labelledby="quote-heading">
       <div className="space-y-4 p-5">
         <div>
           <h2 id="quote-heading" className="font-serif text-xl">
             Price a stay
           </h2>
           {!result && errors.length === 0 && (
-            <p className="text-ink-500 mt-0.5 text-sm">Enter dates for live availability and a full breakdown.</p>
+            <p className="text-muted-foreground mt-0.5 text-sm">
+              Enter dates for live availability and a full breakdown.
+            </p>
           )}
         </div>
 
         <form method="get" className="space-y-3">
           <fieldset className="grid grid-cols-2 gap-3">
             <legend className="sr-only">Dates</legend>
-            <label className={label}>
+            <label className={labelClass}>
               Check-in
               <input
                 name="checkIn"
                 type="date"
                 min={today}
                 defaultValue={form.checkIn ?? ""}
-                className={`${input} mt-1`}
+                className={`${fieldClass} mt-1`}
                 required
               />
             </label>
-            <label className={label}>
+            <label className={labelClass}>
               Check-out
               <input
                 name="checkOut"
                 type="date"
                 min={today}
                 defaultValue={form.checkOut ?? ""}
-                className={`${input} mt-1`}
+                className={`${fieldClass} mt-1`}
                 required
               />
             </label>
           </fieldset>
           <fieldset className="grid grid-cols-3 gap-3">
             <legend className="sr-only">Guests</legend>
-            <label className={label}>
+            <label className={labelClass}>
               Adults
               <input
                 name="adults"
@@ -111,10 +112,10 @@ export function QuotePanel({
                 min={1}
                 max={20}
                 defaultValue={form.adults}
-                className={`${input} mt-1`}
+                className={`${fieldClass} mt-1`}
               />
             </label>
-            <label className={label}>
+            <label className={labelClass}>
               Children
               <input
                 name="children"
@@ -123,10 +124,10 @@ export function QuotePanel({
                 min={0}
                 max={20}
                 defaultValue={form.children}
-                className={`${input} mt-1`}
+                className={`${fieldClass} mt-1`}
               />
             </label>
-            <label className={label}>
+            <label className={labelClass}>
               Pets
               <input
                 name="pets"
@@ -135,17 +136,17 @@ export function QuotePanel({
                 min={0}
                 max={5}
                 defaultValue={form.pets}
-                className={`${input} mt-1`}
+                className={`${fieldClass} mt-1`}
               />
             </label>
           </fieldset>
-          <Button type="submit" className="h-10 w-full">
+          <SubmitButton className="w-full" pendingLabel="Pricing…">
             Get price
-          </Button>
+          </SubmitButton>
         </form>
 
         {errors.length > 0 && (
-          <ul role="alert" className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          <ul role="alert" className="border-warn-border bg-warn-bg text-warn rounded-md border px-3 py-2 text-sm">
             {errors.map((e) => (
               <li key={e}>{e}</li>
             ))}
@@ -154,19 +155,19 @@ export function QuotePanel({
       </div>
 
       {result && stay && (
-        <div className="border-cream-200 space-y-4 border-t p-5">
+        <div className="border-border space-y-4 border-t p-5">
           <div>
-            <p className="text-navy-900 text-sm font-medium">
+            <p className="text-strong text-sm font-medium">
               {formatDate(stay.checkIn)} → {formatDate(stay.checkOut)}
             </p>
-            <p className="text-ink-500 mt-0.5 text-xs">
+            <p className="text-muted-foreground mt-0.5 text-xs">
               {result.availability.nights} {result.availability.nights === 1 ? "night" : "nights"} ·{" "}
               {guestsSummary(form.adults, form.children, form.pets)}
             </p>
           </div>
 
           {!result.availability.available && (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-900">
+            <div className="border-bad-border bg-bad-bg text-bad rounded-md border px-3 py-3 text-sm">
               <p className="font-medium">Not available</p>
               <p className="mt-0.5">{reasonText(result.availability)}</p>
               {result.availability.unavailableDates.length > 0 && (
@@ -183,9 +184,9 @@ export function QuotePanel({
           )}
 
           {result.availability.available && !result.quote && (
-            <div className="bg-cream-50 border-cream-200 rounded-md border px-3 py-3 text-sm">
-              <p className="text-navy-900 font-medium">Available · price on application</p>
-              <p className="text-ink-500 mt-0.5 text-xs">
+            <div className="bg-background border-border rounded-md border px-3 py-3 text-sm">
+              <p className="text-strong font-medium">Available · price on application</p>
+              <p className="text-muted-foreground mt-0.5 text-xs">
                 Some nights have no rate loaded yet. Live Luxe will price this stay when you submit a request.
               </p>
             </div>
@@ -200,16 +201,16 @@ export function QuotePanel({
                 currency={currency}
                 nights={result.quote.nights}
               />
-              <p className="text-ink-500 text-xs leading-relaxed">
+              <p className="text-muted-foreground text-xs leading-relaxed">
                 Indicative. Your organisation&apos;s contracted rates are applied when a request is submitted. GST is
                 shown at the placeholder rate pending accountant sign-off.
               </p>
               {requestHref ? (
-                <Button asChild variant="gold" className="h-10 w-full">
+                <Button asChild variant="gold" className="w-full">
                   <Link href={requestHref}>Request to book</Link>
                 </Button>
               ) : (
-                <p className="text-ink-500 text-xs">Your role can view prices but not submit requests.</p>
+                <p className="text-muted-foreground text-xs">Your role can view prices but not submit requests.</p>
               )}
             </>
           )}

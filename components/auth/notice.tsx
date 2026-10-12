@@ -1,22 +1,10 @@
-import type { ReactNode } from "react";
-import { cn } from "@/lib/utils";
+import { Banner } from "@/components/ui/banner";
 
-/** Inline status box for the public auth screens. */
-export function Notice({
-  tone = "info",
-  children,
-}: {
-  tone?: "info" | "warn" | "error" | "success";
-  children: ReactNode;
-}) {
-  const styles = {
-    info: "border-cream-300 bg-cream-50 text-ink-900",
-    warn: "border-amber-300 bg-amber-50 text-amber-900",
-    error: "border-red-300 bg-red-50 text-red-900",
-    success: "border-emerald-300 bg-emerald-50 text-emerald-900",
-  }[tone];
-  return <div className={cn("space-y-2 rounded-md border p-3 text-xs", styles)}>{children}</div>;
-}
+/**
+ * Inline status box for the public auth screens. The same strip the portal uses for
+ * outcomes (`Flash`), so a warning reads the same on the sign-in card as on the queue.
+ */
+export const Notice = Banner;
 
 /** Human-readable copy for the `error` query parameter the auth Route Handlers redirect with. */
 export const PASSWORD_ERRORS: Record<string, string> = {
@@ -28,4 +16,5 @@ export const PASSWORD_ERRORS: Record<string, string> = {
   update_failed: "The password could not be saved. Please try again.",
 };
 
-export const inputClass = "h-10 w-full rounded-md border px-3";
+/** @deprecated use fieldClass from @/components/ui/field */
+export { fieldClass as inputClass } from "@/components/ui/field";

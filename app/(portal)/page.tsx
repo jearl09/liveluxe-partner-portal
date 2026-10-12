@@ -33,10 +33,10 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="eyebrow mb-1">Dashboard</p>
-          <h1 className="text-navy-900 font-serif text-3xl tracking-tight">
+          <h1 className="text-strong font-serif text-3xl tracking-tight">
             {d.greeting}, {d.firstName}.
           </h1>
-          <p className="text-ink-500 mt-1 text-sm">
+          <p className="text-muted-foreground mt-1 text-sm">
             {d.orgName} · {d.summary.activePlacements} {d.summary.activePlacements === 1 ? "placement" : "placements"}{" "}
             active · {d.summary.pendingRequests} {d.summary.pendingRequests === 1 ? "request" : "requests"} pending
           </p>
@@ -61,13 +61,13 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
       </header>
 
       {stale && (
-        <div role="alert" className="rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+        <div role="alert" className="border-warn-border bg-warn-bg text-warn rounded-md border px-4 py-2 text-sm">
           Availability shown across the portal may be out of date. Quotes are re-checked before submission.
         </div>
       )}
 
       {d.demo && (
-        <p className="text-ink-500 text-xs">
+        <p className="text-muted-foreground text-xs">
           Showing sample data for design review. Remove <span className="font-mono">?demo=1</span> to see your own.
         </p>
       )}
@@ -103,9 +103,9 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
       </div>
 
       {/* 6. Manual search fallback — below the fold on purpose */}
-      <section className="bg-navy-900 rounded-lg px-6 py-7 text-white md:px-8 print:hidden">
-        <p className="eyebrow mb-1">Fallback</p>
-        <h2 className="font-serif text-xl text-white">Can&apos;t find the right property?</h2>
+      <section className="bg-primary text-primary-foreground rounded-lg px-6 py-7 md:px-8 print:hidden">
+        <p className="eyebrow eyebrow-on-navy mb-1">Fallback</p>
+        <h2 className="text-primary-foreground font-serif text-xl">Can&apos;t find the right property?</h2>
         <p className="mt-1 max-w-xl text-sm text-white/80">
           Tell us the dates, suburb and household and the operations team will run a manual search.
         </p>
@@ -117,7 +117,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
       {/* Phone: sticky search shortcut */}
       <Link
         href="/search"
-        className="bg-navy-900 fixed right-4 bottom-4 z-40 flex items-center gap-2 rounded-full px-4 py-3 text-sm font-medium text-white shadow-lg md:hidden print:hidden"
+        className="bg-primary text-primary-foreground fixed right-4 bottom-4 z-40 flex items-center gap-2 rounded-full px-4 py-3 text-sm font-medium shadow-lg md:hidden print:hidden"
       >
         <Search className="h-4 w-4" aria-hidden /> Search
       </Link>

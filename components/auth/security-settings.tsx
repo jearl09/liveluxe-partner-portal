@@ -1,11 +1,15 @@
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm-button";
 import { Notice } from "@/components/auth/notice";
+import { Panel, PanelHeading } from "@/components/ui/panel";
+import { ScrubParams } from "@/components/ui/scrub-params";
 import { createServerSupabase } from "@/lib/db/server";
 import { getMfaStatus } from "@/lib/auth/mfa";
 
 /**
  * Settings → Security. Server component shared by the partner portal and the admin console.
- * Two-factor authentication is optional; this is the only place it is turned on or off.
+ * Two-factor authentication is optional; this is the only place it is turned on or off,
+ * and turning it off asks for a second press.
  */
 export async function SecuritySettings({
   settingsPath,
@@ -18,50 +22,59 @@ export async function SecuritySettings({
   const on = status.verifiedTotp.length > 0;
 
   return (
-    <section className="space-y-4 rounded-lg border bg-white p-4">
-      <div>
-        <h2 className="text-base font-semibold">Security</h2>
-        <p className="text-ink-700 text-sm">Password and two-factor authentication for your account.</p>
-      </div>
+    <Panel flush aria-labelledby="security-heading">
+      <PanelHeading
+        id="security-heading"
+        title="Security"
+        description="Password and two-factor authentication for your account."
+        flush
+      />
 
-      {flash?.mfa === "on" && <Notice tone="success">Two-factor authentication is on.</Notice>}
-      {flash?.mfa === "off" && <Notice tone="info">Two-factor authentication is off.</Notice>}
-      {flash?.error === "mfa_off_failed" && (
-        <Notice tone="error">Two-factor authentication could not be turned off. Please try again.</Notice>
+      {(flash?.mfa || flash?.error) && (
+        <div className="px-5 pt-4">
+          <ScrubParams keys={["mfa", "error"]} />
+          {flash?.mfa === "on" && <Notice tone="success">Two-factor authentication is on.</Notice>}
+          {flash?.mfa === "off" && <Notice tone="info">Two-factor authentication is off.</Notice>}
+          {flash?.error === "mfa_off_failed" && (
+            <Notice tone="error">Two-factor authentication could not be turned off. Please try again.</Notice>
+          )}
+        </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
-        <div className="text-sm">
-          <div className="font-medium">Two-factor authentication (authenticator app)</div>
-          <div className="text-ink-700 text-xs">
-            {on
-              ? `On · ${status.verifiedTotp[0]?.friendlyName ?? "authenticator"}. A 6-digit code is required at every sign-in.`
-              : "Off · Optional. Adds a 6-digit code from an authenticator app at sign-in."}
+      <div className="divide-border divide-y">
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-5 py-4">
+          <div className="min-w-0 flex-1 text-sm">
+            <p className="text-strong font-medium">Two-factor authentication</p>
+            <p className="text-muted-foreground mt-0.5 text-xs">
+              {on
+                ? `On · ${status.verifiedTotp[0]?.friendlyName ?? "authenticator app"}. A 6-digit code is required at every sign-in.`
+                : "Off. Adds a 6-digit code from an authenticator app at sign-in."}
+            </p>
           </div>
-        </div>
-        {on ? (
-          <form action="/api/auth/mfa/unenroll" method="post">
-            <input type="hidden" name="next" value={settingsPath} />
-            <Button type="submit" variant="outline" size="sm">
-              Turn off
+          {on ? (
+            <form action="/api/auth/mfa/unenroll" method="post">
+              <input type="hidden" name="next" value={settingsPath} />
+              <ConfirmButton variant="outline" confirmLabel="Confirm turn off" pendingLabel="Turning off…">
+                Turn off
+              </ConfirmButton>
+            </form>
+          ) : (
+            <Button asChild size="sm">
+              <a href={`/mfa/enrol?next=${encodeURIComponent(settingsPath + "?mfa=on")}`}>Turn on</a>
             </Button>
-          </form>
-        ) : (
-          <Button asChild size="sm">
-            <a href={`/mfa/enrol?next=${encodeURIComponent(settingsPath + "?mfa=on")}`}>Turn on</a>
-          </Button>
-        )}
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
-        <div className="text-sm">
-          <div className="font-medium">Password</div>
-          <div className="text-ink-700 text-xs">Change it by requesting a reset link to your email.</div>
+          )}
         </div>
-        <Button asChild variant="outline" size="sm">
-          <a href="/reset-password">Reset password</a>
-        </Button>
+
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-5 py-4">
+          <div className="min-w-0 flex-1 text-sm">
+            <p className="text-strong font-medium">Password</p>
+            <p className="text-muted-foreground mt-0.5 text-xs">Change it by requesting a reset link to your email.</p>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <a href="/reset-password">Reset password</a>
+          </Button>
+        </div>
       </div>
-    </section>
+    </Panel>
   );
 }

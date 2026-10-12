@@ -6,6 +6,7 @@
 import "server-only";
 import { createServerSupabase } from "@/lib/db/server";
 import type { Database } from "@/lib/db/types";
+import { isUuid } from "@/lib/domain/ids";
 
 export type PartnerOrgRow = Database["public"]["Tables"]["partner_orgs"]["Row"];
 export type PartnerUserRow = Database["public"]["Tables"]["partner_users"]["Row"];
@@ -41,6 +42,7 @@ export async function listOrgs(): Promise<OrgSummary[]> {
 }
 
 export async function getOrg(id: string): Promise<PartnerOrgRow | null> {
+  if (!isUuid(id)) return null;
   const supabase = await createServerSupabase();
   const { data, error } = await supabase.from("partner_orgs").select("*").eq("id", id).maybeSingle();
   if (error) throw new Error(`partner_orgs read failed: ${error.message}`);
@@ -54,6 +56,7 @@ export interface OrgPeople {
 }
 
 export async function listOrgPeople(orgId: string): Promise<OrgPeople> {
+  if (!isUuid(orgId)) return { users: [], invitations: [] };
   const supabase = await createServerSupabase();
   const [{ data: users, error: uErr }, { data: invitations, error: iErr }] = await Promise.all([
     supabase.from("partner_users").select("*").eq("org_id", orgId).order("created_at"),
@@ -68,4 +71,12 @@ export async function listOrgPeople(orgId: string): Promise<OrgPeople> {
   if (uErr) throw new Error(`partner_users read failed: ${uErr.message}`);
   if (iErr) throw new Error(`invitations read failed: ${iErr.message}`);
   return { users: users ?? [], invitations: invitations ?? [] };
+}
+
+/** Just id and name, for a filter dropdown. Internal (Live Luxe) orgs never book, so they are left out. */
+export async function listOrgOptions(): Promise<{ id: string; name: string }[]> {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase.from("partner_orgs").select("id, name").eq("is_internal", false).order("name");
+  if (error) throw new Error(`partner_orgs read failed: ${error.message}`);
+  return data ?? [];
 }

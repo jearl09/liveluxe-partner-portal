@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, Clock } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
+import { Banner } from "@/components/ui/banner";
+import { PrintButton } from "@/components/ui/print-button";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { GroupLabel, Panel, PanelHeading, PanelSection } from "@/components/ui/panel";
 import { StatusPill } from "@/components/ui/status-pill";
 import { PaymentPanel } from "@/components/payments/payment-panel";
 import { Flash } from "@/components/requests/flash";
@@ -44,56 +47,69 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
   const holdLeft = r.hold_expires_at ? new Date(r.hold_expires_at).getTime() - now.getTime() : null;
 
   return (
-    <div className="space-y-6">
-      <Link href="/requests" className="text-ink-700 inline-flex items-center gap-1 text-sm hover:underline">
+    <div className="space-y-6 print:space-y-4">
+      <Link
+        href="/requests"
+        className="text-foreground inline-flex items-center gap-1 text-sm hover:underline print:hidden"
+      >
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> All requests
       </Link>
+
+      {/* Paper gets the letterhead the app chrome provides on screen. */}
+      <p className="print-only text-muted-foreground hidden border-b pb-3 text-xs">
+        Live Luxe · Partner booking request · {d.listing.name} · printed {formatTimestamp(new Date().toISOString())}
+      </p>
 
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="eyebrow mb-1">Booking request</p>
-          <h1 className="text-navy-900 font-serif text-3xl tracking-tight">{r.reference}</h1>
-          <p className="text-ink-500 mt-1 text-sm">
+          <h1 className="text-strong font-serif text-3xl tracking-tight">{r.reference}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
             Submitted {r.submitted_at ? formatTimestamp(r.submitted_at) : "—"}
             {d.createdByName && ` by ${d.createdByName}`}
           </p>
         </div>
-        <StatusPill status={r.status} className="text-sm" />
+        <div className="flex items-center gap-3">
+          <PrintButton />
+          <StatusPill status={r.status} className="text-sm" />
+        </div>
       </header>
 
-      <Flash
-        done={str(sp.submitted) ? "1" : str(sp.done) || undefined}
-        error={str(sp.error) || undefined}
-        refCode={str(sp.ref) || undefined}
-      />
+      <div className="print:hidden">
+        <Flash
+          done={str(sp.submitted) ? "1" : str(sp.done) || undefined}
+          error={str(sp.error) || undefined}
+          detail={str(sp.detail) || undefined}
+          refCode={str(sp.ref) || undefined}
+        />
+      </div>
 
       {["SUBMITTED", "UNDER_REVIEW"].includes(r.status) && r.decision_due_at && (
-        <p className="text-ink-700 bg-cream-50 border-cream-200 flex items-center gap-2 rounded-md border px-4 py-3 text-sm">
-          <Clock className="text-gold-600 h-4 w-4 shrink-0" aria-hidden />
+        <Banner tone="info">
           Live Luxe is reviewing this. Decision due by {formatTimestamp(r.decision_due_at)}.
           {holdLeft !== null && holdLeft > 0 && ` Dates held for ${humanizeDuration(holdLeft)}.`}
-        </p>
+        </Banner>
       )}
 
       {counter && (
-        <section
-          aria-labelledby="counter-heading"
-          className="border-gold-500 space-y-3 rounded-xl border-2 bg-white p-5"
-        >
-          <h2 id="counter-heading" className="font-serif text-xl">
-            Live Luxe proposed a change
-          </h2>
+        <Panel aria-labelledby="counter-heading" className="border-accent space-y-3">
+          <PanelHeading
+            id="counter-heading"
+            title="Live Luxe proposed a change"
+            description="Accept it to keep the dates on the new terms, or decline to close the request."
+            className="mb-1"
+          />
           {typeof counter.metadata?.message === "string" && (
-            <p className="text-ink-700 text-sm">“{counter.metadata.message}”</p>
+            <p className="text-foreground text-sm">“{counter.metadata.message}”</p>
           )}
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
             {counter.metadata?.newCheckIn !== counter.metadata?.previousCheckIn ||
             counter.metadata?.newCheckOut !== counter.metadata?.previousCheckOut ? (
               <div>
-                <dt className="text-ink-500 text-xs">Proposed dates</dt>
-                <dd className="text-navy-900">
+                <dt className="text-muted-foreground text-xs">Proposed dates</dt>
+                <dd className="text-strong">
                   {formatDate(r.check_in)} → {formatDate(r.check_out)}
-                  <span className="text-ink-500 block text-xs">
+                  <span className="text-muted-foreground block text-xs">
                     was {formatDate(String(counter.metadata?.previousCheckIn))} →{" "}
                     {formatDate(String(counter.metadata?.previousCheckOut))}
                   </span>
@@ -103,11 +119,11 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
             {typeof counter.metadata?.newTotalCents === "number" &&
               counter.metadata.newTotalCents !== counter.metadata.previousTotalCents && (
                 <div>
-                  <dt className="text-ink-500 text-xs">Proposed total</dt>
-                  <dd className="text-navy-900 font-serif text-xl">
+                  <dt className="text-muted-foreground text-xs">Proposed total</dt>
+                  <dd className="text-strong font-serif text-xl">
                     {formatMoney(counter.metadata.newTotalCents, r.currency)}
                     {typeof counter.metadata.previousTotalCents === "number" && (
-                      <span className="text-ink-500 block font-sans text-xs">
+                      <span className="text-muted-foreground block font-sans text-xs">
                         was {formatMoney(counter.metadata.previousTotalCents, r.currency)}
                       </span>
                     )}
@@ -116,118 +132,123 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
               )}
           </dl>
           {holdLeft !== null && holdLeft > 0 && (
-            <p className="text-ink-500 text-xs">
+            <p className="text-muted-foreground text-xs">
               Please answer within {humanizeDuration(holdLeft)}; the dates are held until then.
             </p>
           )}
           {canAct && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 pt-1 print:hidden">
               <form method="post" action={`/api/requests/${r.id}/counter`}>
                 <input type="hidden" name="action" value="accept" />
-                <Button type="submit" variant="gold">
+                <SubmitButton variant="gold" pendingLabel="Accepting…">
                   Accept the proposal
-                </Button>
+                </SubmitButton>
               </form>
               <form method="post" action={`/api/requests/${r.id}/counter`}>
                 <input type="hidden" name="action" value="decline" />
-                <Button type="submit" variant="outline">
+                <SubmitButton variant="outline" pendingLabel="Closing…">
                   Decline and close
-                </Button>
+                </SubmitButton>
               </form>
             </div>
           )}
-        </section>
+        </Panel>
       )}
 
       {r.status === "DECLINED" && (
-        <section className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-900">
+        <Banner tone="error">
           <p className="font-medium">Live Luxe declined this request</p>
-          <p className="mt-1">
+          <p>
             {DECLINE_REASON_LABELS[r.decline_reason ?? "other"] ?? "Other"}
             {r.decline_notes && ` — ${r.decline_notes}`}
           </p>
-          <p className="mt-2 text-xs">The dates have been released. You can search again for alternatives.</p>
-        </section>
+          <p className="text-xs">The dates have been released. You can search again for alternatives.</p>
+        </Banner>
       )}
 
       {r.status === "APPROVED" && (
-        <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">
+        <Banner tone="success">
           <p className="font-medium">Approved</p>
-          <p className="mt-1">
+          <p>
             The dates are reserved. {mode === "invoice" ? "Your invoice is being issued" : "Payment is being finalised"}{" "}
             and the booking confirms automatically in a moment.
           </p>
-        </section>
+        </Banner>
       )}
 
       {r.status === "AWAITING_PAYMENT" && (
-        <section className="border-gold-500 rounded-xl border-2 bg-white p-5 text-sm">
-          <p className="text-navy-900 font-medium">Approved: payment needed to confirm</p>
-          <p className="text-ink-700 mt-1">
+        <Banner tone="info">
+          <p className="font-medium">Approved: payment needed to confirm</p>
+          <p>
             Live Luxe approved this request but the card could not be charged. Pay below to confirm the booking.
             {holdLeft !== null && holdLeft > 0 && ` The dates stay reserved for ${humanizeDuration(holdLeft)}.`}
           </p>
-        </section>
+        </Banner>
       )}
 
       {(r.status === "CONFIRMED" || r.status === "CHECKED_IN" || r.status === "COMPLETED") && (
-        <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">
+        <Banner tone="success">
           <p className="font-medium">Confirmed</p>
-          <p className="mt-1">
+          <p>
             The booking is locked in. Check-in details are released in the portal before arrival; your tax invoice is
             under Invoices.
           </p>
-        </section>
+        </Banner>
       )}
 
       {showPayment && (
-        <PaymentPanel
-          audience="partner"
-          bookingId={r.id}
-          status={r.status}
-          mode={mode}
-          state={pay.state}
-          payment={pay.row}
-          invoice={pay.invoice}
-          totalCents={r.total_cents}
-          currency={r.currency}
-        />
+        <div className="print:hidden">
+          <PaymentPanel
+            audience="partner"
+            bookingId={r.id}
+            status={r.status}
+            mode={mode}
+            state={pay.state}
+            payment={pay.row}
+            invoice={pay.invoice}
+            totalCents={r.total_cents}
+            currency={r.currency}
+          />
+        </div>
       )}
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
-        <div className="space-y-6">
-          <StayCard
-            listing={{
-              name: d.listing.name,
-              suburb: d.listing.suburb,
-              state: d.listing.state,
-              imageUrl: d.listing.imageUrl,
-            }}
-            checkIn={r.check_in}
-            checkOut={r.check_out}
-            nights={r.nights}
-            adults={r.guests_adults}
-            childGuests={r.guests_children}
-            pets={r.guests_pets}
-          />
+      <div className="grid gap-6 lg:grid-cols-[1fr_380px] lg:items-start lg:gap-8 print:grid-cols-1 print:gap-4">
+        <Panel flush className="divide-border divide-y" aria-label="Request details">
+          <PanelSection className="py-4">
+            <StayCard
+              plain
+              listing={{
+                name: d.listing.name,
+                suburb: d.listing.suburb,
+                state: d.listing.state,
+                imageUrl: d.listing.imageUrl,
+              }}
+              checkIn={r.check_in}
+              checkOut={r.check_out}
+              nights={r.nights}
+              adults={r.guests_adults}
+              childGuests={r.guests_children}
+              pets={r.guests_pets}
+            />
+          </PanelSection>
 
-          <section className="border-cream-200 rounded-xl border bg-white p-5">
-            <h2 className="mb-3 font-serif text-xl">Details</h2>
+          <PanelSection>
+            <GroupLabel className="mb-3">Guest and references</GroupLabel>
             <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
               <div>
-                <dt className="text-ink-500 text-xs">Guest</dt>
-                <dd className="text-navy-900">
+                <dt className="text-muted-foreground text-xs">Guest</dt>
+                <dd className="text-strong">
                   {r.guest_name ?? "—"}
                   {(r.guest_email || r.guest_phone) && (
-                    <span className="text-ink-500 block text-xs">
+                    <span className="text-muted-foreground block text-xs">
                       {[r.guest_email, r.guest_phone].filter(Boolean).join(" · ")}
                     </span>
                   )}
                 </dd>
               </div>
               <div>
-                <dt className="text-ink-500 text-xs">References</dt>
-                <dd className="text-navy-900 font-mono text-xs">
+                <dt className="text-muted-foreground text-xs">References</dt>
+                <dd className="text-strong font-mono text-xs">
                   {[
                     r.claim_ref && `Claim ${r.claim_ref}`,
                     r.po_number && `PO ${r.po_number}`,
@@ -239,22 +260,22 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
               </div>
               {r.notes && (
                 <div className="sm:col-span-2">
-                  <dt className="text-ink-500 text-xs">Notes</dt>
-                  <dd className="text-ink-700 whitespace-pre-line">{r.notes}</dd>
+                  <dt className="text-muted-foreground text-xs">Notes</dt>
+                  <dd className="text-foreground whitespace-pre-line">{r.notes}</dd>
                 </div>
               )}
             </dl>
-          </section>
+          </PanelSection>
 
-          <section className="border-cream-200 rounded-xl border bg-white p-5">
-            <h2 className="mb-3 font-serif text-xl">Timeline</h2>
+          <PanelSection>
+            <GroupLabel className="mb-3">Timeline</GroupLabel>
             <StatusTimeline history={d.history} />
-          </section>
-        </div>
+          </PanelSection>
+        </Panel>
 
-        <aside className="lg:sticky lg:top-4 lg:self-start">
-          <div className="border-cream-200 rounded-xl border bg-white p-5">
-            <h2 className="mb-3 font-serif text-xl">Quote</h2>
+        <aside className="lg:sticky lg:top-20 lg:self-start print:static">
+          <Panel aria-labelledby="quote-heading" className="print-keep">
+            <PanelHeading id="quote-heading" title="Quote" className="mb-3" />
             {d.quote ? (
               <QuoteLines
                 lines={d.quote.lines}
@@ -265,11 +286,16 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
                 compact
               />
             ) : (
-              <p className="text-ink-500 text-sm">Priced by Live Luxe.</p>
+              <p className="text-muted-foreground text-sm">Priced by Live Luxe.</p>
             )}
-          </div>
+          </Panel>
         </aside>
       </div>
+
+      <p className="print-only text-muted-foreground hidden border-t pt-3 text-xs">
+        Live Luxe Pty Ltd · ABN 16 678 772 613 · Partner bookings are confidential and subject to your agreement with
+        Live Luxe.
+      </p>
     </div>
   );
 }

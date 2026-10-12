@@ -3,7 +3,7 @@
  * Pure: validation, SLA arithmetic and view-model helpers. No I/O.
  */
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
-import type { BookingStatus } from "./booking-state-machine";
+import { BOOKING_STATUSES, type BookingStatus } from "./booking-state-machine";
 import type { Quote, QuoteLine } from "./quote-engine";
 import { computePriceHash } from "./quote-engine";
 import { sumCents, type Cents } from "./money";
@@ -151,8 +151,10 @@ export function slaBand(
 /** Statuses that sit in the ops queue, i.e. waiting on Live Luxe. */
 export const QUEUE_STATUSES: readonly BookingStatus[] = ["SUBMITTED", "UNDER_REVIEW"];
 
+export type RequestBucket = "open" | "upcoming" | "history";
+
 /** Where a request shows up for the partner: open, upcoming, or history. */
-export function requestBucket(status: BookingStatus): "open" | "upcoming" | "history" {
+export function requestBucket(status: BookingStatus): RequestBucket {
   switch (status) {
     case "SUBMITTED":
     case "UNDER_REVIEW":
@@ -167,6 +169,13 @@ export function requestBucket(status: BookingStatus): "open" | "upcoming" | "his
       return "history";
   }
 }
+
+/** The statuses behind each bucket, for a database filter. Drafts belong to no bucket. */
+export const BUCKET_STATUSES: Record<RequestBucket, BookingStatus[]> = (() => {
+  const out: Record<RequestBucket, BookingStatus[]> = { open: [], upcoming: [], history: [] };
+  for (const s of BOOKING_STATUSES) if (s !== "DRAFT") out[requestBucket(s)].push(s);
+  return out;
+})();
 
 // ---------------------------------------------------------------------------
 // Counter-offers (§10.1 COUNTER_OFFERED)

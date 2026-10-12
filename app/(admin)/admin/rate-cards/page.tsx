@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/ui/page-header";
+import { Panel } from "@/components/ui/panel";
+import { Table, tdClass, thClass, theadClass } from "@/components/ui/table";
 import { getSessionClaims } from "@/lib/db/server";
 import { todayIn } from "@/lib/domain/dates";
+import { PARTNER_TYPE_LABELS, type PartnerType } from "@/lib/domain/partners";
 import { can } from "@/lib/domain/permissions";
 import { describeRateCard } from "@/lib/domain/rate-cards";
 import { listOrgs } from "@/lib/partners/load";
@@ -26,20 +29,20 @@ export default async function RateCardsPage() {
         title="Rate cards"
         description="Each partner's contracted discount, applied on top of the Hostaway rate when they price a stay."
       />
-      <div className="border-cream-200 overflow-hidden rounded-xl border bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="text-ink-500 text-xs tracking-wide uppercase">
-            <tr className="border-cream-200 border-b">
-              <th className="px-4 py-2.5 font-medium">Partner</th>
-              <th className="px-3 py-2.5 font-medium">Current card</th>
-              <th className="px-3 py-2.5 font-medium">Terms</th>
-              <th className="px-3 py-2.5 font-medium">Valid</th>
+      <Panel flush>
+        <Table>
+          <thead className={theadClass}>
+            <tr className="border-border border-b">
+              <th className={thClass}>Partner</th>
+              <th className={thClass}>Current card</th>
+              <th className={thClass}>Terms</th>
+              <th className={thClass}>Valid</th>
             </tr>
           </thead>
           <tbody>
             {orgs.length === 0 && (
               <tr>
-                <td colSpan={4} className="text-ink-500 px-4 py-10 text-center">
+                <td colSpan={4} className="text-muted-foreground px-5 py-10 text-center">
                   No partner organisations yet. Add one under Partners.
                 </td>
               </tr>
@@ -47,36 +50,41 @@ export default async function RateCardsPage() {
             {orgs.map(({ org }) => {
               const c = current.get(org.id);
               return (
-                <tr key={org.id} className="border-cream-200 hover:bg-cream-50 relative border-b last:border-0">
-                  <td className="px-4 py-3 align-top">
+                <tr
+                  key={org.id}
+                  className="border-border hover:bg-muted/50 relative border-b transition-colors last:border-0"
+                >
+                  <td className={tdClass}>
                     <Link
                       href={`/admin/rate-cards/${org.id}`}
-                      className="text-navy-900 font-medium after:absolute after:inset-0 focus-visible:outline-none"
+                      className="text-strong focus-visible:after:ring-ring font-medium after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset"
                     >
                       {org.name}
                     </Link>
-                    <span className="text-ink-500 block text-xs capitalize">{org.type}</span>
+                    <span className="text-muted-foreground block text-xs">
+                      {PARTNER_TYPE_LABELS[org.type as PartnerType] ?? org.type}
+                    </span>
                   </td>
-                  <td className="px-3 py-3 align-top">
+                  <td className={tdClass}>
                     {c ? (
                       <>
-                        <span className="text-navy-900">{c.row.name}</span>
-                        <span className="text-ink-500 block text-xs">version {c.row.version}</span>
+                        <span className="text-strong">{c.row.name}</span>
+                        <span className="text-muted-foreground block text-xs">version {c.row.version}</span>
                       </>
                     ) : (
-                      <span className="text-ink-500">None — Hostaway rate applies</span>
+                      <span className="text-muted-foreground">None — Hostaway rate applies</span>
                     )}
                   </td>
-                  <td className="text-ink-700 px-3 py-3 align-top text-xs">{c ? describeRateCard(c.card) : "—"}</td>
-                  <td className="px-3 py-3 align-top text-xs whitespace-nowrap">
+                  <td className={`${tdClass} text-foreground text-xs`}>{c ? describeRateCard(c.card) : "—"}</td>
+                  <td className={`${tdClass} text-xs whitespace-nowrap`}>
                     {c ? `${formatDate(c.validFrom)} → ${c.validTo ? formatDate(c.validTo) : "open"}` : "—"}
                   </td>
                 </tr>
               );
             })}
           </tbody>
-        </table>
-      </div>
+        </Table>
+      </Panel>
     </div>
   );
 }

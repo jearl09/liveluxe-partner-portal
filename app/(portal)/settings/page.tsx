@@ -1,4 +1,5 @@
 import { SecuritySettings } from "@/components/auth/security-settings";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const metadata = { title: "Settings" };
 
@@ -10,7 +11,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
   const p = await searchParams;
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Settings</h1>
+      <PageHeader eyebrow="Account" title="Settings" />
       <SecuritySettings
         settingsPath="/settings"
         flash={{
@@ -18,9 +19,9 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
           error: typeof p.error === "string" ? p.error : undefined,
         }}
       />
-      <section className="text-ink-500 rounded-lg border border-dashed p-6 text-sm">
+      <p className="text-muted-foreground text-sm">
         Organisation defaults and notification preferences arrive in Phase 2.
-      </section>
+      </p>
     </div>
   );
 }

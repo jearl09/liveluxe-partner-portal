@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Notice, PASSWORD_ERRORS, inputClass } from "@/components/auth/notice";
 import { PasswordFields } from "@/components/auth/password-fields";
 import { createServerSupabase } from "@/lib/db/server";
@@ -49,8 +49,8 @@ export default async function InvitePage({ params, searchParams }: PageProps<"/i
 
   return (
     <form className="space-y-4" action="/api/auth/accept-invite" method="post">
-      <h1 className="text-navy-900 font-serif text-2xl">Join {inv.org_name}</h1>
-      <p className="text-ink-700 text-sm">
+      <h1 className="text-strong font-serif text-2xl">Join {inv.org_name}</h1>
+      <p className="text-foreground text-sm">
         You have been invited as <strong>{ROLE_LABELS[inv.role] ?? inv.role}</strong>. Set a password to activate{" "}
         <strong>{inv.email}</strong>.
       </p>
@@ -61,10 +61,10 @@ export default async function InvitePage({ params, searchParams }: PageProps<"/i
         <input name="fullName" type="text" autoComplete="name" maxLength={120} className={inputClass} />
       </label>
       <PasswordFields autoFocus />
-      <Button type="submit" className="w-full">
+      <SubmitButton className="w-full" pendingLabel="Creating your account…">
         Activate account
-      </Button>
-      <p className="text-ink-500 text-center text-xs">
+      </SubmitButton>
+      <p className="text-muted-foreground text-center text-xs">
         Invitations expire 7 days after they are sent. Already have an account?{" "}
         <a href="/login" className="underline">
           Sign in
@@ -83,7 +83,7 @@ function Invalid({ reason }: { reason: "not_found" | "expired" | "accepted" }) {
   }[reason];
   return (
     <div className="space-y-4">
-      <h1 className="text-navy-900 font-serif text-2xl">Invitation unavailable</h1>
+      <h1 className="text-strong font-serif text-2xl">Invitation unavailable</h1>
       <Notice tone="warn">{copy}</Notice>
       <a href="/login" className="block text-center text-sm underline">
         Go to sign in

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Notice, inputClass } from "@/components/auth/notice";
 import { createServerSupabase, getSessionClaims } from "@/lib/db/server";
 import { getMfaStatus } from "@/lib/auth/mfa";
@@ -23,8 +23,8 @@ export default async function MfaVerifyPage({ searchParams }: PageProps<"/mfa/ve
 
   return (
     <form className="space-y-4" action="/api/auth/mfa/verify" method="post">
-      <h1 className="text-navy-900 font-serif text-2xl">Enter your authenticator code</h1>
-      <p className="text-ink-700 text-sm">
+      <h1 className="text-strong font-serif text-2xl">Enter your authenticator code</h1>
+      <p className="text-foreground text-sm">
         Open your authenticator app{factor.friendlyName ? ` (${factor.friendlyName})` : ""} and enter the current
         6-digit code for <strong>{claims.email}</strong>.
       </p>
@@ -46,10 +46,10 @@ export default async function MfaVerifyPage({ searchParams }: PageProps<"/mfa/ve
           className={`${inputClass} font-mono tracking-[0.3em]`}
         />
       </label>
-      <Button type="submit" className="w-full">
+      <SubmitButton className="w-full" pendingLabel="Verifying…">
         Continue
-      </Button>
-      <p className="text-ink-500 text-center text-xs">
+      </SubmitButton>
+      <p className="text-muted-foreground text-center text-xs">
         Lost your device? Contact a Livluxe administrator to reset your authenticator.{" "}
         <button type="submit" formAction="/api/auth/sign-out" formNoValidate className="underline">
           Sign out

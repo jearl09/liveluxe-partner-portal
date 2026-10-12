@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Notice, inputClass } from "@/components/auth/notice";
 
 export const metadata = { title: "Reset password" };
@@ -11,14 +11,16 @@ export default async function ResetPasswordPage({ searchParams }: PageProps<"/re
 
   return (
     <form className="space-y-4" action="/api/auth/reset-password" method="post">
-      <h1 className="text-navy-900 font-serif text-2xl">Reset your password</h1>
+      <h1 className="text-strong font-serif text-2xl">Reset your password</h1>
       {sent ? (
         <Notice tone="success">
           If an account exists for that address, a reset link is on its way. It expires after one hour. Check your spam
           folder if it does not arrive.
         </Notice>
       ) : (
-        <p className="text-ink-700 text-sm">Enter the email address you sign in with and we will send a reset link.</p>
+        <p className="text-foreground text-sm">
+          Enter the email address you sign in with and we will send a reset link.
+        </p>
       )}
       {error === "rate_limited" && (
         <Notice tone="error">Too many reset requests. Please wait before trying again.</Notice>
@@ -31,10 +33,10 @@ export default async function ResetPasswordPage({ searchParams }: PageProps<"/re
         <span className="mb-1 block font-medium">Email</span>
         <input name="email" type="email" required autoComplete="email" className={inputClass} />
       </label>
-      <Button type="submit" className="w-full">
+      <SubmitButton className="w-full" pendingLabel="Sending…">
         Send reset link
-      </Button>
-      <p className="text-ink-500 text-center text-xs">
+      </SubmitButton>
+      <p className="text-muted-foreground text-center text-xs">
         <a href="/login" className="underline">
           Back to sign in
         </a>

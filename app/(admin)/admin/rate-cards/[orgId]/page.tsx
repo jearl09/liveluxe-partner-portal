@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { RateCardForm } from "@/components/admin/rate-card-form";
 import { Flash } from "@/components/requests/flash";
 import { PageHeader } from "@/components/ui/page-header";
+import { Panel, PanelHeading } from "@/components/ui/panel";
 import { getSessionClaims } from "@/lib/db/server";
 import { todayIn } from "@/lib/domain/dates";
 import { can } from "@/lib/domain/permissions";
@@ -33,7 +34,7 @@ export default async function OrgRateCardPage({ params, searchParams }: PageProp
 
   return (
     <div className="space-y-6">
-      <Link href="/admin/rate-cards" className="text-ink-700 inline-flex items-center gap-1 text-sm hover:underline">
+      <Link href="/admin/rate-cards" className="text-foreground inline-flex items-center gap-1 text-sm hover:underline">
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> All rate cards
       </Link>
       <PageHeader
@@ -44,38 +45,40 @@ export default async function OrgRateCardPage({ params, searchParams }: PageProp
       <Flash done={str(sp.done) || undefined} error={str(sp.error) || undefined} detail={str(sp.detail) || undefined} />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_minmax(0,420px)]">
-        <section className="border-cream-200 rounded-xl border bg-white">
-          <h2 className="border-cream-200 border-b px-5 py-3 font-serif text-lg">Versions</h2>
+        <Panel flush className="h-fit" aria-labelledby="versions-heading">
+          <PanelHeading id="versions-heading" title="Versions" flush />
           {versions.length === 0 ? (
-            <p className="text-ink-500 px-5 py-10 text-center text-sm">
+            <p className="text-muted-foreground px-5 py-10 text-center text-sm">
               No rate card yet. This partner is quoted the Hostaway rate.
             </p>
           ) : (
-            <ul className="divide-cream-200 divide-y text-sm">
+            <ul className="divide-border divide-y text-sm">
               {versions.map((v) => (
                 <li key={v.row.id} className="flex flex-wrap items-start justify-between gap-2 px-5 py-3">
                   <div>
-                    <p className="text-navy-900 font-medium">
-                      {v.row.name} <span className="text-ink-500 font-normal">· v{v.row.version}</span>
+                    <p className="text-strong font-medium">
+                      {v.row.name} <span className="text-muted-foreground font-normal">· v{v.row.version}</span>
                       {v.current && (
-                        <span className="bg-gold-500 ml-2 rounded-full px-2 py-0.5 text-xs text-white">In force</span>
+                        <span className="bg-accent text-accent-foreground ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium">
+                          In force
+                        </span>
                       )}
                     </p>
-                    <p className="text-ink-700 text-xs">{describeRateCard(v.card)}</p>
+                    <p className="text-foreground text-xs">{describeRateCard(v.card)}</p>
                   </div>
-                  <p className="text-ink-500 text-xs whitespace-nowrap">
+                  <p className="text-muted-foreground text-xs whitespace-nowrap">
                     {formatDate(v.validFrom)} → {v.validTo ? formatDate(v.validTo) : "open"}
                   </p>
                 </li>
               ))}
             </ul>
           )}
-        </section>
+        </Panel>
 
-        <section className="border-cream-200 h-fit rounded-xl border bg-white p-5">
-          <h2 className="mb-3 font-serif text-lg">Publish a new version</h2>
+        <Panel className="h-fit" aria-labelledby="publish-heading">
+          <PanelHeading id="publish-heading" title="Publish a new version" />
           <RateCardForm orgId={orgId} today={today} values={values} errorFields={errorFields} />
-        </section>
+        </Panel>
       </div>
     </div>
   );

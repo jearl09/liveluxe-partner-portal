@@ -296,6 +296,100 @@ npm run dev · npm run typecheck · npm run lint · npm run test:unit · npm run
 - Still open for Week 2 close-out: Resend key + DNS (GoDaddy), client Supabase/Vercel credentials for cut-over,
   Angel's decisions on hold hours / deposit % / SLA (docs/DECISIONS-REQUIRED.md).
 
+### Session 5 (cont.) — theme system: light and dark
+
+- `app/globals.css` is the whole design-token layer: brand scale, a dark palette built down from navy (`--d-*`),
+  role tokens (`--background`, `--card`, `--muted`, `--sunken`, `--raised`, `--strong`, `--foreground`,
+  `--muted-foreground`, `--border`, `--input`, `--primary`, `--accent`, `--ring`), status triplets
+  (`--ok/--warn/--bad` + `-bg` / `-border`), radii and `--ease-ios`. Dark is declared twice: under
+  `@media (prefers-color-scheme: dark) :root:not([data-theme="light"])` (system) and `:root[data-theme="dark"]` (forced).
+- Components use only the semantic utilities (`bg-card`, `text-strong`, `border-border`, `text-ok` …). Two surfaces
+  are deliberately fixed navy in both themes: the admin header (so ops staff always know which side they are on) and
+  the marketing hero panel. `bg-white` is reserved for things that must stay white (the MFA QR code).
+- `app/theme-script.ts` runs inline in `<head>` before paint and restores `localStorage["livluxe.theme"]`
+  (`light` | `dark` | `system`); `components/layout/theme-toggle.tsx` is the three-way control
+  (`useSyncExternalStore`, no flash, `.theme-switching` cross-fade for 220 ms). `color-scheme` flips native date pickers.
+
+### Session 5 (cont.) — professional design review
+
+Audit of every page in both themes at 1366 / 820 / 390, then the fixes. Nothing in business logic, routes or APIs changed.
+
+- **Shared primitives** in `components/ui/`: `Panel` / `PanelHeading` / `PanelSection` / `GroupLabel` (`panel.tsx`,
+  the one bordered surface — replaces ~30 hand-rolled card shells and settles one radius, `rounded-lg`);
+  `Banner` (`banner.tsx`, the one message strip — `Flash` and the auth `Notice` both render through it, with a lucide
+  icon per tone and `role=alert` only for errors); `Pill` (`pill.tsx`, tinted label for SLA bands and account / user
+  status — booking statuses keep the bordered `StatusPill`); `Table` + `theadClass/thClass/tdClass` (`table.tsx`,
+  sideways scroll on narrow screens); `ConfirmButton` (`confirm-button.tsx`, client — first press swaps the button in
+  place for a red "Confirm …" + Cancel, Escape cancels; no modal). `field.ts` gained `fieldClasses(invalid)`,
+  `invalidFieldClass`, `fieldErrorClass`; `labelClass` is now used everywhere.
+- **Heading tiers**: page title (serif 3xl, `PageHeader`) → panel heading (serif xl, `PanelHeading`) → group label
+  (sans sm medium, `GroupLabel`) → field label (xs medium, `labelClass`). Settings pages use `PageHeader` like the rest.
+- **Fewer cards**: request detail (partner and ops) is one divided panel — stay, guest/references, timeline — with the
+  quote (and on ops, the decision) in the aside. `DecisionPanel` is one panel: Approve as the primary action, Counter-
+  offer and Decline as disclosures with a chevron; Decline asks for a second press. The new-request form is one panel
+  with titled sections, invalid fields get a red ring plus an inline hint (`FIELD_HINTS`), and the generic
+  "validation failed" flash is suppressed when fields are named. Search's date hint is a plain line, not a third box.
+  Admin queue: the legend pills carry the counts (overdue / at risk / on track / waiting on partner).
+- **Responsive**: `RequestsTable` becomes a stacked list below `lg` (same pattern as the dashboard table); people,
+  partners and rate-card tables scroll sideways inside their panel. Sticky asides sit at `top-20`, clear of the 64 px
+  sticky header (they used to slide under it).
+- **Safeguards and a11y**: Remove access, Revoke invitation, Decline request and Turn off 2FA use `ConfirmButton`;
+  nav links and request tabs have visible focus rings; row-link tables show an inset focus ring; `aria-invalid` on
+  flagged fields; user status shows "Active / Invited / Access removed", org status uses its labels.
+- Temporary `app/(preview)/dev/kit` (component gallery with fixtures) was used for the screenshots and removed before
+  commit; recreate it if you need to eyeball components without a database.
+
+### Session 5 (cont.) — error pages, pending states, one-shot flashes, queue filters, gallery + visual/a11y tests, print
+
+Eight follow-ups to the design review, all UI/infra; no business logic, routes or RLS touched.
+
+1. **Error, 404 and loading pages.** `app/not-found.tsx` (unknown routes, outside the shell), `app/(portal)/not-found.tsx`
+   and `app/(admin)/not-found.tsx` (missing records, inside the shell), `app/error.tsx` + `app/(portal)/error.tsx` +
+   `app/(admin)/error.tsx` (client boundaries rendering `components/layout/error-view.tsx`: "Try again" calls `reset()`,
+   the only detail shown is Next's `digest`, which matches the server log), `app/global-error.tsx` (root-layout failure,
+   inline styles), `app/(admin)/loading.tsx`. All share `components/layout/trouble.tsx`. Every by-ID loader now
+   guards with `isUuid()` (`lib/domain/ids.ts`), so `/admin/partners/abc` is a 404, not a Postgres cast error.
+2. **Pending states.** `components/ui/submit-button.tsx` listens to its form's `submit` event (the forms are plain
+   POSTs to Route Handlers, so `useFormStatus` does not apply): spinner + pending label, disabled, a second submit while
+   busy is cancelled; releases on bfcache restore and after 20 s. Used on every mutation form, the search forms, and
+   inside `ConfirmButton`. The server-side transition checks are unchanged and remain the real idempotency guard.
+3. **One-shot flashes.** `components/ui/scrub-params.tsx` drops the outcome keys (`done`, `submitted`, `error`,
+   `detail`, `ref`; on auth screens `error`, `reset`, `invited`, `mfa`) from the address bar with `history.replaceState`
+   once the message is on screen. Filters, tabs, paging and a bounced form's `fields`/values are untouched.
+   `Flash`, `SecuritySettings`, the auth layout and the request form render it.
+4. **Queue.** `lib/domain/list-params.ts` parses/prints `band`, `orgId`, `q`, `page`, `pageSize` (25/50/100).
+   `listAllRequests` and `listRequests` page in the database (`count: exact` + `range`, ordered by `updated_at, id`);
+   `listQueue` filters partner and search in the database but bands and pages in memory, because the band is a
+   function of the clock PostgREST cannot express and the queue is only ever the requests awaiting a decision (cap 1000).
+   UI: `components/requests/list-filters.tsx` (GET form: reference/guest search, partner select, Clear),
+   band pills are links that filter, `components/ui/list-pagination.tsx` (count, prev/next, page size),
+   `components/requests/freshness.tsx` ("Updated 2 min ago", Refresh, `router.refresh()` every 60 s while visible,
+   at once when the tab returns, never while one is in flight, "Offline" when `navigator.onLine` is false).
+   `/admin/bookings` and `/requests` use the same paging.
+5. **Gallery.** `app/(preview)/dev/kit` is back, gated by `lib/preview.ts` (`NODE_ENV=development`, Vercel preview, or
+   `DEV_PREVIEWS=1`); the proxy opens `/dev` under the same rule, and `?throw=1` exercises the error boundary.
+   `tests/e2e/kit.spec.ts` (project `visual`) screenshots it in both shells × both themes × 1366/820/390 and asserts no
+   horizontal overflow. **Baselines are platform-specific and not committed** (this session's machine had no Google
+   Fonts): run `npm run test:e2e:visual -- --update-snapshots` once on the machine that will compare, then commit
+   `tests/e2e/kit.spec.ts-snapshots/`. Budget is 120 differing pixels; a one-class change to a pill fails it.
+6. **axe.** `tests/e2e/a11y.spec.ts` (`npm run test:e2e:a11y`): WCAG 2.x A/AA + best-practice on sign-in, the gallery
+   (partner and admin shells), the 404 and the error page, in both themes, with zero exclusions. Fixes it forced:
+   `--ink-500` darkened to `#5a6373` (AA on cream-200); `--accent-foreground` is navy in light mode too (white on the
+   brand gold was 3.3:1, navy is 5.6:1 — gold buttons and the gold-filled pill now carry navy text); `--accent-ink`
+   (`#8a6220`) is the gold for _text_ (eyebrows, required asterisks, link buttons, the gold outline pill), with
+   `.eyebrow-on-navy` for the hero panel and admin header; dark `--destructive` is `#c73f33`; the auth layout has a
+   `<main>`; loading skeletons are `role="status"`; `Trouble` headings use `useId`.
+7. **Print.** `@page A4`, light tokens forced in print whatever the theme, `[data-app-chrome]` (shell header/footer),
+   `nav`, controls and `.print:hidden` hidden, sections/rows keep together. Both request detail pages have a
+   "Print / Save as PDF" button (`components/ui/print-button.tsx` → `window.print()`), a print-only letterhead line
+   and ABN footer, a single-column layout, and hide the decision panel and flashes.
+8. **Responsive.** Search form is two rows between `md` and `xl`; the theme control is a single cycling button below
+   `lg` (accessible name states the current theme and the next), the three-way segmented control above it.
+
+- Playwright: projects `desktop-chromium`, `mobile-390` (WebKit), `visual` (Chromium, kit only). `PW_CHROMIUM_PATH`
+  points the runner at a system Chromium (and runs the phone project on it) for machines without browser downloads.
+  The two smoke tests for cron/webhook secrets need a configured `.env.local` (they 500 without `CRON_SECRET`).
+
 ### Session 6 (13 Oct 2026) — Stripe payments, confirmation, invoices
 
 Built against a Stripe **sandbox** (test keys in `.env.local` and on Vercel; the live keys are commented out in

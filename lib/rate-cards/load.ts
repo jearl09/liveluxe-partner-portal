@@ -10,6 +10,7 @@ import type { RateCard } from "@/lib/domain/quote-engine";
 import { rateCardFromRow, type RateCardFormValues } from "@/lib/domain/rate-cards";
 import { log } from "@/lib/observability/logger";
 import { rpcErrorToDomain } from "@/lib/requests/errors";
+import { isUuid } from "@/lib/domain/ids";
 
 /** The card in force for `orgId` on `date` (the stay's check-in), or null. Never throws: pricing must not fail because of a card. */
 export async function effectiveRateCard(orgId: string, date: string): Promise<RateCard | null> {
@@ -40,6 +41,7 @@ export function parseDateRange(literal: string): { from: string; to: string | nu
 
 /** All versions for one organisation, newest first. */
 export async function listRateCards(orgId: string, today: string): Promise<RateCardVersion[]> {
+  if (!isUuid(orgId)) return [];
   const supabase = await createServerSupabase();
   const { data, error } = await supabase
     .from("rate_cards")

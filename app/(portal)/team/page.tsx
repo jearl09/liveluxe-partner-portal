@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import { Flash } from "@/components/requests/flash";
-import { PeoplePanel } from "@/components/team/people-panel";
+import { PeoplePanel, ROLE_LABELS } from "@/components/team/people-panel";
 import { PageHeader } from "@/components/ui/page-header";
+import { Panel } from "@/components/ui/panel";
 import { INVITE_LINK_COOKIE } from "@/lib/auth/invite-link";
 import { getSessionClaims } from "@/lib/db/server";
 import { can, USER_ROLES } from "@/lib/domain/permissions";
@@ -45,19 +46,24 @@ export default async function TeamPage({ searchParams }: PageProps<"/team">) {
           values={{ email: str(sp.email), role: str(sp.role) }}
         />
       ) : (
-        <section className="border-cream-200 rounded-xl border bg-white">
-          <ul className="divide-cream-200 divide-y text-sm">
+        <Panel flush aria-label="People in your organisation">
+          <ul className="divide-border divide-y text-sm">
             {people.users.map((u) => (
-              <li key={u.id} className="flex items-center justify-between px-5 py-3">
-                <div>
-                  <span className="text-navy-900">{u.full_name ?? "—"}</span>
-                  <span className="text-ink-500 block text-xs">{u.email}</span>
+              <li key={u.id} className="flex items-center justify-between gap-4 px-5 py-3">
+                <div className="min-w-0">
+                  <span className="text-strong">
+                    {u.full_name ?? "—"}
+                    {u.auth_user_id === claims.sub && <span className="text-muted-foreground"> (you)</span>}
+                  </span>
+                  <span className="text-muted-foreground block truncate text-xs">{u.email}</span>
                 </div>
-                <span className="text-ink-700 text-xs capitalize">{u.role.replace("partner_", "")}</span>
+                <span className="text-foreground shrink-0 text-xs">
+                  {ROLE_LABELS[u.role as keyof typeof ROLE_LABELS] ?? u.role}
+                </span>
               </li>
             ))}
           </ul>
-        </section>
+        </Panel>
       )}
     </div>
   );

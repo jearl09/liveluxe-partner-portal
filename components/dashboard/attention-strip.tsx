@@ -24,15 +24,15 @@ export function AttentionStrip({ items }: { items: AttentionItem[] }) {
           return (
             <li
               key={`${it.kind}:${it.requestId}`}
-              className="border-gold-500/60 flex min-w-[280px] snap-start flex-col justify-between gap-3 rounded-lg border bg-white p-4 md:min-w-0"
+              className="border-accent/60 bg-card flex min-w-[280px] snap-start flex-col justify-between gap-3 rounded-lg border p-4 md:min-w-0"
             >
               <div className="flex gap-3">
-                <span className="bg-gold-500/10 text-gold-600 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
+                <span className="bg-accent/10 text-accent flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
                   <Icon className="h-4 w-4" aria-hidden />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-navy-900 text-sm font-medium">{it.title}</p>
-                  <p className="text-ink-500 line-clamp-2 text-xs">{it.context}</p>
+                  <p className="text-strong text-sm font-medium">{it.title}</p>
+                  <p className="text-muted-foreground line-clamp-2 text-xs">{it.context}</p>
                 </div>
               </div>
               <Button asChild size="sm" variant="outline" className="self-start">

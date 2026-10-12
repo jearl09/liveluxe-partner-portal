@@ -1,5 +1,7 @@
 import { CalendarDays } from "lucide-react";
+import { Banner } from "@/components/ui/banner";
 import { PageHeader } from "@/components/ui/page-header";
+import { Panel } from "@/components/ui/panel";
 import { FreshnessPill } from "@/components/dashboard/freshness-pill";
 import { SectionError } from "@/components/dashboard/section-error";
 import { SearchForm } from "@/components/search/search-form";
@@ -63,16 +65,16 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
       <SearchForm query={query} today={today} />
 
       {parsed.errors.length > 0 && (
-        <ul role="alert" className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <Banner tone="warn">
           {parsed.errors.map((e) => (
-            <li key={e}>{e}</li>
+            <p key={e}>{e}</p>
           ))}
-        </ul>
+        </Banner>
       )}
 
       {!parsed.hasDates && parsed.errors.length === 0 && (
-        <p className="text-ink-700 bg-cream-50 border-cream-200 flex items-center gap-2 rounded-md border px-4 py-3 text-sm">
-          <CalendarDays className="text-gold-600 h-4 w-4 shrink-0" aria-hidden />
+        <p className="text-muted-foreground flex items-center gap-2 text-sm">
+          <CalendarDays className="text-accent h-4 w-4 shrink-0" aria-hidden />
           Add check-in and check-out dates to see only what is available, with live nightly rates.
         </p>
       )}
@@ -81,18 +83,18 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
 
       {results && (
         <section aria-label="Results" className="space-y-4">
-          <p className="text-ink-500 text-sm">{summary}</p>
+          <p className="text-muted-foreground text-sm">{summary}</p>
           {results.items.length === 0 ? (
-            <div className="border-cream-200 rounded-xl border bg-white px-5 py-14 text-center">
-              <p className="text-navy-900 font-medium">
+            <Panel className="px-5 py-14 text-center">
+              <p className="text-strong font-medium">
                 {parsed.hasDates ? "Nothing available for those dates" : "No properties match"}
               </p>
-              <p className="text-ink-500 mx-auto mt-1 max-w-md text-sm">
+              <p className="text-muted-foreground mx-auto mt-1 max-w-md text-sm">
                 {parsed.hasDates
                   ? "Try shifting the dates by a day or two, lowering the guest count, or clearing the suburb filter."
                   : "Check the spelling of the suburb or clear the filters."}
               </p>
-            </div>
+            </Panel>
           ) : (
             <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
               {results.items.map((item) => (

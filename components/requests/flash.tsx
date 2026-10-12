@@ -1,4 +1,5 @@
-import { CheckCircle2, AlertTriangle } from "lucide-react";
+import { Banner } from "@/components/ui/banner";
+import { FLASH_KEYS, ScrubParams } from "@/components/ui/scrub-params";
 import { ErrorCodes, type ErrorCode } from "@/lib/domain/errors";
 
 const DONE: Record<string, string> = {
@@ -37,7 +38,10 @@ const EXTRA: Partial<Record<ErrorCode, string>> = {
   PAYMENT_REQUIRES_ACTION: "Your bank asked for extra authentication and it was not completed. Please try again.",
 };
 
-/** One-line outcome banner driven by ?submitted= / ?done= / ?error= query params. */
+/**
+ * One-line outcome banner driven by ?submitted= / ?done= / ?error= query params. The
+ * params are scrubbed from the address bar once shown, so a refresh does not replay them.
+ */
 export function Flash({
   done,
   error,
@@ -51,28 +55,25 @@ export function Flash({
 }) {
   if (done && DONE[done]) {
     return (
-      <p
-        role="status"
-        className="flex items-start gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
-      >
-        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> {DONE[done]}
-      </p>
+      <>
+        <ScrubParams keys={FLASH_KEYS} />
+        <Banner tone="success">{DONE[done]}</Banner>
+      </>
     );
   }
   if (error) {
     const code = (error in ErrorCodes ? error : "INTERNAL") as ErrorCode;
     return (
-      <p
-        role="alert"
-        className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
-      >
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-        <span>
-          {ErrorCodes[code].message} {EXTRA[code] ?? ""}
-          {detail && <span className="block text-xs opacity-80">{detail}</span>}
-          {refCode && <span className="block font-mono text-xs opacity-80">Ref {refCode}</span>}
-        </span>
-      </p>
+      <>
+        <ScrubParams keys={FLASH_KEYS} />
+        <Banner tone="error">
+          <p>
+            {ErrorCodes[code].message} {EXTRA[code] ?? ""}
+          </p>
+          {detail && <p className="text-xs">{detail}</p>}
+          {refCode && <p className="font-mono text-xs">Ref {refCode}</p>}
+        </Banner>
+      </>
     );
   }
   return null;

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Notice, PASSWORD_ERRORS } from "@/components/auth/notice";
 import { PasswordFields } from "@/components/auth/password-fields";
 import { createServerSupabase } from "@/lib/db/server";
@@ -20,15 +20,15 @@ export default async function ResetConfirmPage({ searchParams }: PageProps<"/res
 
   return (
     <form className="space-y-4" action="/api/auth/reset-password/confirm" method="post">
-      <h1 className="text-navy-900 font-serif text-2xl">Choose a new password</h1>
-      <p className="text-ink-700 text-sm">
+      <h1 className="text-strong font-serif text-2xl">Choose a new password</h1>
+      <p className="text-foreground text-sm">
         Setting a new password for <strong>{data.user.email}</strong>. You will be asked to sign in again afterwards.
       </p>
       {error && <Notice tone="error">{error}</Notice>}
       <PasswordFields autoFocus />
-      <Button type="submit" className="w-full">
+      <SubmitButton className="w-full" pendingLabel="Saving…">
         Save password
-      </Button>
+      </SubmitButton>
     </form>
   );
 }

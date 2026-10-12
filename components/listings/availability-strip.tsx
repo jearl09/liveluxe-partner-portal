@@ -52,18 +52,18 @@ export function AvailabilityStrip({
         <h2 id="availability-heading" className="font-serif text-xl">
           Next 90 days
         </h2>
-        <p className="text-ink-700 mt-1 text-sm">
+        <p className="text-foreground mt-1 text-sm">
           {summary.open === 0 ? (
             "No open nights in this window."
           ) : (
             <>
-              <span className="text-navy-900 font-medium">{summary.open}</span> of {summary.total} nights open.
+              <span className="text-strong font-medium">{summary.open}</span> of {summary.total} nights open.
               {/* Shown as check-in → check-out, the same convention as every stay in the portal. */}
               {summary.longestRun && summary.longestRun.nights > 1 && (
                 <>
                   {" "}
                   Longest open stretch:{" "}
-                  <span className="text-navy-900 font-medium">{summary.longestRun.nights} nights</span>,{" "}
+                  <span className="text-strong font-medium">{summary.longestRun.nights} nights</span>,{" "}
                   {formatDayMonth(summary.longestRun.start)} → {formatDayMonth(addDays(summary.longestRun.end, 1))}.
                 </>
               )}
@@ -75,11 +75,11 @@ export function AvailabilityStrip({
       <div className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-x-6 gap-y-5">
         {months.map((m) => (
           <table key={m.key} className="w-full table-fixed border-separate border-spacing-0.5 self-start">
-            <caption className="text-navy-900 mb-1.5 text-left text-sm font-medium">{m.label}</caption>
+            <caption className="text-strong mb-1.5 text-left text-sm font-medium">{m.label}</caption>
             <thead>
               <tr>
                 {WEEKDAYS.map(([letter, name]) => (
-                  <th key={name} scope="col" className="text-ink-500 h-6 text-center text-[11px] font-normal">
+                  <th key={name} scope="col" className="text-muted-foreground h-6 text-center text-[11px] font-normal">
                     <abbr title={name} className="no-underline">
                       {letter}
                     </abbr>
@@ -97,9 +97,9 @@ export function AvailabilityStrip({
                         title={title(d)}
                         className={cn(
                           "h-6.5 rounded-[3px] border text-center text-xs tabular-nums",
-                          d.known && d.available && "text-navy-900 border-cream-200 bg-white",
-                          d.known && !d.available && "text-ink-500 bg-cream-200 border-cream-200 line-through",
-                          !d.known && `text-ink-500 border-cream-200 ${hatched}`,
+                          d.known && d.available && "text-strong border-border bg-card",
+                          d.known && !d.available && "text-muted-foreground bg-sunken border-border line-through",
+                          !d.known && `text-muted-foreground border-border ${hatched}`,
                           d.date === today && "shadow-[inset_0_0_0_1.5px_var(--gold-500)]",
                         )}
                       >
@@ -120,26 +120,26 @@ export function AvailabilityStrip({
         ))}
       </div>
 
-      <ul className="text-ink-500 flex flex-wrap gap-x-5 gap-y-1.5 text-xs" aria-label="Legend">
+      <ul className="text-muted-foreground flex flex-wrap gap-x-5 gap-y-1.5 text-xs" aria-label="Legend">
         <li className="flex items-center gap-1.5">
-          <span className="border-cream-200 inline-block h-4 w-4 rounded-[3px] border bg-white" aria-hidden /> Open
+          <span className="border-border bg-card inline-block h-4 w-4 rounded-[3px] border" aria-hidden /> Open
         </li>
         <li className="flex items-center gap-1.5">
           <span
-            className="bg-cream-200 border-cream-200 inline-flex h-4 w-4 items-center justify-center rounded-[3px] border"
+            className="bg-sunken border-border inline-flex h-4 w-4 items-center justify-center rounded-[3px] border"
             aria-hidden
           >
-            <span className="bg-ink-500/60 block h-px w-2" />
+            <span className="bg-muted-foreground/60 block h-px w-2" />
           </span>
           Booked or blocked
         </li>
         <li className="flex items-center gap-1.5">
-          <span className={cn("border-cream-200 inline-block h-4 w-4 rounded-[3px] border", hatched)} aria-hidden /> Not
+          <span className={cn("border-border inline-block h-4 w-4 rounded-[3px] border", hatched)} aria-hidden /> Not
           synced yet
         </li>
         <li className="flex items-center gap-1.5">
           <span
-            className="border-cream-200 inline-block h-4 w-4 rounded-[3px] border bg-white shadow-[inset_0_0_0_1.5px_var(--gold-500)]"
+            className="border-border bg-card inline-block h-4 w-4 rounded-[3px] border shadow-[inset_0_0_0_1.5px_var(--gold-500)]"
             aria-hidden
           />{" "}
           Today
