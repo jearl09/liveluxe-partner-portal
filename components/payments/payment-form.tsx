@@ -35,10 +35,15 @@ function CheckoutForm({ returnUrl, mode }: { returnUrl: string; mode: "authorise
     if (!stripe || !elements) return;
     setBusy(true);
     setMessage(null);
-    const { error } = await stripe.confirmPayment({ elements, confirmParams: { return_url: returnUrl } });
-    // Only reached when confirmation failed before redirect (validation, decline, network).
-    setMessage(error?.message ?? "Something went wrong. Please try again.");
-    setBusy(false);
+    try {
+      const { error } = await stripe.confirmPayment({ elements, confirmParams: { return_url: returnUrl } });
+      // Only reached when confirmation failed before redirect (validation, decline, network).
+      setMessage(error?.message ?? "Something went wrong. Please try again.");
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
