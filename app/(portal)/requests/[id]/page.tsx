@@ -8,7 +8,9 @@ import { GroupLabel, Panel, PanelHeading, PanelSection } from "@/components/ui/p
 import { StatusPill } from "@/components/ui/status-pill";
 import { PaymentPanel } from "@/components/payments/payment-panel";
 import { CancelPanel } from "@/components/requests/cancel-panel";
+import { CheckinPack } from "@/components/requests/checkin-pack";
 import { Flash } from "@/components/requests/flash";
+import { ModificationPanel } from "@/components/requests/modification-panel";
 import { QuoteLines } from "@/components/requests/quote-lines";
 import { StatusTimeline } from "@/components/requests/status-timeline";
 import { StayCard } from "@/components/requests/stay-card";
@@ -21,6 +23,7 @@ import { DECLINE_REASON_LABELS } from "@/lib/domain/requests";
 import { orgPaymentTerms, paymentViewForBooking } from "@/lib/payments/load";
 import { cancellationView } from "@/lib/requests/cancel";
 import { getRequest } from "@/lib/requests/load";
+import { modificationsForBooking } from "@/lib/requests/modifications";
 import { formatDate, formatTimestamp } from "@/lib/utils";
 
 export async function generateMetadata({ params }: PageProps<"/requests/[id]">) {
@@ -40,10 +43,11 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
   const d = await getRequest(id);
   if (!d) notFound();
   const r = d.request;
-  const [terms, pay, cancel] = await Promise.all([
+  const [terms, pay, cancel, modifications] = await Promise.all([
     orgPaymentTerms(r.org_id),
     paymentViewForBooking(id),
     cancellationView(d),
+    modificationsForBooking(id),
   ]);
   const mode = paymentModeFor(terms);
   const showPayment = !["DRAFT", "DECLINED", "EXPIRED", "FAILED", "COUNTER_OFFERED"].includes(r.status);
@@ -84,7 +88,7 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
 
       <div className="print:hidden">
         <Flash
-          done={str(sp.submitted) ? "1" : str(sp.done) || undefined}
+          done={str(sp.submitted) ? (str(sp.finance) ? "finance_review" : "1") : str(sp.done) || undefined}
           error={str(sp.error) || undefined}
           detail={str(sp.detail) || undefined}
           refCode={str(sp.ref) || undefined}
@@ -208,10 +212,23 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
 
       {(r.status === "CONFIRMED" || r.status === "CHECKED_IN" || r.status === "COMPLETED") && (
         <Banner tone="success">
-          <p className="font-medium">Confirmed</p>
+          <p className="font-medium">{r.status === "COMPLETED" ? "Completed" : "Confirmed"}</p>
           <p>
-            The booking is locked in. Check-in details are released in the portal before arrival; your tax invoice is
-            under Invoices.
+            {r.status === "COMPLETED"
+              ? "The stay is complete. Your tax invoice is under Invoices."
+              : "The booking is locked in. Check-in details are released in the portal before arrival; your tax invoice is under Invoices."}
+            {r.balance_due_at &&
+              !r.balance_paid_at &&
+              ` The balance invoice is due ${formatDate(r.balance_due_at.slice(0, 10))}.`}
+          </p>
+        </Banner>
+      )}
+
+      {r.status === "FAILED" && (
+        <Banner tone="error">
+          <p className="font-medium">We could not complete this booking</p>
+          <p>
+            The property could not be reserved after approval. Nothing has been charged; Live Luxe will be in touch.
           </p>
         </Banner>
       )}
@@ -232,6 +249,10 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
           />
         </div>
       )}
+
+      {can(claims.role, "checkin.view_released") && <CheckinPack audience="partner" request={r} />}
+
+      <ModificationPanel audience="partner" request={r} modifications={modifications} canAct={canAct} />
 
       {canCancel && cancel.quote && (
         <CancelPanel audience="partner" request={r} quote={cancel.quote} cutoffDays={cancel.policy.cutoffDays} />

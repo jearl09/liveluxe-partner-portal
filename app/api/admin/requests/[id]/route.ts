@@ -1,9 +1,11 @@
 /**
- * POST /api/admin/requests/{id} — ops decisions (spec §13.4, §10.1).
- * action=review | approve | decline | counter | cancel. Form posts from /admin/bookings/{id}.
+ * POST /api/admin/requests/{id} — ops decisions (spec §13.4, §10.1, §10.6).
+ * action=review | approve | decline | counter | cancel | modification_approve |
+ * modification_decline | release_checkin. Form posts from /admin/bookings/{id}.
  */
 import { requestId } from "@/lib/api/response";
 import { formFields, redirectTo } from "@/lib/auth/request";
+import { adminDb } from "@/lib/db/admin";
 import { getSessionClaims } from "@/lib/db/server";
 import type { DeclineReasonDb } from "@/lib/db/types";
 import { CANCELLATION_REASONS, type CancellationReason } from "@/lib/domain/cancellation";
@@ -14,7 +16,9 @@ import { validateCounterOffer } from "@/lib/domain/requests";
 import { log } from "@/lib/observability/logger";
 import { confirmBooking } from "@/lib/payments/confirm";
 import { cancelBooking } from "@/lib/requests/cancel";
+import { releaseCheckinNow } from "@/lib/requests/checkin";
 import { approve, counterOffer, decline, loadPolicy, startReview } from "@/lib/requests/decide";
+import { approveEarlyDeparture, approveExtension, declineModification } from "@/lib/requests/modifications";
 import { notifyPartnerOfDecision } from "@/lib/requests/notify";
 import { getRequest } from "@/lib/requests/load";
 
@@ -39,6 +43,7 @@ export async function POST(req: Request, ctx: Ctx) {
     "newCheckOut",
     "message",
     "refundAmount",
+    "modificationId",
   ] as const);
 
   try {
@@ -54,7 +59,10 @@ export async function POST(req: Request, ctx: Ctx) {
           const out = await confirmBooking(id, reqId, "approval");
           if (out.status === "CONFIRMED") return redirectTo(req, back, { done: "confirmed" });
           if (out.status === "AWAITING_PAYMENT") return redirectTo(req, back, { done: "approved_payment_pending" });
+          if (out.status === "FAILED")
+            return redirectTo(req, back, { error: "HOSTAWAY_UNAVAILABLE", detail: out.note });
           await notifyPartnerOfDecision(id, "approved", reqId);
+          if (out.note.startsWith("hostaway:")) return redirectTo(req, back, { done: "approved_hostaway_pending" });
           return redirectTo(req, back, { done: "approved", detail: out.note });
         } catch (e) {
           log.error("booking.confirm_after_approve_failed", {
@@ -109,6 +117,35 @@ export async function POST(req: Request, ctx: Ctx) {
           done: out.refundOk ? "cancelled" : "cancelled_refund_pending",
           detail: out.note,
         });
+      }
+      case "modification_approve": {
+        if (!f.modificationId) return redirectTo(req, back, { error: "VALIDATION_FAILED", detail: "modification" });
+        const { data: mod } = await adminDb()
+          .from("booking_modifications")
+          .select("kind")
+          .eq("id", f.modificationId)
+          .maybeSingle();
+        if (!mod) return redirectTo(req, back, { error: "NOT_FOUND" });
+        if (mod.kind === "extension") await approveExtension(claims, f.modificationId, f.notes, reqId);
+        else {
+          const override = f.refundAmount ? Math.round(Number(f.refundAmount.replace(/[^0-9.]/g, "")) * 100) : null;
+          await approveEarlyDeparture(
+            claims,
+            f.modificationId,
+            { overrideRefundCents: Number.isFinite(override) ? override : null, note: f.notes },
+            reqId,
+          );
+        }
+        return redirectTo(req, back, { done: "modification_approved" });
+      }
+      case "modification_decline": {
+        if (!f.modificationId) return redirectTo(req, back, { error: "VALIDATION_FAILED", detail: "modification" });
+        await declineModification(claims, f.modificationId, f.notes, reqId);
+        return redirectTo(req, back, { done: "modification_declined" });
+      }
+      case "release_checkin": {
+        await releaseCheckinNow(claims, id, reqId);
+        return redirectTo(req, back, { done: "checkin_released" });
       }
       default:
         return redirectTo(req, back, { error: "VALIDATION_FAILED", detail: "unknown action" });

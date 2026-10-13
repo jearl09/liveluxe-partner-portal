@@ -39,6 +39,8 @@ export const ORG_FORM_FIELDS = [
   "requirePoNumber",
   "paymentTerms",
   "creditLimit",
+  "depositPct",
+  "financeContactEmail",
 ] as const;
 
 export interface PartnerOrgFormValues {
@@ -55,6 +57,10 @@ export interface PartnerOrgFormValues {
   paymentTerms: PaymentTerms;
   /** Mode C only; null = no limit. */
   creditLimitCents: number | null;
+  /** Mode B only; null = platform default (settings deposit.default_pct). */
+  depositPct: number | null;
+  /** Named in credit-limit messages to partners (§17.2); null = the support address. */
+  financeContactEmail: string | null;
   /** Comma-separated in the form; stored as an array. */
   emailDomains: string[];
 }
@@ -108,6 +114,18 @@ export function parsePartnerOrgForm(raw: Record<string, string | undefined>): Pa
     else creditLimitCents = Math.round(n * 100);
   }
 
+  const depositRaw = opt(raw.depositPct)?.replace(/[%\s]/g, "") ?? null;
+  let depositPct: number | null = null;
+  if (depositRaw) {
+    const n = Number(depositRaw);
+    if (!Number.isFinite(n) || n < 1 || n > 100) add("depositPct", "Deposit must be between 1 and 100 percent.");
+    else depositPct = Math.round(n);
+  }
+
+  const financeContactEmail = opt(raw.financeContactEmail)?.toLowerCase() ?? null;
+  if (financeContactEmail && !EMAIL.test(financeContactEmail))
+    add("financeContactEmail", "Enter a valid finance contact email.");
+
   const emailDomains = (raw.emailDomains ?? "")
     .split(/[,\s]+/)
     .map((d) => d.trim().toLowerCase().replace(/^@/, ""))
@@ -129,6 +147,8 @@ export function parsePartnerOrgForm(raw: Record<string, string | undefined>): Pa
       slaHours,
       paymentTerms,
       creditLimitCents,
+      depositPct,
+      financeContactEmail,
       emailDomains: [...new Set(emailDomains)],
     },
   };

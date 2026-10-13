@@ -4,6 +4,8 @@ import { ArrowLeft, Clock } from "lucide-react";
 import { DecisionPanel } from "@/components/admin/decision-panel";
 import { PaymentPanel } from "@/components/payments/payment-panel";
 import { CancelPanel } from "@/components/requests/cancel-panel";
+import { CheckinPack } from "@/components/requests/checkin-pack";
+import { ModificationPanel } from "@/components/requests/modification-panel";
 import { Banner } from "@/components/ui/banner";
 import { PrintButton } from "@/components/ui/print-button";
 import { GroupLabel, Panel, PanelHeading, PanelSection } from "@/components/ui/panel";
@@ -21,7 +23,9 @@ import { getSessionClaims } from "@/lib/db/server";
 import { formatMoney } from "@/lib/domain/money";
 import { can } from "@/lib/domain/permissions";
 import { cancellationView } from "@/lib/requests/cancel";
+import { checkinViewCount } from "@/lib/requests/checkin";
 import { getRequest } from "@/lib/requests/load";
+import { modificationsForBooking } from "@/lib/requests/modifications";
 import { formatTimestamp } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -49,11 +53,13 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
   const d = await getRequest(id);
   if (!d) notFound();
   const r = d.request;
-  const [terms, pay, cancel, claims] = await Promise.all([
+  const [terms, pay, cancel, claims, modifications, checkinViews] = await Promise.all([
     orgPaymentTerms(r.org_id),
     paymentViewForBooking(id),
     cancellationView(d),
     getSessionClaims(),
+    modificationsForBooking(id),
+    r.checkin_released_at ? checkinViewCount(id) : Promise.resolve(0),
   ]);
   const mode = paymentModeFor(terms);
   const gate = approvalPaymentGate(mode, pay.state);
@@ -135,6 +141,37 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
         </Banner>
       )}
 
+      {r.finance_approval_required && ["SUBMITTED", "UNDER_REVIEW"].includes(r.status) && (
+        <Banner tone="warn">
+          <p className="font-medium">Needs finance approval</p>
+          <p>{r.finance_approval_reason ?? "Routed to Live Luxe finance by the credit configuration."}</p>
+          <p className="text-xs">Only livluxe_finance or livluxe_admin can approve this request.</p>
+        </Banner>
+      )}
+
+      {r.cancelled_upstream && (
+        <Banner tone="error">
+          <p className="font-medium">
+            Reservation cancelled in Hostaway{r.cancelled_upstream_at && ` ${formatTimestamp(r.cancelled_upstream_at)}`}
+          </p>
+          <p>
+            The booking is still {r.status} here. Call the partner, then cancel below with the refund finance decides;
+            the exception is on the reconciliation report until it is resolved.
+          </p>
+        </Banner>
+      )}
+
+      {r.refunds_frozen_at && (
+        <Banner tone="warn">
+          <p className="font-medium">
+            Dispute open — automated refunds frozen since {formatTimestamp(r.refunds_frozen_at)}
+          </p>
+          <p className="text-xs">
+            The evidence pack is on the dispute record; the freeze lifts when Stripe closes the dispute.
+          </p>
+        </Banner>
+      )}
+
       {r.cancellation_requested_at && r.status !== "CANCELLED" && (
         <Banner tone="warn">
           <p className="font-medium">Partner requested cancellation {formatTimestamp(r.cancellation_requested_at)}</p>
@@ -161,6 +198,21 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
           />
         </div>
       )}
+
+      <ModificationPanel
+        audience="ops"
+        request={r}
+        modifications={modifications}
+        canAct={!!claims && can(claims.role, "requests.approve")}
+        canOverrideRefund={canOverrideRefund}
+      />
+
+      <CheckinPack
+        audience="ops"
+        request={r}
+        canRelease={!!claims && can(claims.role, "checkin.release")}
+        viewCount={checkinViews}
+      />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_380px] lg:items-start lg:gap-8 print:grid-cols-1 print:gap-4">
         <Panel flush className="divide-border divide-y" aria-label="Request details">
@@ -218,8 +270,22 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
                 </dd>
               </div>
               <div>
-                <dt className="text-muted-foreground text-xs">Hostaway listing</dt>
-                <dd className="text-strong font-mono text-xs">{d.listing.hostawayListingId}</dd>
+                <dt className="text-muted-foreground text-xs">Hostaway</dt>
+                <dd className="text-strong font-mono text-xs">
+                  listing {d.listing.hostawayListingId}
+                  {r.hostaway_reservation_id ? ` · reservation ${r.hostaway_reservation_id}` : ""}
+                  {r.hostaway_written_at && (
+                    <span className="text-muted-foreground block font-sans">
+                      written {formatTimestamp(r.hostaway_written_at)}
+                    </span>
+                  )}
+                  {!r.hostaway_reservation_id && r.hostaway_write_attempts > 0 && (
+                    <span className="text-bad block font-sans">
+                      {r.hostaway_write_attempts} write attempt{r.hostaway_write_attempts === 1 ? "" : "s"}
+                      {r.hostaway_last_error && ` · ${r.hostaway_last_error}`}
+                    </span>
+                  )}
+                </dd>
               </div>
               {r.notes && (
                 <div className="sm:col-span-2">

@@ -57,6 +57,8 @@ export async function POST(req: Request, ctx: Ctx) {
       sla_hours: v.slaHours,
       payment_terms: v.paymentTerms,
       credit_limit_cents: v.creditLimitCents,
+      deposit_pct: v.depositPct,
+      finance_contact_email: v.financeContactEmail,
       email_domains: v.emailDomains,
       updated_at: new Date().toISOString(),
     })
