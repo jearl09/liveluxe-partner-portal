@@ -198,6 +198,8 @@ export async function cancelBooking(
     stripeRefundId: refund.ok ? (refund.row?.stripe_refund_id ?? null) : null,
     reason,
   });
+  if (credit.creditNoteId && refund.ok && refund.row)
+    await adminDb().from("refunds").update({ stripe_credit_note_id: credit.creditNoteId }).eq("id", refund.row.id);
 
   // 4. Record the outcome on the booking for both screens.
   const { data: updated } = await adminDb()
