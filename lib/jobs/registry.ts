@@ -11,6 +11,11 @@ import { expireHolds } from "./expire-holds";
 import { slaEscalation } from "./sla-escalation";
 import { drainWebhooks } from "./drain-webhooks";
 import { checkAuthorisations } from "./check-authorisations";
+import { completeStays } from "./complete-stays";
+import { invoiceDunning } from "./invoice-dunning";
+import { reconcileHostawayJob } from "./reconcile-hostaway";
+import { reconcileStripeJob } from "./reconcile-stripe";
+import { releaseCheckinJob } from "./release-checkin";
 
 export interface JobResult {
   examined?: number;
@@ -48,8 +53,9 @@ export const JOBS: Record<string, { schedule: string; description: string; run: 
   },
   "drain-webhooks": {
     schedule: "* * * * *",
-    description: "Process queued webhook_events with FOR UPDATE SKIP LOCKED.",
+    description: "Process queued webhook_events (parked orphans retried); resume incomplete confirmations.",
     run: drainWebhooks,
+    critical: true,
   },
   "expire-holds": {
     schedule: "*/5 * * * *",
@@ -64,33 +70,35 @@ export const JOBS: Record<string, { schedule: string; description: string; run: 
   },
   "release-checkin": {
     schedule: "0 * * * *",
-    description: "Release access packs at T-48h (configurable).",
-    run: todo("release-checkin"),
+    description: "Release access packs at check-in minus the configured offset (per-property override).",
+    run: releaseCheckinJob,
   },
   "reconcile-hostaway": {
     schedule: "15 3 * * *",
-    description: "Full drift comparison; CRITICAL on confirmed booking without live reservation.",
-    run: todo("reconcile-hostaway"),
+    description: "Write-back reconciliation: duplicates, cancelled-upstream, missing reservations (§17.3).",
+    run: reconcileHostawayJob,
+    critical: true,
   },
   "reconcile-stripe": {
     schedule: "45 3 * * *",
-    description: "Financial reconciliation; HIGH on unmatched > 24h.",
-    run: todo("reconcile-stripe"),
+    description: "Financial reconciliation (§11.6); HIGH on unmatched > 24h; CSV export for finance.",
+    run: reconcileStripeJob,
+    critical: true,
   },
   "check-authorisations": {
     schedule: "0 9 * * *",
-    description: "Flag uncaptured authorisations older than 5 days.",
+    description: "Flag uncaptured authorisations older than 5 days; email resume links for abandoned card flows.",
     run: checkAuthorisations,
   },
   "invoice-dunning": {
     schedule: "0 10 * * *",
-    description: "Overdue reminders and escalation.",
-    run: todo("invoice-dunning"),
+    description: "Overdue reminders; finance-approval and suspension thresholds for the org (§17.2).",
+    run: invoiceDunning,
   },
   "complete-stays": {
     schedule: "30 4 * * *",
-    description: "Transition past-departure bookings; schedule credential purge.",
-    run: todo("complete-stays"),
+    description: "CONFIRMED→CHECKED_IN on arrival, CHECKED_IN→COMPLETED after departure; credential purge.",
+    run: completeStays,
   },
   "token-health": {
     schedule: "0 8 * * *",
