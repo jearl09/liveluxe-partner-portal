@@ -202,14 +202,12 @@ describe("happy paths the §17.2 rows rest on", () => {
     const late = await deliver("payment_intent.succeeded", captured);
     expect(late.outcome).toBe("processed");
     // Replay of the same event id is a duplicate at the persistence layer (unique external_id).
-    const { error } = await world.db
-      .from("webhook_events")
-      .insert({
-        source: "stripe",
-        event_type: first.event.type,
-        external_id: first.event.id,
-        payload: first.event as never,
-      });
+    const { error } = await world.db.from("webhook_events").insert({
+      source: "stripe",
+      event_type: first.event.type,
+      external_id: first.event.id,
+      payload: first.event as never,
+    });
     expect(error?.code).toBe("23505");
     await deliver("payment_intent.amount_capturable_updated", authorised); // new event id, stale payload
     expect(world.hostaway.calls.filter((c) => c.method === "createReservation")).toHaveLength(1);

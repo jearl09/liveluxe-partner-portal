@@ -469,3 +469,52 @@ Built against a Stripe **sandbox** (test keys in `.env.local` and on Vercel; the
   after pushing and check `/api/health` version.
 - Not built yet: early departure (partial refund on a shortened stay), extensions, check-in pack, reconcile-stripe,
   consolidated monthly invoices, dunning, SetupIntent, Stripe Tax.
+
+## Session 8 (13 Oct 2026) — Phase 4 close-out and Phase 5 write-back (branch `phase-4-5`)
+
+Built against the spec's Phase 4 / Phase 5 rows and every §17.2 / §17.3 scenario. Nothing here has touched live
+Stripe or the production Hostaway account; the sandbox had no network route to either, so verification is
+in-process (`tests/integration`, fakes that honour idempotency keys, unique indexes and the exclusion constraint)
+plus an opt-in live project (`npm run verify:live`) for Stripe test mode and the Hostaway test account.
+
+**Two deliberate departures from the Week 3 code (both per spec, both noted for David):**
+
+1. `confirmBooking` now follows §10.2: money secured → Hostaway reservation → capture → CONFIRMED (was capture →
+   reservation). A capture failure after the reservation leaves the booking `AWAITING_PAYMENT` with the reservation
+   retained and pages finance (§17.2); an unrecoverable Hostaway rejection moves it to `FAILED` and voids the hold
+   (Appendix B); transient failures stay `APPROVED` and are retried every minute by `drain-webhooks`, which alerts ops
+   after `confirm.unresolved_alert_minutes` (5).
+2. A refund override above the captured amount is rejected with `REFUND_EXCEEDS_CAPTURED` (and the maximum) instead
+   of being clamped silently (§17.2).
+
+**Hostaway test-account writes.** `HOSTAWAY_WRITE_TARGET=test` + `HOSTAWAY_TEST_ACCOUNT_ID` (must equal
+`HOSTAWAY_ACCOUNT_ID`) allow writes outside production. The §5.1 production guard is unchanged. The channel id and
+the platform-reference custom field come from `settings` (`hostaway.direct_channel_id`,
+`hostaway.reference_custom_field_id`); set both once Hostaway support confirms them (DECISIONS #7).
+
+**Phase 4.** Mode B (deposit on approval via partial capture, deposit receipt, balance invoice due
+`deposit.balance_due_days_before_checkin` before check-in, `invoice.paid` clears `balance_paid_at`); credit gate at
+submission (`credit.over_limit_action` = block | finance_approval; finance-routed requests can only be approved by
+finance; ops value ceiling `approval.ops_value_ceiling_cents`); duplicate submission key on the form; webhook orphan
+parking (≤ 15 min, then alert); card-declined / resume / hold-released partner emails; authorisation lapse →
+`AWAITING_PAYMENT`; disputes mirrored with an evidence pack and a refund freeze; early departure (policy refund,
+finance override with mandatory reason); dunning (`invoice-dunning`: reminders on `dunning.reminder_days`, finance
+approval after 14 d, suspension after 30 d, auto-recovery on payment); `reconcile-stripe` (§11.6 invariants,
+exceptions table with ageing, HIGH after 24 h, CSV at `GET /api/admin/reconciliation?format=csv`).
+
+**Phase 5.** Outbox stamps + audit rows on every write attempt; SLA ladder email at 50 % and hold auto-extend +
+partner email at 150 %; `release-checkin` (T-offset, per-property override, `checkin_pack()` RPC logs every view,
+manual release on the ops page); `complete-stays` (CHECKED_IN / COMPLETED / credential purge); extensions (new
+nights only, live re-check, Hostaway PUT, supplementary invoice, alternatives with relocation note);
+`reconcile-hostaway` scoped to platform bookings (duplicates, cancelled-upstream, missing, clock skew).
+
+**Migration** `20261013200000_phase4_phase5.sql` — additive; apply after `20261013150000_cancellations.sql`.
+
+**Verification run here**: `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm run guard:service-role`,
+`npm test` (268: 183 unit + 65 integration) all green. Not run here: Playwright (needs the dev server + Supabase),
+`verify:live` (needs keys). The live project refuses non-test Stripe keys and any Hostaway account other than the
+declared test account.
+
+**Still open for the exit criteria**: run `verify:live` with real keys; Hostaway event webhooks
+(`reservation.updated` → cancelled-upstream in minutes rather than nightly) are out of scope of this session;
+SMS at 100 % SLA needs a provider; mode B balance dunning uses the same ladder as net terms.
