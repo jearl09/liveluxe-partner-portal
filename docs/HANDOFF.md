@@ -469,4 +469,3 @@ Built against a Stripe **sandbox** (test keys in `.env.local` and on Vercel; the
   after pushing and check `/api/health` version.
 - Not built yet: early departure (partial refund on a shortened stay), extensions, check-in pack, reconcile-stripe,
   consolidated monthly invoices, dunning, SetupIntent, Stripe Tax.
-

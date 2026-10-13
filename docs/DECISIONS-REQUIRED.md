@@ -47,7 +47,7 @@ Per-partner terms and credit limit are set by Live Luxe admins on the partner's 
 
 Built and live in the sandbox: partners can withdraw a pending request at any time, and cancel a confirmed booking
 themselves while it is **at or before the cut-off** (`cancellation.cutoff_days`, currently 14). Inside the cut-off
-they can only *request* a cancellation and Live Luxe decides. The refund comes from the retention schedule
+they can only _request_ a cancellation and Live Luxe decides. The refund comes from the retention schedule
 (`cancellation.retention_schedule`), which is currently empty, meaning: **full refund at/before the cut-off, no refund
 after it**. Please give the schedule as tiers, for example:
 
@@ -59,4 +59,3 @@ after it**. Please give the schedule as tiers, for example:
 
 Finance/admin can override the refund amount on any cancellation. Early departure (partial refund for a shortened
 stay) is not built yet and needs the same schedule.
-
