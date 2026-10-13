@@ -43,6 +43,12 @@ export function circuitState() {
   return { open, failures: breaker.failures, openUntil: open ? new Date(breaker.openUntil).toISOString() : null };
 }
 
+/** Test-only: close the circuit and forget the failure count. */
+export function resetCircuitForTests() {
+  breaker.failures = 0;
+  breaker.openUntil = 0;
+}
+
 export async function hostawayFetch<T>(
   path: string,
   schema: z.ZodType<T>,

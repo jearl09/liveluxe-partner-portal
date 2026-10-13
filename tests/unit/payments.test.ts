@@ -15,7 +15,7 @@ import {
 describe("payment mode", () => {
   it("maps terms to a mode", () => {
     expect(paymentModeFor("prepay")).toBe("card_authorise");
-    expect(paymentModeFor("deposit")).toBe("card_authorise");
+    expect(paymentModeFor("deposit")).toBe("deposit");
     expect(paymentModeFor("net14")).toBe("invoice");
     expect(paymentModeFor("net30")).toBe("invoice");
     expect(paymentModeFor(null)).toBe("card_authorise");

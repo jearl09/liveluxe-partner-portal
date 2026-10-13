@@ -6,8 +6,11 @@
  *    decide (approve/decline) before the partner sees the pending charge vanish.
  * 2. "3DS challenge abandoned mid-flow": a card step left incomplete for longer
  *    than `payment.resume_reminder_minutes` earns one resume-link email. Also
- *    covers a declined card nobody retried and a Stripe outage that interrupted
- *    the flow ("we'll email you to complete payment").
+ *    covers a declined card nobody retried.
+ * 3. "Stripe outage": a submitted request with no PaymentIntent at all after the
+ *    same window (the partner never got past "payment processing is temporarily
+ *    unavailable", or closed the tab) earns the same email once — "we'll email you
+ *    to complete payment".
  */
 import { adminDb } from "@/lib/db/admin";
 import { isAuthorisationStale, needsResumeReminder, paymentStateFromStripe } from "@/lib/domain/payments";
@@ -77,6 +80,55 @@ export async function sendResumeReminders(requestId: string, now = new Date()): 
   return sent;
 }
 
+/** §17.2 "Stripe outage": requests whose card step never started. One email per booking. */
+export async function sendNeverStartedReminders(requestId: string, now = new Date()): Promise<number> {
+  const db = adminDb();
+  const { data: setting } = await db
+    .from("settings")
+    .select("value")
+    .eq("key", "payment.resume_reminder_minutes")
+    .maybeSingle();
+  const minutes = Number(setting?.value ?? 60) || 60;
+  const { data: open } = await db
+    .from("booking_requests")
+    .select("*")
+    .in("status", ["SUBMITTED", "UNDER_REVIEW"])
+    .lt("submitted_at", new Date(now.getTime() - minutes * 60_000).toISOString())
+    .limit(200);
+  if (!open?.length) return 0;
+  const ids = open.map((b) => b.id);
+  const [{ data: payments }, { data: reminded }, { data: orgs }] = await Promise.all([
+    db.from("payments").select("booking_id").in("booking_id", ids),
+    db.from("notifications").select("payload").eq("type", "payment_resume_reminder"),
+    db
+      .from("partner_orgs")
+      .select("id, payment_terms")
+      .in("id", [...new Set(open.map((b) => b.org_id))]),
+  ]);
+  const hasPayment = new Set((payments ?? []).map((p) => p.booking_id));
+  const already = new Set((reminded ?? []).map((n) => (n.payload as { requestId?: string })?.requestId));
+  const cardOrgs = new Set(
+    (orgs ?? []).filter((o) => o.payment_terms === "prepay" || o.payment_terms === "deposit").map((o) => o.id),
+  );
+  const due = open.filter((b) => cardOrgs.has(b.org_id) && !hasPayment.has(b.id) && !already.has(b.id));
+  if (!due.length) return 0;
+  const listingIds = [...new Set(due.map((b) => b.listing_id))];
+  const { data: listings } = await db.from("listings").select("id, public_name").in("id", listingIds);
+  const nameOf = new Map((listings ?? []).map((l) => [l.id, l.public_name]));
+  let sent = 0;
+  for (const b of due) {
+    const { error } = await db.from("notifications").insert({
+      user_id: b.created_by,
+      type: "payment_resume_reminder",
+      payload: { requestId: b.id, reference: b.reference } as never,
+    });
+    if (error) continue;
+    await sendResumePayment(b, nameOf.get(b.listing_id) ?? "the property", `booking:${b.id}`, requestId);
+    sent++;
+  }
+  return sent;
+}
+
 export const checkAuthorisations: JobFn = async ({ requestId }) => {
   const db = adminDb();
   const { data: holds, error } = await db
@@ -115,7 +167,7 @@ export const checkAuthorisations: JobFn = async ({ requestId }) => {
     }
   }
 
-  const reminders = await sendResumeReminders(requestId, now);
+  const reminders = (await sendResumeReminders(requestId, now)) + (await sendNeverStartedReminders(requestId, now));
   return {
     examined: holds?.length ?? 0,
     changed: open.length + reminders,

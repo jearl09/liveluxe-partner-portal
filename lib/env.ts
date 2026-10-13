@@ -8,8 +8,6 @@
  */
 import { z } from "zod";
 
-const isProd = process.env.VERCEL_ENV === "production";
-
 /** Variables that are required in every environment. */
 const serverSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -85,6 +83,7 @@ export function env(): Env {
   }
 
   const d = parsed.data;
+  const isProd = d.VERCEL_ENV === "production";
   // Hard guard from spec §5.1: writes to the live Hostaway account only ever in production.
   if (d.HOSTAWAY_ALLOW_WRITES === "true" && !isProd && d.HOSTAWAY_WRITE_TARGET !== "test") {
     throw new Error(
