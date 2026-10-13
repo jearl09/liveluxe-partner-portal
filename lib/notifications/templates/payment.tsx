@@ -136,3 +136,40 @@ export function BookingConfirmed(p: BookingConfirmedProps) {
     </Html>
   );
 }
+
+export interface BookingCancelledProps extends Common {
+  /** "Your organisation" or "Live Luxe". */
+  cancelledBy: string;
+  reason: string | null;
+  /** e.g. "A$1,837.00 refunded to Visa ending 4242 (3–5 business days)" or "No refund under the cancellation policy." */
+  moneyLabel: string;
+  requestUrl: string;
+}
+
+export function BookingCancelled(p: BookingCancelledProps) {
+  return (
+    <Html lang="en-AU">
+      <Head />
+      <Preview>Cancelled — {p.reference}</Preview>
+      <Body style={shell}>
+        <Container style={card}>
+          <Heading as="h1" style={h1}>
+            Cancelled — {p.reference}
+          </Heading>
+          <Text>
+            {p.cancelledBy} cancelled the booking at <strong>{p.propertyName}</strong>. The dates have been released.
+          </Text>
+          <Stay {...p} />
+          <Text style={facts}>
+            <strong>Refund:</strong> {p.moneyLabel}
+          </Text>
+          {p.reason && <Text style={{ ...facts, fontStyle: "italic" }}>“{p.reason}”</Text>}
+          <Button href={p.requestUrl} style={button}>
+            View booking
+          </Button>
+          <Footer supportEmail={p.supportEmail} />
+        </Container>
+      </Body>
+    </Html>
+  );
+}

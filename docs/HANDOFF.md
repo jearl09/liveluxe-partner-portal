@@ -437,3 +437,36 @@ Built against a Stripe **sandbox** (test keys in `.env.local` and on Vercel; the
   CONFIRMED path after a late payment rely on the webhook.
 - Not built yet: refunds/cancellation money flow, disputes evidence pack, reconcile-stripe, invoice dunning,
   consolidated monthly invoices, saved payment methods (SetupIntent), Stripe Tax.
+
+## Session 7 (13 Oct 2026) — invoice GST fix, cancellations and refunds
+
+- **Fix**: receipt invoices counted GST twice (quote already carries a `tax` line; `invoiceItemsFromQuote` appended
+  another). Test LLX-2026-000005 charged $1,837 but invoiced $2,004. Fixed in `lib/domain/payments.ts` + test.
+- **Basket** nav link removed from the portal and the dev dashboard (page does not exist).
+- **Cancellations** (§10.3, §11.6, Appendix B), all three audiences:
+  - `lib/domain/cancellation.ts` (pure, 11 tests): `parseCancellationPolicy` from settings
+    `cancellation.cutoff_days` / `cancellation.retention_schedule` (`[{daysBefore, retainPct}]`, empty = full refund
+    at/before cut-off, nothing after), `retentionPctFor`, `cancellationQuote` (kind `withdraw` for
+    SUBMITTED/UNDER_REVIEW/AWAITING_PAYMENT, `cancel` for APPROVED/CONFIRMED/CHECKED_IN; `selfService` = partner may
+    do it; refund never exceeds what was captured), `clampRefund`, reason codes.
+  - `lib/requests/cancel.ts`: `cancellationView` (policy via new RPC `cancellation_policy()`, payment/invoice/refunds
+    via RLS), `cancelBooking` (CANCELLED transition first → `cancelHostawayReservation` → void holds → Stripe refund
+    → credit note / void invoice → write `cancel_refund_cents`/`cancel_retained_cents` → "Cancelled" email + Slack),
+    `requestCancellation` (inside the cut-off: stamps `cancellation_requested_at`, Slack #bookings; ops decide).
+    Partners inside the cut-off get `CANCELLATION_REQUIRES_APPROVAL`. Finance/admin may override the refund amount.
+  - `lib/payments/refunds.ts`: `refundBookingPayment` (idempotent on booking+amount), `syncRefund` (mirror into
+    `refunds`), `creditInvoiceForCancellation` (open invoice → void or credit; paid invoice → credit note linked to the
+    refund). Webhooks `charge.refunded` / `refund.updated` keep `refunds` current; a failed refund pages #alerts.
+  - UI: `components/requests/cancel-panel.tsx` on the partner request page (`POST /api/requests/{id}/cancel`,
+    action `cancel` | `request_cancel`) and on the ops booking page (admin route action `cancel`, optional
+    `refundAmount`). Cancelled banner shows refund/retained on both pages; `PaymentPanel` lists refunds.
+  - State machine: added SUBMITTED/UNDER_REVIEW → CANCELLED (partner, livluxe), APPROVED → CANCELLED (livluxe),
+    AWAITING_PAYMENT → CANCELLED (partner, livluxe).
+  - **Migration `20261013150000_cancellations.sql`** (apply in Supabase SQL editor): booking_requests
+    cancellation_* / cancel_* columns; refunds.status/stripe_credit_note_id/failure_reason/updated_at;
+    `apply_booking_transition` lets partners withdraw/cancel; `cancellation_policy()` RPC.
+- **Deploy note**: a GitHub push did not trigger a Vercel build this session; run `node scripts/deploy-hobby.mjs`
+  after pushing and check `/api/health` version.
+- Not built yet: early departure (partial refund on a shortened stay), extensions, check-in pack, reconcile-stripe,
+  consolidated monthly invoices, dunning, SetupIntent, Stripe Tax.
+

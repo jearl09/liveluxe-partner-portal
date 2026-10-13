@@ -42,3 +42,21 @@ What is built (Stripe sandbox, no real money):
 - **Mode B (deposit)**: not built. Needs the deposit % (settings `deposit.default_pct`, currently 20) and whether the balance invoice is due before check-in. Partners set to "deposit" are charged like prepay until then.
 
 Per-partner terms and credit limit are set by Live Luxe admins on the partner's page.
+
+## Build notes on decision #6 — cancellation policy (13 Oct 2026)
+
+Built and live in the sandbox: partners can withdraw a pending request at any time, and cancel a confirmed booking
+themselves while it is **at or before the cut-off** (`cancellation.cutoff_days`, currently 14). Inside the cut-off
+they can only *request* a cancellation and Live Luxe decides. The refund comes from the retention schedule
+(`cancellation.retention_schedule`), which is currently empty, meaning: **full refund at/before the cut-off, no refund
+after it**. Please give the schedule as tiers, for example:
+
+| Cancelled at least … days before check-in | Live Luxe retains |
+| ----------------------------------------- | ----------------- |
+| 14                                        | 0%                |
+| 7                                         | 50%               |
+| 0                                         | 100%              |
+
+Finance/admin can override the refund amount on any cancellation. Early departure (partial refund for a shortened
+stay) is not built yet and needs the same schedule.
+

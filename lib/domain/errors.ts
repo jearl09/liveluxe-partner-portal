@@ -17,6 +17,10 @@ export const ErrorCodes = {
   PAYMENT_NOT_AUTHORISED: { http: 409, message: "The partner has not secured payment for this request yet." },
   HOSTAWAY_UNAVAILABLE: { http: 503, message: "Availability data is temporarily degraded. Writes are paused." },
   HOSTAWAY_WRITE_AMBIGUOUS: { http: 500, message: "Booking write outcome unknown; operations have been alerted." },
+  CANCELLATION_REQUIRES_APPROVAL: {
+    http: 409,
+    message: "This booking is inside the cancellation cut-off; Live Luxe must approve the cancellation.",
+  },
   INVALID_STATE_TRANSITION: { http: 409, message: "This action is no longer valid for the request's current status." },
   RATE_LIMITED: { http: 429, message: "Too many requests. Please retry shortly." },
   VALIDATION_FAILED: { http: 400, message: "Request validation failed." },

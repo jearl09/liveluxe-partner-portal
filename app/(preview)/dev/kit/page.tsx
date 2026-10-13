@@ -171,6 +171,11 @@ const request: BookingRequestRow = {
   confirmed_at: null,
   declined_at: null,
   cancelled_at: null,
+  cancellation_requested_at: null,
+  cancellation_requested_by: null,
+  cancellation_reason: null,
+  cancel_refund_cents: null,
+  cancel_retained_cents: null,
   created_at: iso(-3),
   updated_at: iso(-1),
 };

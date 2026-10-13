@@ -14,8 +14,10 @@ import type Stripe from "stripe";
 import { confirmBooking } from "@/lib/payments/confirm";
 import { loadBookingAdmin, syncPaymentIntent } from "@/lib/payments/intents";
 import { syncInvoice } from "@/lib/payments/invoices";
+import { syncRefund } from "@/lib/payments/refunds";
 import { alertCritical, slack } from "@/lib/notifications/slack";
 import { log } from "@/lib/observability/logger";
+import { getStripe } from "@/lib/stripe/client";
 
 export type StripeEventHandler = (event: Stripe.Event, requestId: string) => Promise<void>;
 
@@ -99,6 +101,23 @@ const onDispute: StripeEventHandler = async (event) => {
   });
 };
 
+const onRefunded: StripeEventHandler = async (event) => {
+  const charge = event.data.object as Stripe.Charge;
+  const refunds = await getStripe().refunds.list({ charge: charge.id, limit: 20 });
+  for (const r of refunds.data) await syncRefund(r);
+};
+
+const onRefundUpdated: StripeEventHandler = async (event) => {
+  const r = event.data.object as Stripe.Refund;
+  const row = await syncRefund(r);
+  if (row && r.status === "failed")
+    await alertCritical("Stripe refund failed", {
+      refundId: r.id,
+      bookingId: row.booking_id,
+      reason: r.failure_reason,
+    });
+};
+
 const logOnly =
   (name: string): StripeEventHandler =>
   async (event) => {
@@ -112,7 +131,8 @@ export const STRIPE_HANDLERS: Record<string, StripeEventHandler> = {
   "payment_intent.payment_failed": onPaymentFailed,
   "payment_intent.canceled": onCanceled,
   "payment_intent.requires_action": onRequiresAction,
-  "charge.refunded": logOnly("onRefunded"),
+  "charge.refunded": onRefunded,
+  "refund.updated": onRefundUpdated,
   "charge.dispute.created": onDispute,
   "charge.dispute.closed": logOnly("onDisputeClosed"),
   "invoice.finalized": onInvoiceChanged,

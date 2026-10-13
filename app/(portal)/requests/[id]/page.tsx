@@ -7,6 +7,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { GroupLabel, Panel, PanelHeading, PanelSection } from "@/components/ui/panel";
 import { StatusPill } from "@/components/ui/status-pill";
 import { PaymentPanel } from "@/components/payments/payment-panel";
+import { CancelPanel } from "@/components/requests/cancel-panel";
 import { Flash } from "@/components/requests/flash";
 import { QuoteLines } from "@/components/requests/quote-lines";
 import { StatusTimeline } from "@/components/requests/status-timeline";
@@ -18,6 +19,7 @@ import { paymentModeFor } from "@/lib/domain/payments";
 import { can } from "@/lib/domain/permissions";
 import { DECLINE_REASON_LABELS } from "@/lib/domain/requests";
 import { orgPaymentTerms, paymentViewForBooking } from "@/lib/payments/load";
+import { cancellationView } from "@/lib/requests/cancel";
 import { getRequest } from "@/lib/requests/load";
 import { formatDate, formatTimestamp } from "@/lib/utils";
 
@@ -38,11 +40,16 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
   const d = await getRequest(id);
   if (!d) notFound();
   const r = d.request;
-  const [terms, pay] = await Promise.all([orgPaymentTerms(r.org_id), paymentViewForBooking(id)]);
+  const [terms, pay, cancel] = await Promise.all([
+    orgPaymentTerms(r.org_id),
+    paymentViewForBooking(id),
+    cancellationView(d),
+  ]);
   const mode = paymentModeFor(terms);
-  const showPayment = !["DRAFT", "DECLINED", "EXPIRED", "CANCELLED", "FAILED", "COUNTER_OFFERED"].includes(r.status);
+  const showPayment = !["DRAFT", "DECLINED", "EXPIRED", "FAILED", "COUNTER_OFFERED"].includes(r.status);
   const now = new Date();
   const canAct = can(claims.role, "requests.submit");
+  const canCancel = can(claims.role, "requests.cancel");
   const counter = r.status === "COUNTER_OFFERED" ? d.history.filter((h) => h.to === "COUNTER_OFFERED").at(-1) : null;
   const holdLeft = r.hold_expires_at ? new Date(r.hold_expires_at).getTime() - now.getTime() : null;
 
@@ -166,6 +173,19 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
         </Banner>
       )}
 
+      {r.status === "CANCELLED" && (
+        <Banner tone="warn">
+          <p className="font-medium">Cancelled{r.cancelled_at && ` ${formatTimestamp(r.cancelled_at)}`}</p>
+          {r.cancellation_reason && <p>{r.cancellation_reason}</p>}
+          {(r.cancel_refund_cents != null || r.cancel_retained_cents != null) && (
+            <p className="text-xs">
+              Refund {formatMoney(r.cancel_refund_cents ?? 0, r.currency)} · retained{" "}
+              {formatMoney(r.cancel_retained_cents ?? 0, r.currency)} under the cancellation policy.
+            </p>
+          )}
+        </Banner>
+      )}
+
       {r.status === "APPROVED" && (
         <Banner tone="success">
           <p className="font-medium">Approved</p>
@@ -206,10 +226,15 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
             state={pay.state}
             payment={pay.row}
             invoice={pay.invoice}
+            refunds={pay.refunds}
             totalCents={r.total_cents}
             currency={r.currency}
           />
         </div>
+      )}
+
+      {canCancel && cancel.quote && (
+        <CancelPanel audience="partner" request={r} quote={cancel.quote} cutoffDays={cancel.policy.cutoffDays} />
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_380px] lg:items-start lg:gap-8 print:grid-cols-1 print:gap-4">

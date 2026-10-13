@@ -40,7 +40,6 @@ export default async function DashboardPreview({ searchParams }: PageProps<"/dev
         { href: "/", label: "Dashboard" },
         { href: "/search", label: "Search" },
         { href: "/requests", label: "Requests" },
-        { href: "/basket", label: "Basket" },
         { href: "/invoices", label: "Invoices" },
         { href: "/team", label: "Team" },
         { href: "/settings", label: "Settings" },

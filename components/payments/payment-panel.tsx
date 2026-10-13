@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { CreditCard, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { InvoiceRow, PaymentRow } from "@/lib/db/types";
+import type { InvoiceRow, PaymentRow, RefundRow } from "@/lib/db/types";
 import type { BookingStatus } from "@/lib/domain/booking-state-machine";
 import { formatMoney } from "@/lib/domain/money";
 import {
@@ -22,6 +22,7 @@ export interface PaymentPanelProps {
   state: PaymentState | null;
   payment: PaymentRow | null;
   invoice: InvoiceRow | null;
+  refunds?: RefundRow[];
   totalCents: number | null;
   currency: string;
 }
@@ -105,6 +106,23 @@ export function PaymentPanel(p: PaymentPanelProps) {
             </>
           )}
         </p>
+      )}
+
+      {p.refunds && p.refunds.length > 0 && (
+        <ul className="space-y-0.5">
+          {p.refunds.map((r) => (
+            <li key={r.id}>
+              Refund <strong>{formatMoney(r.amount_cents, p.currency)}</strong> ·{" "}
+              {r.status === "succeeded"
+                ? "sent to the card"
+                : r.status === "failed"
+                  ? `failed${r.failure_reason ? ` (${r.failure_reason})` : ""}`
+                  : r.status}
+              {" · "}
+              {formatDate(r.created_at.slice(0, 10))}
+            </li>
+          ))}
+        </ul>
       )}
 
       {p.audience === "partner" && payable && needsCard && (

@@ -23,6 +23,12 @@ const DONE: Record<string, string> = {
   paid: "Payment received. Thank you.",
   payment_pending: "Your payment is processing. This page updates once the bank confirms.",
   confirmed: "Confirmed. Payment is captured, the invoice is issued and the booking is locked in.",
+  cancelled: "Cancelled. The dates are released and any refund is on its way; the partner has been emailed.",
+  cancelled_refund_pending:
+    "Cancelled and the dates released, but the Stripe refund did not go through. Finance has been alerted to process it by hand.",
+  withdrawn: "Request withdrawn. The dates and the card hold are released.",
+  cancellation_requested:
+    "Cancellation request sent. Live Luxe will review it against the policy and email you the outcome.",
   approved_payment_pending:
     "Approved, but the card could not be charged. The partner has been emailed a payment link; the booking confirms automatically once they pay.",
 };

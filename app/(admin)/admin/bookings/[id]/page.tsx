@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Clock } from "lucide-react";
 import { DecisionPanel } from "@/components/admin/decision-panel";
 import { PaymentPanel } from "@/components/payments/payment-panel";
+import { CancelPanel } from "@/components/requests/cancel-panel";
 import { Banner } from "@/components/ui/banner";
 import { PrintButton } from "@/components/ui/print-button";
 import { GroupLabel, Panel, PanelHeading, PanelSection } from "@/components/ui/panel";
@@ -16,6 +17,10 @@ import { todayIn } from "@/lib/domain/dates";
 import { approvalPaymentGate, paymentModeFor } from "@/lib/domain/payments";
 import { DECLINE_REASON_LABELS } from "@/lib/domain/requests";
 import { orgPaymentTerms, paymentViewForBooking } from "@/lib/payments/load";
+import { getSessionClaims } from "@/lib/db/server";
+import { formatMoney } from "@/lib/domain/money";
+import { can } from "@/lib/domain/permissions";
+import { cancellationView } from "@/lib/requests/cancel";
 import { getRequest } from "@/lib/requests/load";
 import { formatTimestamp } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -44,10 +49,16 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
   const d = await getRequest(id);
   if (!d) notFound();
   const r = d.request;
-  const [terms, pay] = await Promise.all([orgPaymentTerms(r.org_id), paymentViewForBooking(id)]);
+  const [terms, pay, cancel, claims] = await Promise.all([
+    orgPaymentTerms(r.org_id),
+    paymentViewForBooking(id),
+    cancellationView(d),
+    getSessionClaims(),
+  ]);
   const mode = paymentModeFor(terms);
   const gate = approvalPaymentGate(mode, pay.state);
-  const showPayment = !["DRAFT", "DECLINED", "EXPIRED", "CANCELLED", "FAILED"].includes(r.status);
+  const showPayment = !["DRAFT", "DECLINED", "EXPIRED", "FAILED"].includes(r.status);
+  const canOverrideRefund = !!claims && can(claims.role, "refunds.issue");
   const now = new Date();
   const dueLeft = r.decision_due_at ? new Date(r.decision_due_at).getTime() - now.getTime() : null;
   const holdLeft = r.hold_expires_at ? new Date(r.hold_expires_at).getTime() - now.getTime() : null;
@@ -111,6 +122,29 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
         </Banner>
       )}
 
+      {r.status === "CANCELLED" && (
+        <Banner tone="warn">
+          <p className="font-medium">Cancelled{r.cancelled_at && ` ${formatTimestamp(r.cancelled_at)}`}</p>
+          {r.cancellation_reason && <p>{r.cancellation_reason}</p>}
+          {(r.cancel_refund_cents != null || r.cancel_retained_cents != null) && (
+            <p className="text-xs">
+              Refund {formatMoney(r.cancel_refund_cents ?? 0, r.currency)} · retained{" "}
+              {formatMoney(r.cancel_retained_cents ?? 0, r.currency)} under the cancellation policy.
+            </p>
+          )}
+        </Banner>
+      )}
+
+      {r.cancellation_requested_at && r.status !== "CANCELLED" && (
+        <Banner tone="warn">
+          <p className="font-medium">Partner requested cancellation {formatTimestamp(r.cancellation_requested_at)}</p>
+          {r.cancellation_reason && <p>{r.cancellation_reason}</p>}
+          <p className="text-xs">
+            Inside the cut-off: decide in the Cancellation panel; the policy retention is shown there.
+          </p>
+        </Banner>
+      )}
+
       {showPayment && (
         <div className="print:hidden">
           <PaymentPanel
@@ -121,6 +155,7 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
             state={pay.state}
             payment={pay.row}
             invoice={pay.invoice}
+            refunds={pay.refunds}
             totalCents={r.total_cents}
             currency={r.currency}
           />
@@ -205,6 +240,15 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
           <div className="print:hidden">
             <DecisionPanel request={r} today={todayIn("Australia/Melbourne")} paymentGate={gate} />
           </div>
+          {cancel.quote && (
+            <CancelPanel
+              audience="ops"
+              request={r}
+              quote={cancel.quote}
+              cutoffDays={cancel.policy.cutoffDays}
+              canOverrideRefund={canOverrideRefund}
+            />
+          )}
           <Panel aria-labelledby="quote-heading" className="print-keep">
             <PanelHeading id="quote-heading" title="Quote" className="mb-3" />
             {d.quote ? (

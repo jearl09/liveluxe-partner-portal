@@ -96,6 +96,11 @@ export type BookingRequestRow = {
   confirmed_at: string | null;
   declined_at: string | null;
   cancelled_at: string | null;
+  cancellation_requested_at: string | null;
+  cancellation_requested_by: string | null;
+  cancellation_reason: string | null;
+  cancel_refund_cents: number | null;
+  cancel_retained_cents: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -138,6 +143,22 @@ export type InvoiceRow = {
   pdf_url: string | null;
   sent_at: string | null;
   paid_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** public.refunds — mirror of one Stripe Refund (§11.6), plus the credit note issued with it. */
+export type RefundRow = {
+  id: string;
+  booking_id: string;
+  payment_id: string | null;
+  stripe_refund_id: string;
+  amount_cents: number;
+  reason: string | null;
+  status: string;
+  stripe_credit_note_id: string | null;
+  failure_reason: string | null;
+  approved_by: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -390,6 +411,7 @@ export interface Database {
       booking_requests: Row<BookingRequestRow>;
       payments: Row<PaymentRow>;
       invoices: Row<InvoiceRow>;
+      refunds: Row<RefundRow>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -464,6 +486,10 @@ export interface Database {
         Returns: RateCardRow;
       };
       livluxe_ops_user_ids: { Args: Record<string, never>; Returns: string[] };
+      cancellation_policy: {
+        Args: Record<string, never>;
+        Returns: { cutoff_days: number; retention_schedule: unknown }[];
+      };
       request_policy: {
         Args: Record<string, never>;
         Returns: {

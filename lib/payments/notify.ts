@@ -9,7 +9,7 @@ import type { BookingRequestRow, InvoiceRow, PaymentRow } from "@/lib/db/types";
 import { env } from "@/lib/env";
 import { formatMoney } from "@/lib/domain/money";
 import { sendEmail } from "@/lib/notifications/email";
-import { BookingConfirmed, PaymentRequired } from "@/lib/notifications/templates/payment";
+import { BookingCancelled, BookingConfirmed, PaymentRequired } from "@/lib/notifications/templates/payment";
 import { log } from "@/lib/observability/logger";
 import { formatDate, formatTimestamp } from "@/lib/utils";
 
@@ -105,6 +105,38 @@ export async function sendBookingConfirmed(
     log.warn("payment.notify_failed", {
       requestId,
       kind: "booking_confirmed",
+      reference: b.reference,
+      error: String(e),
+    });
+  }
+}
+
+export async function sendBookingCancelled(
+  b: BookingRequestRow,
+  propertyName: string,
+  input: { cancelledBy: "partner" | "livluxe"; reason: string | null; moneyLabel: string },
+  requestId: string,
+) {
+  try {
+    const to = await recipientForBooking(b);
+    if (!to) return;
+    await sendEmail({
+      to,
+      subject: `Cancelled — ${b.reference}`,
+      idempotencyKey: `booking_cancelled:${b.id}:${b.cancelled_at ?? ""}`,
+      tags: { type: "booking_cancelled" },
+      template: BookingCancelled({
+        ...common(b, propertyName),
+        cancelledBy: input.cancelledBy === "partner" ? "Your organisation" : "Live Luxe",
+        reason: input.reason,
+        moneyLabel: input.moneyLabel,
+        requestUrl: `${env().NEXT_PUBLIC_APP_URL}/requests/${b.id}`,
+      }),
+    });
+  } catch (e) {
+    log.warn("payment.notify_failed", {
+      requestId,
+      kind: "booking_cancelled",
       reference: b.reference,
       error: String(e),
     });

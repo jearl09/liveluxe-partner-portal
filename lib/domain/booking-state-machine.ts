@@ -146,6 +146,31 @@ export const TRANSITIONS: readonly Transition[] = [
     sideEffects: "Departure passed; feedback prompt; schedule credential purge.",
   },
   {
+    from: "SUBMITTED",
+    to: "CANCELLED",
+    actors: ["partner", "livluxe"],
+    sideEffects: "Partner withdrew; release hold; void authorisation; notify ops.",
+  },
+  {
+    from: "UNDER_REVIEW",
+    to: "CANCELLED",
+    actors: ["partner", "livluxe"],
+    sideEffects: "Partner withdrew; release hold; void authorisation; notify ops.",
+  },
+  {
+    from: "APPROVED",
+    to: "CANCELLED",
+    actors: ["livluxe"],
+    sideEffects: "Cancelled before confirmation; void or refund; Hostaway reservation cancelled if written.",
+  },
+  {
+    from: "AWAITING_PAYMENT",
+    to: "CANCELLED",
+    actors: ["partner", "livluxe"],
+    sideEffects:
+      "Cancelled before payment landed; void authorisation; void open invoice; Hostaway reservation cancelled if written.",
+  },
+  {
     from: "CONFIRMED",
     to: "CANCELLED",
     actors: ["partner", "livluxe"],

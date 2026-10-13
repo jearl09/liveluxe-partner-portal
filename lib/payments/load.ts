@@ -5,18 +5,20 @@
  */
 import "server-only";
 import { createServerSupabase } from "@/lib/db/server";
-import type { InvoiceRow, PaymentRow } from "@/lib/db/types";
+import type { InvoiceRow, PaymentRow, RefundRow } from "@/lib/db/types";
 import { paymentStateFromStripe, type PaymentState, type PaymentTerms } from "@/lib/domain/payments";
 
 export interface PaymentView {
   state: PaymentState | null;
   row: PaymentRow | null;
   invoice: InvoiceRow | null;
+  /** Newest first; RLS-scoped like payments. */
+  refunds: RefundRow[];
 }
 
 export async function paymentViewForBooking(bookingId: string): Promise<PaymentView> {
   const supabase = await createServerSupabase();
-  const [payment, invoice] = await Promise.all([
+  const [payment, invoice, refunds] = await Promise.all([
     supabase
       .from("payments")
       .select("*")
@@ -31,12 +33,14 @@ export async function paymentViewForBooking(bookingId: string): Promise<PaymentV
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    supabase.from("refunds").select("*").eq("booking_id", bookingId).order("created_at", { ascending: false }),
   ]);
   const row = payment.data ?? null;
   return {
     row,
     state: row ? paymentStateFromStripe(row.status, row.failure_code) : null,
     invoice: invoice.data ?? null,
+    refunds: refunds.data ?? [],
   };
 }
 

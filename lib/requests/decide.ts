@@ -32,7 +32,7 @@ import { getRequest } from "./load";
 
 const actorOf = (claims: SessionClaims): ActorType => (isLivluxeRole(claims.role) ? "livluxe" : "partner");
 
-async function transition(
+export async function transition(
   claims: SessionClaims,
   booking: BookingRequestRow,
   to: BookingStatus,

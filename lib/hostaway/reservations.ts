@@ -105,3 +105,54 @@ export async function ensureHostawayReservation(
   log.info("hostaway.reservation.created", { requestId, reference: booking.reference, reservationId });
   return { status: "created", reservationId: reservationId! };
 }
+
+export type CancelReservationOutcome =
+  | { status: "cancelled" | "none" }
+  | { status: "skipped"; reason: "writes_disabled" }
+  | { status: "failed"; reason: string };
+
+/**
+ * Cancel the Hostaway reservation for a cancelled booking (spec §6.7 "Cancel
+ * reservation": Hostaway first, then Stripe, so inventory is released even if the
+ * refund needs manual follow-up). No reservation → nothing to do.
+ */
+export async function cancelHostawayReservation(
+  booking: BookingRequestRow,
+  requestId: string,
+): Promise<CancelReservationOutcome> {
+  if (!booking.hostaway_reservation_id) return { status: "none" };
+  if (!hostawayWritesEnabled()) {
+    log.warn("hostaway.reservation.cancel_skipped", {
+      requestId,
+      reference: booking.reference,
+      reason: "writes_disabled",
+    });
+    return { status: "skipped", reason: "writes_disabled" };
+  }
+  const res = await hostaway.updateReservation(
+    booking.hostaway_reservation_id,
+    { status: "cancelled" },
+    `${paymentKeys.hostaway(booking.id)}:cancel`,
+  );
+  if (!res.ok) {
+    log.error("hostaway.reservation.cancel_failed", {
+      requestId,
+      reference: booking.reference,
+      code: res.code,
+      msg: res.message,
+    });
+    await alertCritical("Hostaway reservation cancel failed", {
+      reference: booking.reference,
+      reservationId: booking.hostaway_reservation_id,
+      code: res.code,
+      requestId,
+    });
+    return { status: "failed", reason: res.code };
+  }
+  log.info("hostaway.reservation.cancelled", {
+    requestId,
+    reference: booking.reference,
+    reservationId: booking.hostaway_reservation_id,
+  });
+  return { status: "cancelled" };
+}
