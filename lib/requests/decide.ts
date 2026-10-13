@@ -15,7 +15,7 @@ import { resolveAvailability } from "@/lib/domain/availability";
 import { assertTransition, type ActorType, type BookingStatus } from "@/lib/domain/booking-state-machine";
 import { DomainError } from "@/lib/domain/errors";
 import { formatMoney } from "@/lib/domain/money";
-import { approvalPaymentGate, creditCheck, paymentModeFor } from "@/lib/domain/payments";
+import { approvalPaymentGate, creditCheck, paymentModeFor, withinApprovalCeiling } from "@/lib/domain/payments";
 import type { SessionClaims } from "@/lib/domain/permissions";
 import { can, isLivluxeRole } from "@/lib/domain/permissions";
 import { applyOpsAdjustment, type CounterOfferInput } from "@/lib/domain/requests";
@@ -137,6 +137,30 @@ async function assertPaymentSecured(detail: NonNullable<Awaited<ReturnType<typeo
   if (!gate.ok) throw new DomainError("PAYMENT_NOT_AUTHORISED", { detail: gate.reason });
 }
 
+/** §10.5 value ceiling and §17.2 finance routing: both enforced server-side, not just in the UI. */
+async function assertMayApprove(claims: SessionClaims, r: BookingRequestRow) {
+  const finance = claims.role === "livluxe_finance" || claims.role === "livluxe_admin";
+  if (r.finance_approval_required && !finance)
+    throw new DomainError("FINANCE_APPROVAL_REQUIRED", { detail: r.finance_approval_reason ?? undefined });
+  const supabase = await createServerSupabase();
+  const { data } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", "approval.ops_value_ceiling_cents")
+    .maybeSingle();
+  const ceiling = data?.value == null ? null : Number(data.value);
+  if (
+    !withinApprovalCeiling({
+      role: claims.role,
+      totalCents: r.total_cents,
+      ceilingCents: Number.isFinite(ceiling) ? ceiling : null,
+    })
+  )
+    throw new DomainError("APPROVAL_VALUE_CEILING", {
+      detail: `Bookings above ${formatMoney(ceiling!, r.currency)} must be approved by Live Luxe finance.`,
+    });
+}
+
 export async function approve(claims: SessionClaims, id: string, requestId: string): Promise<BookingRequestRow> {
   let d = await loadForOps(claims, id);
   if (d.request.status === "SUBMITTED") {
@@ -145,9 +169,16 @@ export async function approve(claims: SessionClaims, id: string, requestId: stri
   }
   if (d.request.status !== "UNDER_REVIEW")
     throw new DomainError("INVALID_STATE_TRANSITION", { from: d.request.status, to: "APPROVED" });
+  await assertMayApprove(claims, d.request);
   await assertPaymentSecured(d);
   await assertLiveAvailability(d, requestId);
-  return transition(claims, d.request, "APPROVED", { reason: "approved", metadata: { liveCheck: "hostaway" } });
+  return transition(claims, d.request, "APPROVED", {
+    reason: "approved",
+    metadata: {
+      liveCheck: "hostaway",
+      ...(d.request.finance_approval_required ? { financeApprovedBy: claims.sub } : {}),
+    },
+  });
 }
 
 export async function decline(
