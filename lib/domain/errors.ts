@@ -15,6 +15,23 @@ export const ErrorCodes = {
   PAYMENT_REQUIRES_ACTION: { http: 402, message: "Additional authentication is required to complete payment." },
   PAYMENT_FAILED: { http: 402, message: "Payment could not be authorised." },
   PAYMENT_NOT_AUTHORISED: { http: 409, message: "The partner has not secured payment for this request yet." },
+  PAYMENT_PROVIDER_UNAVAILABLE: {
+    http: 503,
+    message:
+      "Payment processing is temporarily unavailable — your request is held and we'll email you to complete payment.",
+  },
+  FINANCE_APPROVAL_REQUIRED: {
+    http: 409,
+    message: "This request needs approval from Live Luxe finance before it can proceed.",
+  },
+  APPROVAL_VALUE_CEILING: {
+    http: 403,
+    message: "This booking is above the value you may approve; it must be approved by Live Luxe finance.",
+  },
+  REFUND_EXCEEDS_CAPTURED: { http: 422, message: "The refund is more than the amount captured for this booking." },
+  REFUNDS_FROZEN: { http: 409, message: "Automated refunds are frozen for this booking while a dispute is open." },
+  EXTENSION_UNAVAILABLE: { http: 409, message: "The property is not available for the additional nights." },
+  INVALID_MODIFICATION: { http: 422, message: "That change cannot be applied to this booking." },
   HOSTAWAY_UNAVAILABLE: { http: 503, message: "Availability data is temporarily degraded. Writes are paused." },
   HOSTAWAY_WRITE_AMBIGUOUS: { http: 500, message: "Booking write outcome unknown; operations have been alerted." },
   CANCELLATION_REQUIRES_APPROVAL: {

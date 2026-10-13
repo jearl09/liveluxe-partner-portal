@@ -3,6 +3,8 @@
  * These never touch wall-clock time, so DST transitions cannot shift a date.
  */
 
+import { fromZonedTime } from "date-fns-tz";
+
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function isIsoDate(value: unknown): value is string {
@@ -30,6 +32,30 @@ export function todayIn(timeZone: string, now: Date = new Date()): string {
     .formatToParts(now)
     .reduce<Record<string, string>>((acc, p) => ((acc[p.type] = p.value), acc), {});
   return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+/**
+ * §17.3 "Clock skew between systems": a timestamp from another system that sits in
+ * the future is clamped to now before any "is this newer than that" comparison.
+ */
+export function clampToNow(epochMs: number, now: Date = new Date()): number {
+  return Math.min(epochMs, now.getTime());
+}
+
+/**
+ * The instant `offsetHours` before a property-local check-in (§10.6 check-in pack
+ * release). `checkinFrom` is the listing's earliest check-in time ("15:00"); the
+ * conversion is DST-safe because it resolves the local wall-clock time in `timeZone`.
+ */
+export function instantBeforeCheckIn(
+  checkIn: string,
+  checkinFrom: string | null,
+  timeZone: string,
+  offsetHours: number,
+): Date {
+  const [hh, mm] = (checkinFrom ?? "15:00").split(":").map((n) => Number(n) || 0);
+  const local = fromZonedTime(`${checkIn}T${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:00`, timeZone);
+  return new Date(local.getTime() - Math.max(0, offsetHours) * 3_600_000);
 }
 
 /** The two calendar windows the sync jobs maintain (spec §6.4.1). */
