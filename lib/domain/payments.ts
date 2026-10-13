@@ -112,13 +112,16 @@ export interface InvoiceItem {
 
 /**
  * §11.5: one invoice line per quote line (accommodation, discounts as negatives,
- * fees), then GST as its own line. Zero-amount lines are dropped.
+ * fees), then GST as its own line. Zero-amount lines are dropped. The quote
+ * engine already emits a `tax` line; GST is appended from `taxCents` only when
+ * the quote carries no tax line, so it is never counted twice.
  */
 export function invoiceItemsFromQuote(lines: QuoteLine[], taxCents: number): InvoiceItem[] {
   const items = lines
     .filter((l) => l.amountCents !== 0)
     .map((l) => ({ description: l.label, amountCents: Math.round(l.amountCents) }));
-  if (taxCents > 0) items.push({ description: "GST", amountCents: Math.round(taxCents) });
+  const hasTaxLine = lines.some((l) => l.kind === "tax" && l.amountCents !== 0);
+  if (!hasTaxLine && taxCents > 0) items.push({ description: "GST", amountCents: Math.round(taxCents) });
   return items;
 }
 

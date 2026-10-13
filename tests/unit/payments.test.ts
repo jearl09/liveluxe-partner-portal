@@ -103,6 +103,19 @@ describe("invoiceItemsFromQuote", () => {
     ]);
     expect(invoiceItemsFromQuote([], 0)).toEqual([]);
   });
+
+  it("does not add GST again when the quote already has a tax line", () => {
+    const items = invoiceItemsFromQuote(
+      [
+        { kind: "accommodation", label: "Accommodation (5 nights)", amountCents: 148900 },
+        { kind: "cleaning_fee", label: "Cleaning fee", amountCents: 18100 },
+        { kind: "tax", label: "GST (10%)", amountCents: 16700 },
+      ] as never,
+      16700,
+    );
+    expect(items.map((i) => i.amountCents).reduce((a, b) => a + b, 0)).toBe(183700);
+    expect(items.filter((i) => /GST/.test(i.description))).toHaveLength(1);
+  });
 });
 
 describe("paymentKeys", () => {
