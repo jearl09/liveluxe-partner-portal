@@ -18,12 +18,18 @@ export interface OrgBilling {
   payment_terms: "prepay" | "deposit" | "net14" | "net30";
   credit_limit_cents: number | null;
   stripe_customer_id: string | null;
+  deposit_pct: number | null;
+  credit_standing: "good" | "watch" | "finance_approval" | "suspended";
+  finance_contact_email: string | null;
+  status: string;
 }
 
 export async function loadOrgBilling(orgId: string): Promise<OrgBilling> {
   const { data, error } = await adminDb()
     .from("partner_orgs")
-    .select("id, name, abn, billing_email, billing_contact_name, payment_terms, credit_limit_cents, stripe_customer_id")
+    .select(
+      "id, name, abn, billing_email, billing_contact_name, payment_terms, credit_limit_cents, stripe_customer_id, deposit_pct, credit_standing, finance_contact_email, status",
+    )
     .eq("id", orgId)
     .maybeSingle();
   if (error) throw new Error(`partner_orgs read failed: ${error.message}`);

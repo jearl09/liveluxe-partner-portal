@@ -1,20 +1,22 @@
 /**
  * Stripe Invoices — spec §11.5. Stripe hosts the PDF and the payment page; we
- * never rebuild either. Two uses:
- *   - mode C: net-terms invoice, emailed by Stripe, paid by card or BECS;
- *   - mode A: a paid tax invoice issued after the card capture so every
- *     confirmed booking has a sequential invoice number and a PDF.
- * Idempotent on the booking id: a second call returns the existing invoice.
+ * never rebuild either. Four kinds, all idempotent on a derived key:
+ *   receipt        mode A/B: a paid tax invoice for a captured card payment
+ *   net_terms      mode C: the booking invoice, emailed by Stripe, net 14/30
+ *   balance        mode B: the balance after the deposit, due before check-in
+ *   supplementary  an approved extension's extra nights (§10.6)
  */
 import "server-only";
 import type Stripe from "stripe";
 import { adminDb } from "@/lib/db/admin";
 import type { BookingRequestRow, InvoiceRow } from "@/lib/db/types";
-import { invoiceItemsFromQuote, paymentKeys } from "@/lib/domain/payments";
+import { invoiceItemsFromQuote, paymentKeys, type InvoiceItem } from "@/lib/domain/payments";
 import type { QuoteLine } from "@/lib/domain/quote-engine";
 import { getStripe } from "@/lib/stripe/client";
 import { log } from "@/lib/observability/logger";
 import { ensureStripeCustomer, loadOrgBilling, type OrgBilling } from "./customers";
+
+export type InvoiceKind = InvoiceRow["kind"];
 
 export interface InvoiceSource {
   booking: BookingRequestRow;
@@ -24,16 +26,22 @@ export interface InvoiceSource {
   payerEmail?: string | null;
 }
 
-export async function invoiceForBooking(bookingId: string): Promise<InvoiceRow | null> {
+export async function invoiceForBooking(bookingId: string, kind?: InvoiceKind): Promise<InvoiceRow | null> {
+  let q = adminDb().from("invoices").select("*").eq("booking_id", bookingId);
+  if (kind) q = q.eq("kind", kind);
+  const { data, error } = await q.order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw new Error(`invoices read failed: ${error.message}`);
+  return data;
+}
+
+export async function invoicesForBooking(bookingId: string): Promise<InvoiceRow[]> {
   const { data, error } = await adminDb()
     .from("invoices")
     .select("*")
     .eq("booking_id", bookingId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .order("created_at", { ascending: false });
   if (error) throw new Error(`invoices read failed: ${error.message}`);
-  return data;
+  return data ?? [];
 }
 
 /** Mirror one Stripe invoice. Returns null when it is not linked to a booking or org we know. */
@@ -48,6 +56,7 @@ export async function syncInvoice(source: string | Stripe.Invoice): Promise<Invo
   }
   const now = new Date().toISOString();
   const paidAt = inv.status_transitions?.paid_at ? new Date(inv.status_transitions.paid_at * 1000).toISOString() : null;
+  const kind = (existing?.kind ?? inv.metadata?.kind ?? "receipt") as InvoiceKind;
   const patch = {
     org_id: orgId,
     booking_id: existing?.booking_id ?? inv.metadata?.booking_id ?? null,
@@ -62,6 +71,7 @@ export async function syncInvoice(source: string | Stripe.Invoice): Promise<Invo
     pdf_url: inv.invoice_pdf ?? existing?.pdf_url ?? null,
     sent_at: existing?.sent_at ?? (inv.status === "open" || inv.status === "paid" ? now : null),
     paid_at: paidAt ?? existing?.paid_at ?? null,
+    kind,
     updated_at: now,
   };
   const { data, error } = await db
@@ -84,46 +94,55 @@ function customFields(b: BookingRequestRow, propertyName: string): Stripe.Invoic
   return fields.filter((f): f is { name: string; value: string } => !!f.value).slice(0, 4);
 }
 
-/**
- * Create, itemise and finalise the invoice. `collection` decides the rest:
- *   send_invoice      → Stripe emails it; due in `daysUntilDue` (mode C).
- *   paid_out_of_band  → marked paid immediately (receipt for a captured card payment).
- */
-export async function issueInvoice(
-  src: InvoiceSource,
-  opts: { collection: "send_invoice"; daysUntilDue: number } | { collection: "paid_out_of_band" },
-): Promise<InvoiceRow> {
-  const existing = await invoiceForBooking(src.booking.id);
-  if (existing) return existing;
+type Collection =
+  | { collection: "send_invoice"; daysUntilDue: number }
+  | { collection: "send_invoice"; dueDate: string }
+  | { collection: "paid_out_of_band" };
 
+async function createAndFinalise(args: {
+  src: InvoiceSource;
+  key: string;
+  kind: InvoiceKind;
+  items: InvoiceItem[];
+  description: string;
+  how: Collection;
+  metadata?: Record<string, string>;
+}): Promise<InvoiceRow> {
   const stripe = getStripe();
-  const b = src.booking;
-  const customer = await ensureStripeCustomer(src.org, src.payerEmail);
-  const key = paymentKeys.invoice(b.id);
-  const sendInvoice = opts.collection === "send_invoice";
+  const b = args.src.booking;
+  const customer = await ensureStripeCustomer(args.src.org, args.src.payerEmail);
+  const sendInvoice = args.how.collection === "send_invoice";
 
   const draft = await stripe.invoices.create(
     {
       customer,
       collection_method: sendInvoice ? "send_invoice" : "charge_automatically",
-      ...(sendInvoice ? { days_until_due: opts.daysUntilDue } : {}),
+      ...(args.how.collection === "send_invoice" && "daysUntilDue" in args.how
+        ? { days_until_due: args.how.daysUntilDue }
+        : {}),
+      ...(args.how.collection === "send_invoice" && "dueDate" in args.how
+        ? { due_date: Math.floor(Date.parse(`${args.how.dueDate}T00:00:00Z`) / 1000) }
+        : {}),
       auto_advance: false,
       pending_invoice_items_behavior: "exclude",
       currency: b.currency.toLowerCase(),
-      description: `Accommodation: ${src.propertyName}, ${b.check_in} to ${b.check_out} (${b.nights} nights). Guest: ${b.guest_name ?? "see booking"}.`,
-      custom_fields: customFields(b, src.propertyName),
+      description: args.description,
+      custom_fields: customFields(b, args.src.propertyName),
       footer: `Booking ${b.reference}. Questions: reply to this email. Live Luxe Pty Ltd.`,
-      metadata: { booking_id: b.id, booking_reference: b.reference, org_id: b.org_id },
+      metadata: {
+        booking_id: b.id,
+        booking_reference: b.reference,
+        org_id: b.org_id,
+        kind: args.kind,
+        ...args.metadata,
+      },
     },
-    { idempotencyKey: `${key}:create` },
+    { idempotencyKey: `${args.key}:create` },
   );
 
-  const items =
-    src.quote && src.quote.lines.length
-      ? invoiceItemsFromQuote(src.quote.lines, src.quote.taxCents)
-      : [{ description: `Accommodation ${b.reference}`, amountCents: b.total_cents ?? 0 }];
   let i = 0;
-  for (const item of items) {
+  for (const item of args.items) {
+    if (item.amountCents === 0) continue;
     await stripe.invoiceItems.create(
       {
         customer,
@@ -132,15 +151,15 @@ export async function issueInvoice(
         currency: b.currency.toLowerCase(),
         description: item.description,
       },
-      { idempotencyKey: `${key}:item:${i++}` },
+      { idempotencyKey: `${args.key}:item:${i++}` },
     );
   }
 
-  let inv = await stripe.invoices.finalizeInvoice(draft.id, {}, { idempotencyKey: `${key}:finalize` });
+  let inv = await stripe.invoices.finalizeInvoice(draft.id, {}, { idempotencyKey: `${args.key}:finalize` });
   if (sendInvoice) {
-    inv = await stripe.invoices.sendInvoice(inv.id, {}, { idempotencyKey: `${key}:send` });
+    inv = await stripe.invoices.sendInvoice(inv.id, {}, { idempotencyKey: `${args.key}:send` });
   } else {
-    inv = await stripe.invoices.pay(inv.id, { paid_out_of_band: true }, { idempotencyKey: `${key}:paid` });
+    inv = await stripe.invoices.pay(inv.id, { paid_out_of_band: true }, { idempotencyKey: `${args.key}:paid` });
   }
   const row = await syncInvoice(inv);
   if (!row) throw new Error("invoice sync returned null for a booking invoice");
@@ -148,9 +167,102 @@ export async function issueInvoice(
     reference: b.reference,
     invoiceId: inv.id,
     number: inv.number,
-    collection: opts.collection,
+    kind: args.kind,
+    collection: args.how.collection,
   });
   return row;
+}
+
+function stayItems(src: InvoiceSource): InvoiceItem[] {
+  const b = src.booking;
+  return src.quote && src.quote.lines.length
+    ? invoiceItemsFromQuote(src.quote.lines, src.quote.taxCents)
+    : [{ description: `Accommodation ${b.reference}`, amountCents: b.total_cents ?? 0 }];
+}
+
+function stayDescription(src: InvoiceSource): string {
+  const b = src.booking;
+  return `Accommodation: ${src.propertyName}, ${b.check_in} to ${b.check_out} (${b.nights} nights). Guest: ${b.guest_name ?? "see booking"}.`;
+}
+
+/**
+ * The booking's main invoice. `collection` decides the rest:
+ *   send_invoice      → Stripe emails it; due in `daysUntilDue` (mode C net terms).
+ *   paid_out_of_band  → marked paid immediately (receipt for a captured card payment).
+ * Idempotent on the booking id: a second call returns the existing invoice.
+ */
+export async function issueInvoice(
+  src: InvoiceSource,
+  opts: { collection: "send_invoice"; daysUntilDue: number } | { collection: "paid_out_of_band" },
+): Promise<InvoiceRow> {
+  const kind: InvoiceKind = opts.collection === "send_invoice" ? "net_terms" : "receipt";
+  const existing = await invoiceForBooking(src.booking.id, kind);
+  if (existing) return existing;
+  return createAndFinalise({
+    src,
+    key: paymentKeys.invoice(src.booking.id),
+    kind,
+    items: stayItems(src),
+    description: stayDescription(src),
+    how: opts,
+  });
+}
+
+/** Mode B (§11.1 B): receipt for the deposit taken at approval. */
+export async function issueDepositReceipt(src: InvoiceSource, depositCents: number, pct: number): Promise<InvoiceRow> {
+  const existing = await invoiceForBooking(src.booking.id, "receipt");
+  if (existing) return existing;
+  return createAndFinalise({
+    src,
+    key: paymentKeys.invoice(src.booking.id),
+    kind: "receipt",
+    items: [{ description: `Deposit (${pct}%) — ${stayDescription(src)}`, amountCents: depositCents }],
+    description: `Deposit for ${src.propertyName}, ${src.booking.check_in} to ${src.booking.check_out}.`,
+    how: { collection: "paid_out_of_band" },
+  });
+}
+
+/** Mode B: the balance, itemised as the stay less the deposit, due before check-in. */
+export async function issueBalanceInvoice(
+  src: InvoiceSource,
+  args: { depositCents: number; dueDate: string },
+): Promise<InvoiceRow> {
+  const existing = await invoiceForBooking(src.booking.id, "balance");
+  if (existing) return existing;
+  const items = [...stayItems(src), { description: "Less deposit received", amountCents: -args.depositCents }];
+  return createAndFinalise({
+    src,
+    key: paymentKeys.balanceInvoice(src.booking.id),
+    kind: "balance",
+    items,
+    description: `Balance for ${stayDescription(src)}`,
+    how: { collection: "send_invoice", dueDate: args.dueDate },
+  });
+}
+
+/** §10.6 extension: a supplementary invoice for the added nights only. */
+export async function issueSupplementaryInvoice(
+  src: InvoiceSource,
+  args: { modificationId: string; items: InvoiceItem[]; nights: number; newCheckOut: string; daysUntilDue: number },
+): Promise<InvoiceRow> {
+  const { data: mod } = await adminDb()
+    .from("booking_modifications")
+    .select("invoice_id")
+    .eq("id", args.modificationId)
+    .maybeSingle();
+  if (mod?.invoice_id) {
+    const { data } = await adminDb().from("invoices").select("*").eq("id", mod.invoice_id).maybeSingle();
+    if (data) return data;
+  }
+  return createAndFinalise({
+    src,
+    key: paymentKeys.supplementaryInvoice(args.modificationId),
+    kind: "supplementary",
+    items: args.items,
+    description: `Extension: ${src.propertyName}, ${args.nights} additional night(s) to ${args.newCheckOut}.`,
+    how: { collection: "send_invoice", daysUntilDue: args.daysUntilDue },
+    metadata: { modification_id: args.modificationId },
+  });
 }
 
 /** Mode C gate: what the org still owes on open invoices (§11.1 credit_limit_cents). */

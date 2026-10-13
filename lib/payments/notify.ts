@@ -10,6 +10,14 @@ import { env } from "@/lib/env";
 import { formatMoney } from "@/lib/domain/money";
 import { sendEmail } from "@/lib/notifications/email";
 import { BookingCancelled, BookingConfirmed, PaymentRequired } from "@/lib/notifications/templates/payment";
+import {
+  CardDeclined,
+  CheckinReady,
+  HoldReleased,
+  ModificationDecided,
+  ResumePayment,
+  StillReviewing,
+} from "@/lib/notifications/templates/payment-events";
 import { log } from "@/lib/observability/logger";
 import { formatDate, formatTimestamp } from "@/lib/utils";
 
@@ -141,4 +149,132 @@ export async function sendBookingCancelled(
       error: String(e),
     });
   }
+}
+
+type EventKind =
+  "card_declined" | "resume_payment" | "hold_released" | "still_reviewing" | "checkin_ready" | "modification";
+
+async function sendEvent(
+  kind: EventKind,
+  b: BookingRequestRow,
+  requestId: string,
+  build: (to: string) => Parameters<typeof sendEmail>[0],
+) {
+  try {
+    const to = await recipientForBooking(b);
+    if (!to) return false;
+    await sendEmail(build(to));
+    return true;
+  } catch (e) {
+    log.warn("payment.notify_failed", { requestId, kind, reference: b.reference, error: String(e) });
+    return false;
+  }
+}
+
+const payUrl = (b: BookingRequestRow) => `${env().NEXT_PUBLIC_APP_URL}/requests/${b.id}/pay`;
+const requestUrl = (b: BookingRequestRow) => `${env().NEXT_PUBLIC_APP_URL}/requests/${b.id}`;
+const holdLabel = (b: BookingRequestRow) => (b.hold_expires_at ? formatTimestamp(b.hold_expires_at) : null);
+
+/** §17.2 "Card authorisation fails": once per failure (keyed on the intent + failure code). */
+export function sendCardDeclined(
+  b: BookingRequestRow,
+  propertyName: string,
+  args: { paymentIntentId: string; failureCode: string | null; reasonText: string },
+  requestId: string,
+) {
+  return sendEvent("card_declined", b, requestId, (to) => ({
+    to,
+    subject: `Card not authorised — ${b.reference}`,
+    idempotencyKey: `card_declined:${args.paymentIntentId}:${args.failureCode ?? "unknown"}`,
+    tags: { type: "card_declined" },
+    template: CardDeclined({
+      ...common(b, propertyName),
+      reasonText: args.reasonText,
+      payUrl: payUrl(b),
+      holdUntilLabel: holdLabel(b),
+    }),
+  }));
+}
+
+/** §17.2 "3DS challenge abandoned": one resume link per intent. */
+export function sendResumePayment(
+  b: BookingRequestRow,
+  propertyName: string,
+  paymentIntentId: string,
+  requestId: string,
+) {
+  return sendEvent("resume_payment", b, requestId, (to) => ({
+    to,
+    subject: `Finish securing your request — ${b.reference}`,
+    idempotencyKey: `resume_payment:${paymentIntentId}`,
+    tags: { type: "resume_payment" },
+    template: ResumePayment({ ...common(b, propertyName), payUrl: payUrl(b), holdUntilLabel: holdLabel(b) }),
+  }));
+}
+
+/** §17.2 "Authorisation expires before approval". */
+export function sendHoldReleased(
+  b: BookingRequestRow,
+  propertyName: string,
+  paymentIntentId: string,
+  requestId: string,
+) {
+  return sendEvent("hold_released", b, requestId, (to) => ({
+    to,
+    subject: `Card hold released — ${b.reference}`,
+    idempotencyKey: `hold_released:${paymentIntentId}`,
+    tags: { type: "hold_released" },
+    template: HoldReleased({
+      ...common(b, propertyName),
+      payUrl: payUrl(b),
+      approved: b.status === "APPROVED" || b.status === "AWAITING_PAYMENT",
+      holdUntilLabel: holdLabel(b),
+    }),
+  }));
+}
+
+/** §17.5 "Nobody approves a request": hold auto-extended at 150 % of the SLA. */
+export function sendStillReviewing(b: BookingRequestRow, propertyName: string, requestId: string) {
+  return sendEvent("still_reviewing", b, requestId, (to) => ({
+    to,
+    subject: `Still with us — ${b.reference}`,
+    idempotencyKey: `still_reviewing:${b.id}:${b.sla_extended_at ?? ""}`,
+    tags: { type: "still_reviewing" },
+    template: StillReviewing({ ...common(b, propertyName), requestUrl: requestUrl(b), holdUntilLabel: holdLabel(b) }),
+  }));
+}
+
+/** §10.6 check-in pack released. */
+export function sendCheckinReady(b: BookingRequestRow, propertyName: string, requestId: string) {
+  return sendEvent("checkin_ready", b, requestId, (to) => ({
+    to,
+    subject: `Check-in details ready — ${b.reference}`,
+    idempotencyKey: `checkin_ready:${b.id}:${b.checkin_released_at ?? ""}`,
+    tags: { type: "checkin_ready" },
+    template: CheckinReady({ ...common(b, propertyName), requestUrl: requestUrl(b), guestName: b.guest_name }),
+  }));
+}
+
+/** §10.6 extension / early departure decided. */
+export function sendModificationDecided(
+  b: BookingRequestRow,
+  propertyName: string,
+  args: {
+    modificationId: string;
+    kind: "extension" | "early_departure";
+    approved: boolean;
+    newCheckOut: string;
+    moneyLabel: string;
+    note: string | null;
+    invoiceUrl: string | null;
+  },
+  requestId: string,
+) {
+  return sendEvent("modification", b, requestId, (to) => ({
+    to,
+    subject: `${args.approved ? "Approved" : "Not approved"}: ${args.kind === "extension" ? "extension" : "early departure"} — ${b.reference}`,
+    idempotencyKey: `modification:${args.modificationId}:${args.approved ? "approved" : "declined"}`,
+    tags: { type: "modification_decided" },
+    template: ModificationDecided({ ...common(b, propertyName), ...args, requestUrl: requestUrl(b) }),
+  }));
 }
