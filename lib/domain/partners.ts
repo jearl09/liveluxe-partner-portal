@@ -3,6 +3,7 @@
  * for the create/update screen; business tunables left blank fall back to the
  * settings table at request time.
  */
+import type { StatusTone } from "./status";
 import { PAYMENT_TERMS, type PaymentTerms } from "./payments";
 
 export const PARTNER_TYPES = ["insurance", "corporate", "government", "other"] as const;
@@ -153,3 +154,19 @@ export function parsePartnerOrgForm(raw: Record<string, string | undefined>): Pa
     },
   };
 }
+
+/** Status pill tone per organisation status (brief §6.5). */
+export const ORG_TONE: Record<OrgStatus, StatusTone> = {
+  active: "success",
+  pending: "attention",
+  suspended: "danger",
+  closed: "muted",
+};
+
+/** Payment mode in a word or two for lists and chips. */
+export const PAY_MODE_SHORT: Record<string, string> = {
+  prepay: "Card",
+  deposit: "Deposit",
+  net14: "Invoice net 14",
+  net30: "Invoice net 30",
+};

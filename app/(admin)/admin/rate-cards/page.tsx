@@ -1,90 +1,148 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { PageHeader } from "@/components/ui/page-header";
-import { Panel } from "@/components/ui/panel";
-import { Table, tdClass, thClass, theadClass } from "@/components/ui/table";
+import { Percent } from "lucide-react";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { EmptyState } from "@/components/ui/states";
 import { getSessionClaims } from "@/lib/db/server";
-import { todayIn } from "@/lib/domain/dates";
+import { addDays, daysBetween, todayIn } from "@/lib/domain/dates";
 import { PARTNER_TYPE_LABELS, type PartnerType } from "@/lib/domain/partners";
 import { can } from "@/lib/domain/permissions";
-import { describeRateCard } from "@/lib/domain/rate-cards";
-import { listOrgs } from "@/lib/partners/load";
-import { currentRateCardsByOrg } from "@/lib/rate-cards/load";
-import { formatDate } from "@/lib/utils";
+import { rateCardDiscount, rateCardTiers, rateCardWaivers } from "@/lib/domain/rate-card-display";
+import { listOrgs, type PartnerOrgRow } from "@/lib/partners/load";
+import { currentRateCardsByOrg, listRateCards, type RateCardVersion } from "@/lib/rate-cards/load";
+import { cn, formatDate } from "@/lib/utils";
 
 export const metadata = { title: "Rate cards" };
+export const dynamic = "force-dynamic";
 const TZ = "Australia/Melbourne";
 
-/** One row per partner organisation with the card in force today (§13.4). */
+interface Row {
+  org: PartnerOrgRow;
+  current: RateCardVersion | null;
+  next: RateCardVersion | null;
+}
+
+/**
+ * Rate cards (brief §6.6): what discount each partner gets, until when. One row per
+ * partner; publishing is per partner, so the page has no primary action.
+ */
 export default async function RateCardsPage() {
   const claims = await getSessionClaims();
   if (!claims || !can(claims.role, "rate_cards.manage")) redirect("/admin/queue");
   const today = todayIn(TZ);
   const [orgs, current] = await Promise.all([listOrgs(), currentRateCardsByOrg(today)]);
+  const scheduled = await Promise.all(
+    orgs.map(async ({ org }) => (await listRateCards(org.id, today)).filter((v) => v.validFrom > today).at(-1) ?? null),
+  );
+  const rows: Row[] = orgs.map(({ org }, i) => ({ org, current: current.get(org.id) ?? null, next: scheduled[i] }));
+
+  const columns: DataTableColumn<Row>[] = [
+    {
+      key: "partner",
+      header: "Partner",
+      primary: true,
+      cell: (r) => (
+        <span className="block">
+          <span className="text-text-primary block font-semibold">{r.org.name}</span>
+          <span className="text-text-muted block">{PARTNER_TYPE_LABELS[r.org.type as PartnerType] ?? r.org.type}</span>
+        </span>
+      ),
+    },
+    {
+      key: "card",
+      header: "Card in force",
+      cell: (r) =>
+        r.current ? (
+          <span className="text-text-primary">{r.current.row.name}</span>
+        ) : (
+          <span className="text-text-muted">Hostaway rate applies</span>
+        ),
+    },
+    {
+      key: "discount",
+      header: "Discount",
+      cell: (r) => (
+        <span className="text-text-primary whitespace-nowrap">
+          {r.current ? rateCardDiscount(r.current.card) : "—"}
+        </span>
+      ),
+    },
+    {
+      key: "tiers",
+      header: "Length-of-stay tiers",
+      optional: true,
+      cell: (r) => <span className="text-text-secondary">{(r.current && rateCardTiers(r.current.card)) ?? "—"}</span>,
+    },
+    {
+      key: "fees",
+      header: "Fee waivers",
+      optional: "xl",
+      cell: (r) => <span className="text-text-secondary">{(r.current && rateCardWaivers(r.current.card)) ?? "—"}</span>,
+    },
+    {
+      key: "valid",
+      header: "Valid",
+      cell: (r) => {
+        if (!r.current) return <span className="text-text-muted">—</span>;
+        const last = r.current.validTo ? addDays(r.current.validTo, -1) : null;
+        const left = last ? daysBetween(today, last) : null;
+        return (
+          <span className="block whitespace-nowrap">
+            <span className="text-text-primary block">
+              {formatDate(r.current.validFrom)} to {last ? formatDate(last) : "open-ended"}
+            </span>
+            {left !== null && left <= 30 && (
+              <span className={cn("block font-semibold", "text-attention-fg")}>
+                {left <= 0 ? "Ends today" : `Ends in ${left} ${left === 1 ? "day" : "days"}`}
+              </span>
+            )}
+          </span>
+        );
+      },
+    },
+    {
+      key: "next",
+      header: "Next version",
+      optional: true,
+      cell: (r) =>
+        r.next ? (
+          <span className="block">
+            <span className="text-text-primary block">{r.next.row.name}</span>
+            <span className="text-text-muted block">from {formatDate(r.next.validFrom)}</span>
+          </span>
+        ) : (
+          <span className="text-text-muted">—</span>
+        ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        eyebrow="Pricing"
-        title="Rate cards"
-        description="Each partner's contracted discount, applied on top of the Hostaway rate when they price a stay."
-      />
-      <Panel flush>
-        <Table>
-          <thead className={theadClass}>
-            <tr className="border-border border-b">
-              <th className={thClass}>Partner</th>
-              <th className={thClass}>Current card</th>
-              <th className={thClass}>Terms</th>
-              <th className={thClass}>Valid</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orgs.length === 0 && (
-              <tr>
-                <td colSpan={4} className="text-muted-foreground px-5 py-10 text-center">
-                  No partner organisations yet. Add one under Partners.
-                </td>
-              </tr>
-            )}
-            {orgs.map(({ org }) => {
-              const c = current.get(org.id);
-              return (
-                <tr
-                  key={org.id}
-                  className="border-border hover:bg-muted/50 relative border-b transition-colors last:border-0"
-                >
-                  <td className={tdClass}>
-                    <Link
-                      href={`/admin/rate-cards/${org.id}`}
-                      className="text-strong focus-visible:after:ring-ring font-medium after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset"
-                    >
-                      {org.name}
-                    </Link>
-                    <span className="text-muted-foreground block text-xs">
-                      {PARTNER_TYPE_LABELS[org.type as PartnerType] ?? org.type}
-                    </span>
-                  </td>
-                  <td className={tdClass}>
-                    {c ? (
-                      <>
-                        <span className="text-strong">{c.row.name}</span>
-                        <span className="text-muted-foreground block text-xs">version {c.row.version}</span>
-                      </>
-                    ) : (
-                      <span className="text-muted-foreground">None — Hostaway rate applies</span>
-                    )}
-                  </td>
-                  <td className={`${tdClass} text-foreground text-xs`}>{c ? describeRateCard(c.card) : "—"}</td>
-                  <td className={`${tdClass} text-xs whitespace-nowrap`}>
-                    {c ? `${formatDate(c.validFrom)} → ${c.validTo ? formatDate(c.validTo) : "open"}` : "—"}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </Table>
-      </Panel>
+      <header>
+        <p className="eyebrow mb-1">Pricing</p>
+        <h1 className="text-h1 text-text-primary font-serif tracking-tight">Rate cards</h1>
+        <p className="text-text-secondary mt-1">
+          Each partner&apos;s contracted discount, applied on top of the Hostaway rate. Open a partner to publish a new
+          version.
+        </p>
+      </header>
+      <div className="border-subtle bg-surface rounded-card overflow-clip border">
+        <DataTable
+          columns={columns}
+          rows={rows}
+          rowKey={(r) => r.org.id}
+          rowHref={(r) => `/admin/rate-cards/${r.org.id}`}
+          rowLabel={(r) => `Open ${r.org.name}'s rate card`}
+          dense
+          caption="Rate cards by partner"
+          empty={
+            <EmptyState
+              icon={Percent}
+              title="No partners yet"
+              body="Rate cards belong to partners. Add a partner first, then publish its card."
+            />
+          }
+        />
+      </div>
     </div>
   );
 }

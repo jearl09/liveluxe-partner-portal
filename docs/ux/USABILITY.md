@@ -140,3 +140,12 @@ The card itself was not entered: Stripe's field does not submit in a headless br
 
 1. The Dashboard tiles linked to `?tab=` views; they now open the matching Requests chip, and old links still land.
 2. Settings promised features "in Phase 2"; it now shows only what exists, with a way to ask for changes.
+
+---
+
+## After screen group 6 — Partners, Rate cards, ops Settings (14 Oct 2026)
+
+Tasks (a)–(e) do not touch these screens. Checked by hand as an administrator: the Partners list reads at a glance
+(status, how they pay, card in force, open requests, money owed); partner detail answers "is anything wrong" in the
+first screen; publishing a card states what it will close before it does. The ops test account was raised to
+administrator for the screenshots and set back to operations afterwards.

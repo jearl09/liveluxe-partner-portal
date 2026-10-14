@@ -17,7 +17,7 @@ export function PartnerForm({
 }) {
   const field = (name: string) => fieldClasses(errorFields.has(name));
   return (
-    <form method="post" action={action} className="space-y-4">
+    <form method="post" action={action} className="space-y-4 px-5 py-5">
       {mode === "edit" && <input type="hidden" name="action" value="update" />}
       <div className="grid gap-4 sm:grid-cols-[1fr_180px] sm:items-end">
         <label className={labelClass}>

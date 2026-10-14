@@ -228,13 +228,19 @@ export interface DateFieldProps {
   hint?: string;
   error?: string;
   className?: string;
+  /** Called with the ISO date ("" when cleared). */
+  onChange?: (iso: string) => void;
 }
 
 /** A single calendar date. */
 export function DateField(p: DateFieldProps) {
   const id = useId();
   const [open, setOpen] = useState(false);
-  const [day, setDay] = useState<Date | undefined>(() => toDate(p.defaultValue));
+  const [day, setDayState] = useState<Date | undefined>(() => toDate(p.defaultValue));
+  const setDay = (d: Date | undefined) => {
+    setDayState(d);
+    p.onChange?.(toIso(d));
+  };
   const min = useMemo(() => toDate(p.min), [p.min]);
   const max = useMemo(() => toDate(p.max), [p.max]);
   const disabled = [...(min ? [{ before: min }] : []), ...(max ? [{ after: max }] : [])];

@@ -6,7 +6,7 @@
 import { requestId } from "@/lib/api/response";
 import { formFields, redirectTo } from "@/lib/auth/request";
 import { getSessionClaims } from "@/lib/db/server";
-import { todayIn } from "@/lib/domain/dates";
+import { addDays, todayIn } from "@/lib/domain/dates";
 import { isDomainError } from "@/lib/domain/errors";
 import { can } from "@/lib/domain/permissions";
 import { parseRateCardForm } from "@/lib/domain/rate-cards";
@@ -24,6 +24,7 @@ const FIELDS = [
   "losTiers",
   "cleaningFeeFromNights",
   "waiveSecurityDeposit",
+  "lastDay",
 ] as const;
 
 export async function POST(req: Request, ctx: Ctx) {
@@ -35,7 +36,12 @@ export async function POST(req: Request, ctx: Ctx) {
   if (!can(claims.role, "rate_cards.manage")) return redirectTo(req, back, { error: "FORBIDDEN" });
 
   const f = await formFields(req, FIELDS);
-  const parsed = parseRateCardForm(f, todayIn("Australia/Melbourne"));
+  // The form asks for the last day in force (inclusive); the range end is exclusive.
+  const lastDay = /^\d{4}-\d{2}-\d{2}$/.test(f.lastDay) ? f.lastDay : "";
+  const parsed = parseRateCardForm(
+    { ...f, validTo: lastDay ? addDays(lastDay, 1) : f.validTo },
+    todayIn("Australia/Melbourne"),
+  );
   if (!parsed.ok) {
     return redirectTo(req, back, {
       ...f,
