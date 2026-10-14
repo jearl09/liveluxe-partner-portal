@@ -58,6 +58,7 @@ describe("parseSearchParams (spec §13.2)", () => {
       guests: 3,
       pets: 1,
       bedrooms: 2,
+      sort: "best",
       page: 2,
     });
   });
@@ -65,7 +66,16 @@ describe("parseSearchParams (spec §13.2)", () => {
   it("defaults when nothing is given", () => {
     const p = parseSearchParams({}, TODAY);
     expect(p.hasDates).toBe(false);
-    expect(p.query).toEqual({ q: "", checkIn: null, checkOut: null, guests: 1, pets: 0, bedrooms: null, page: 1 });
+    expect(p.query).toEqual({
+      q: "",
+      checkIn: null,
+      checkOut: null,
+      guests: 1,
+      pets: 0,
+      bedrooms: null,
+      sort: "best",
+      page: 1,
+    });
   });
 
   it("rejects reversed, past, too-long and half-entered dates but still renders", () => {
@@ -207,5 +217,35 @@ describe("pageCount", () => {
     expect(pageCount(24)).toBe(1);
     expect(pageCount(25)).toBe(2);
     expect(pageCount(7, 3)).toBe(3);
+  });
+});
+
+describe("search sort and near-miss dates (brief §7.3)", () => {
+  it("parses and prints the sort", async () => {
+    const { parseSearchParams, searchQueryString } = await import("@/lib/domain/search");
+    const p = parseSearchParams({ sort: "price_asc" }).query;
+    expect(p.sort).toBe("price_asc");
+    expect(parseSearchParams({ sort: "nope" }).query.sort).toBe("best");
+    expect(searchQueryString({ sort: "price_asc" })).toBe("?sort=price_asc");
+    expect(searchQueryString({ sort: "best" })).toBe("");
+  });
+  it("offers same-length windows nearest first, never in the past", async () => {
+    const { nearbyWindows } = await import("@/lib/domain/search");
+    const w = nearbyWindows("2026-10-20", 5, "2026-10-18");
+    expect(w[0]).toEqual({ checkIn: "2026-10-21", checkOut: "2026-10-26", shift: 1 });
+    expect(w.map((x) => x.shift)).toEqual([1, -1, 2, -2, 3, 7]);
+  });
+  it("sorts by price with unpriced last", async () => {
+    const { sortByPrice } = await import("@/lib/domain/search");
+    const p = (c: number | null) => ({
+      price:
+        c === null
+          ? { quotable: false, accommodationCents: 0, nightlyAverageCents: 0, pricedNights: 0, nights: 2 }
+          : { quotable: true, accommodationCents: c, nightlyAverageCents: c / 2, pricedNights: 2, nights: 2 },
+    });
+    expect(sortByPrice([p(300), p(null), p(100)], "asc").map((x) => x.price.accommodationCents)).toEqual([100, 300, 0]);
+    expect(sortByPrice([p(300), p(null), p(100)], "desc").map((x) => x.price.accommodationCents)).toEqual([
+      300, 100, 0,
+    ]);
   });
 });

@@ -12,6 +12,8 @@ import { isUuid } from "@/lib/domain/ids";
 import {
   SEARCH_PAGE_SIZE,
   pageCount,
+  nearbyWindows,
+  sortByPrice,
   summariseNightlyPrices,
   type PriceSummary,
   type SearchQuery,
@@ -130,7 +132,12 @@ export async function searchListings(q: SearchQuery, nights: number, hasDates: b
 
   if (term) query = query.or(`suburb.ilike.%${term}%,postcode.ilike.%${term}%,public_name.ilike.%${term}%`);
   if (q.bedrooms) query = query.gte("bedrooms", q.bedrooms);
-  query = query.order("suburb", { ascending: true, nullsFirst: false }).order("public_name").range(from, to);
+  // Price order needs every available listing's price, so it pages in memory; the
+  // available set for one stay is the portfolio at most (a few hundred rows).
+  const byPrice = hasDates && (q.sort === "price_asc" || q.sort === "price_desc");
+  if (q.sort === "bedrooms") query = query.order("bedrooms", { ascending: false, nullsFirst: false });
+  query = query.order("suburb", { ascending: true, nullsFirst: false }).order("public_name");
+  query = byPrice ? query.range(0, 499) : query.range(from, to);
 
   const { data, count, error } = await query;
   if (error) throw new Error(`search failed: ${error.message}`);
@@ -165,24 +172,53 @@ export async function searchListings(q: SearchQuery, nights: number, hasDates: b
     pricesByListing.set(d.listing_id, arr);
   }
 
+  const items: SearchResultItem[] = rows.map((r) => ({
+    id: r.id,
+    name: displayPropertyName(r.public_name),
+    suburb: r.suburb,
+    state: r.state,
+    bedrooms: r.bedrooms,
+    bathrooms: r.bathrooms,
+    maxGuests: r.max_guests,
+    maxPets: r.max_pets,
+    minNights: r.min_nights,
+    basePriceCents: r.base_price_cents,
+    currency: r.currency,
+    imageUrl: firstImage.get(r.id) ?? null,
+    price: hasDates ? summariseNightlyPrices(pricesByListing.get(r.id) ?? [], nights) : null,
+  }));
   return {
-    items: rows.map((r) => ({
-      id: r.id,
-      name: displayPropertyName(r.public_name),
-      suburb: r.suburb,
-      state: r.state,
-      bedrooms: r.bedrooms,
-      bathrooms: r.bathrooms,
-      maxGuests: r.max_guests,
-      maxPets: r.max_pets,
-      minNights: r.min_nights,
-      basePriceCents: r.base_price_cents,
-      currency: r.currency,
-      imageUrl: firstImage.get(r.id) ?? null,
-      price: hasDates ? summariseNightlyPrices(pricesByListing.get(r.id) ?? [], nights) : null,
-    })),
+    items: byPrice ? sortByPrice(items, q.sort === "price_asc" ? "asc" : "desc").slice(from, to + 1) : items,
     total,
     page: q.page,
     pages: pageCount(total),
   };
+}
+
+/**
+ * Near-miss dates (brief §7.3): when nothing is free, how many properties are free
+ * for the same length of stay a few days either side. Counts only; stops at three.
+ */
+export async function nearbyAvailability(
+  q: SearchQuery,
+  nights: number,
+  today: string,
+): Promise<{ checkIn: string; checkOut: string; shift: number; count: number }[]> {
+  if (!q.checkIn) return [];
+  const supabase = await createServerSupabase();
+  const term = cleanTerm(q.q);
+  const out: { checkIn: string; checkOut: string; shift: number; count: number }[] = [];
+  for (const w of nearbyWindows(q.checkIn, nights, today)) {
+    let query = supabase.rpc(
+      "search_available_listings",
+      { p_check_in: w.checkIn, p_check_out: w.checkOut, p_guests: q.guests, p_pets: q.pets },
+      { count: "exact", head: true },
+    );
+    if (term) query = query.or(`suburb.ilike.%${term}%,postcode.ilike.%${term}%,public_name.ilike.%${term}%`);
+    if (q.bedrooms) query = query.gte("bedrooms", q.bedrooms);
+    const { count } = await query;
+    if (count && count > 0) out.push({ ...w, count });
+    if (out.length === 3) break;
+  }
+  return out;
 }

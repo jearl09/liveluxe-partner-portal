@@ -31,14 +31,14 @@ export function SearchForm({
       role="search"
       aria-label="Find a property"
       className={cn(
-        "grid gap-3 md:grid-cols-6 md:items-end",
+        "grid grid-cols-6 gap-3 md:items-end",
         compact
           ? "xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1.8fr)_6rem_7rem_auto]"
           : "xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1.8fr)_6rem_7rem_6rem_auto]",
         className,
       )}
     >
-      <label className={cn(labelClass, "md:col-span-3 xl:col-span-1")}>
+      <label className={cn(labelClass, "col-span-6 md:col-span-3 xl:col-span-1")}>
         Suburb, postcode or name
         <input
           name="q"
@@ -55,9 +55,9 @@ export function SearchForm({
         defaultFrom={query.checkIn}
         defaultTo={query.checkOut}
         min={today}
-        className="md:col-span-3 xl:col-span-1"
+        className="col-span-6 md:col-span-3 xl:col-span-1"
       />
-      <label className={cn(labelClass, "md:col-span-2 xl:col-span-1")}>
+      <label className={cn(labelClass, compact ? "col-span-3" : "col-span-2", "md:col-span-2 xl:col-span-1")}>
         Guests
         <input
           name="guests"
@@ -69,7 +69,7 @@ export function SearchForm({
           className={`${fieldClass} mt-1`}
         />
       </label>
-      <label className={cn(labelClass, "md:col-span-2 xl:col-span-1")}>
+      <label className={cn(labelClass, compact ? "col-span-3" : "col-span-2", "md:col-span-2 xl:col-span-1")}>
         Bedrooms
         <select name="bedrooms" defaultValue={query.bedrooms ?? ""} className={`${fieldClass} mt-1`}>
           <option value="">Any</option>
@@ -81,7 +81,7 @@ export function SearchForm({
         </select>
       </label>
       {!compact && (
-        <label className={cn(labelClass, "md:col-span-2 xl:col-span-1")}>
+        <label className={cn(labelClass, "col-span-2 md:col-span-2 xl:col-span-1")}>
           Pets
           <input
             name="pets"
@@ -96,7 +96,7 @@ export function SearchForm({
       )}
       <SubmitButton
         pendingLabel="Searching…"
-        className={cn("w-full md:col-span-2 xl:col-span-1 xl:w-auto xl:px-6", compact && "md:col-span-2")}
+        className="col-span-6 w-full md:col-span-2 xl:col-span-1 xl:w-auto xl:px-6"
       >
         <Search className="h-4 w-4" aria-hidden /> Search
       </SubmitButton>

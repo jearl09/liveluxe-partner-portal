@@ -16,8 +16,19 @@ export interface SearchQuery {
   guests: number;
   pets: number;
   bedrooms: number | null;
+  /** Result order (brief §7.3). Price sorts need dates. */
+  sort?: SearchSort;
   page: number;
 }
+
+export const SEARCH_SORTS = ["best", "price_asc", "price_desc", "bedrooms"] as const;
+export type SearchSort = (typeof SEARCH_SORTS)[number];
+export const SEARCH_SORT_LABELS: Record<SearchSort, string> = {
+  best: "Best match",
+  price_asc: "Price, low to high",
+  price_desc: "Price, high to low",
+  bedrooms: "Most bedrooms",
+};
 
 export interface ParsedSearch {
   query: SearchQuery;
@@ -76,6 +87,7 @@ export function parseSearchParams(raw: Raw, today?: string): ParsedSearch {
       guests: int(first(raw.guests), 1, 1, 20),
       pets: int(first(raw.pets), 0, 0, 5),
       bedrooms: bedroomsRaw ? int(bedroomsRaw, 0, 0, 10) || null : null,
+      sort: (SEARCH_SORTS as readonly string[]).includes(first(raw.sort)) ? (first(raw.sort) as SearchSort) : "best",
       page: int(first(raw.page), 1, 1, 500),
     },
     errors,
@@ -116,6 +128,7 @@ export function searchQueryString(q: Partial<SearchQuery>): string {
   if (q.guests && q.guests !== 1) p.set("guests", String(q.guests));
   if (q.pets) p.set("pets", String(q.pets));
   if (q.bedrooms) p.set("bedrooms", String(q.bedrooms));
+  if (q.sort && q.sort !== "best") p.set("sort", q.sort);
   if (q.page && q.page > 1) p.set("page", String(q.page));
   const s = p.toString();
   return s ? `?${s}` : "";
@@ -242,4 +255,36 @@ export function summariseStrip(days: readonly StripDay[]): StripSummary {
 /** Total pages for a result count. */
 export function pageCount(total: number, pageSize = SEARCH_PAGE_SIZE): number {
   return Math.max(1, Math.ceil(total / pageSize));
+}
+
+/**
+ * Same-length stays a day or a few either side of the asked dates, nearest first, never
+ * starting before today (brief §7.3 "nearest dates on the same set").
+ */
+export function nearbyWindows(
+  checkIn: string,
+  nights: number,
+  today: string,
+  shifts: readonly number[] = [1, -1, 2, -2, 3, -3, 7, -7],
+): { checkIn: string; checkOut: string; shift: number }[] {
+  const add = (d: string, n: number) => {
+    const [y, m, dd] = d.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, dd + n)).toISOString().slice(0, 10);
+  };
+  return shifts
+    .map((shift) => ({ checkIn: add(checkIn, shift), checkOut: add(checkIn, shift + nights), shift }))
+    .filter((w) => w.checkIn >= today);
+}
+
+/** Price order for one page of dated results; anything without a full price goes last. */
+export function sortByPrice<T extends { price: PriceSummary | null }>(items: readonly T[], dir: "asc" | "desc"): T[] {
+  const key = (t: T) => (t.price?.quotable ? t.price.accommodationCents : null);
+  return [...items].sort((a, b) => {
+    const ka = key(a);
+    const kb = key(b);
+    if (ka === null && kb === null) return 0;
+    if (ka === null) return 1;
+    if (kb === null) return -1;
+    return dir === "asc" ? ka - kb : kb - ka;
+  });
 }
