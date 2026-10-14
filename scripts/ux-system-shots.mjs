@@ -13,9 +13,19 @@ const OUT = "docs/ux/after/dev-system";
 mkdirSync(OUT, { recursive: true });
 
 const OVERLAYS = [
-  ["date-range", (p) => p.getByRole("button", { name: /Stay dates.*Wed 25 Nov 2026/ }).first().click()],
+  [
+    "date-range",
+    (p) =>
+      p
+        .getByRole("button", { name: /Stay dates.*Wed 25 Nov 2026/ })
+        .first()
+        .click(),
+  ],
   ["sheet", (p) => p.getByRole("button", { name: "New partner" }).click()],
-  ["confirm-approve", (p) => p.getByRole("button", { name: "Approve", exact: true }).and(p.locator(":enabled")).click()],
+  [
+    "confirm-approve",
+    (p) => p.getByRole("button", { name: "Approve", exact: true }).and(p.locator(":enabled")).click(),
+  ],
   ["confirm-decline", (p) => p.getByRole("button", { name: "Decline", exact: true }).nth(1).click()],
   ["manual-search", (p) => p.getByRole("button", { name: "Ask us to find one" }).click()],
 ];

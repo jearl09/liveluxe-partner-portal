@@ -220,6 +220,8 @@ export interface DateFieldProps {
   name: string;
   defaultValue?: string | null;
   min?: string;
+  /** Latest selectable date (ISO). */
+  max?: string;
   required?: boolean;
   /** Allow clearing (optional end dates such as "Last day in force"). */
   clearable?: boolean;
@@ -234,6 +236,8 @@ export function DateField(p: DateFieldProps) {
   const [open, setOpen] = useState(false);
   const [day, setDay] = useState<Date | undefined>(() => toDate(p.defaultValue));
   const min = useMemo(() => toDate(p.min), [p.min]);
+  const max = useMemo(() => toDate(p.max), [p.max]);
+  const disabled = [...(min ? [{ before: min }] : []), ...(max ? [{ after: max }] : [])];
   return (
     <div className={p.className}>
       <span id={`${id}-label`} className="text-text-primary text-body-sm block font-semibold">
@@ -274,7 +278,7 @@ export function DateField(p: DateFieldProps) {
                   if (d) setOpen(false);
                 }}
                 defaultMonth={day ?? min ?? new Date()}
-                disabled={min ? { before: min } : undefined}
+                disabled={disabled.length ? disabled : undefined}
                 weekStartsOn={1}
                 showOutsideDays={false}
                 classNames={{

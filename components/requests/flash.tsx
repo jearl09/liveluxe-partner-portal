@@ -1,9 +1,10 @@
 import { Banner } from "@/components/ui/banner";
+import { Toast } from "@/components/ui/toast";
 import { FLASH_KEYS, ScrubParams } from "@/components/ui/scrub-params";
 import { ErrorCodes, type ErrorCode } from "@/lib/domain/errors";
 
 const DONE: Record<string, string> = {
-  "1": "Your request has been submitted. Live Luxe will review it and reply within the decision window.",
+  "1": "Request sent. Live Luxe will reply within a few business hours, and we've emailed you a copy.",
   review: "Review started. This request is now assigned to you.",
   approved: "Approved. The dates are now reserved for this partner.",
   declined: "Declined. The partner has been notified and the hold released.",
@@ -72,12 +73,24 @@ export function Flash({
   error,
   detail,
   refCode,
+  toast = false,
 }: {
   done?: string;
   error?: string;
   detail?: string;
   refCode?: string;
+  /** Confirm a success as a toast (brief §4.8) rather than a banner. Errors always stay inline. */
+  toast?: boolean;
 }) {
+  if (done && DONE[done] && toast) {
+    const [title, ...rest] = DONE[done].split(/(?<=\.)\s/);
+    return (
+      <>
+        <ScrubParams keys={FLASH_KEYS} />
+        <Toast title={title} body={[...rest, detail].filter(Boolean).join(" ") || undefined} />
+      </>
+    );
+  }
   if (done && DONE[done]) {
     return (
       <>

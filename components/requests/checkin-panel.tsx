@@ -1,135 +1,149 @@
-import { KeyRound, MapPin } from "lucide-react";
-import { ConfirmButton } from "@/components/ui/confirm-button";
-import { Panel, PanelHeading } from "@/components/ui/panel";
-import type { BookingRequestRow } from "@/lib/db/types";
+import { KeyRound, Lock, MapPin } from "lucide-react";
+import { CopyButton } from "@/components/ui/copy-button";
 import type { CheckinView } from "@/lib/requests/checkin";
-import { formatTimestamp } from "@/lib/utils";
+import { cn, formatClock, formatTimestamp, formatWhen } from "@/lib/utils";
 
 export interface CheckinPanelProps {
   audience: "partner" | "ops";
-  request: BookingRequestRow;
   view: CheckinView;
-  /** Ops only: livluxe_ops/finance/admin may release early. */
-  canRelease?: boolean;
   /** Ops only: who has looked at the pack. */
   accessLog?: { id: number; who: string; ip: string | null; at: string }[];
   supportEmail: string;
 }
 
-const time = (t: string | null) => (t ? t.slice(0, 5) : null);
-
-function Row({ label, value, mono = false }: { label: string; value: string | null | undefined; mono?: boolean }) {
+function Fact({
+  label,
+  value,
+  copy,
+  mono,
+}: {
+  label: string;
+  value: string | null | undefined;
+  copy?: boolean;
+  mono?: boolean;
+}) {
   if (!value) return null;
   return (
-    <>
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className={mono ? "text-strong font-mono text-base tracking-wider" : "text-strong whitespace-pre-line"}>
-        {value}
+    <div className="grid grid-cols-[8.5rem_1fr] items-start gap-x-3 py-1.5">
+      <dt className="text-text-muted text-body-sm pt-0.5">{label}</dt>
+      <dd className="flex min-w-0 items-start gap-1">
+        <span
+          className={cn("text-text-primary min-w-0 whitespace-pre-line", mono && "text-h3 font-mono tracking-wider")}
+        >
+          {value}
+        </span>
+        {copy && <CopyButton value={value} label={label.toLowerCase()} className="-my-1" />}
       </dd>
-    </>
+    </div>
   );
 }
 
 /**
- * Check-in details at the tier §8.4 allows: address once approved, the full access
- * pack once released, nothing after cancellation. The tier is computed server-side
- * (lib/requests/checkin.ts); this component only lays out what it was given.
+ * Check-in details (brief §2.4, §8.6). Always says which tier is in force and when the
+ * next one unlocks: approximate location → exact address once approved → the full
+ * access pack 48 hours before check-in → hidden after checkout. Each item can be
+ * copied; the pack carries the confidentiality line and the note that views are logged.
+ * Ops release the pack from the action panel, not from here.
  */
 export function CheckinPanel(p: CheckinPanelProps) {
-  const { view: v, request: r } = p;
-  if (v.tier === "none" || v.tier === "approx") return null;
-  const a = v.address!;
+  const v = p.view;
+  if (v.tier === "none") return null;
   const tz = v.timezone;
+  const releaseWhen = formatWhen(v.timing.releaseDueAt.toISOString());
+
+  if (v.tier === "approx")
+    return (
+      <section aria-labelledby="checkin-heading" className="bg-surface border-subtle rounded-card border p-5">
+        <h2 id="checkin-heading" className="flex items-center gap-2">
+          <Lock className="text-text-muted h-4 w-4" aria-hidden /> Check-in details
+        </h2>
+        <p className="text-text-secondary mt-2">
+          {p.audience === "partner"
+            ? "The exact address is shared once your request is approved. The door code and Wi-Fi follow 48 hours before check-in."
+            : "The partner sees the suburb only until the request is approved."}
+        </p>
+      </section>
+    );
+
+  const a = v.address!;
   const window = a.checkinFrom
-    ? `from ${time(a.checkinFrom)}${a.checkinTo ? ` to ${time(a.checkinTo)}` : ""}`
-    : "see instructions";
-  const fullAddress = [a.addressLine, [a.suburb, a.state, a.postcode].filter(Boolean).join(" ")]
-    .filter(Boolean)
-    .join(", ");
+    ? `From ${formatClock(a.checkinFrom)}${a.checkinTo ? ` to ${formatClock(a.checkinTo)}` : ""}`
+    : null;
+  // Hostaway's address line is often already complete ("…, Melbourne VIC 3000, Australia"); only add what is missing.
+  const tail = [a.suburb, a.state, a.postcode].filter(Boolean).join(" ");
+  const fullAddress =
+    a.addressLine && (!a.postcode || a.addressLine.includes(a.postcode))
+      ? a.addressLine.replace(/,\s*Australia$/i, "")
+      : [a.addressLine, tail].filter(Boolean).join(", ");
 
   return (
-    <Panel aria-labelledby="checkin-heading" className="print-keep">
-      <PanelHeading
-        id="checkin-heading"
-        title="Check-in details"
-        description={
-          v.tier === "full"
-            ? `Access pack released ${formatTimestamp(v.releasedAt!, tz)}. Hidden again 24 hours after checkout.`
-            : `Door code, Wi-Fi and entry instructions unlock ${formatTimestamp(v.timing.releaseDueAt.toISOString(), tz)} (${v.timing.offsetHours} hours before check-in).`
-        }
-        className="mb-3"
-      />
+    <section aria-labelledby="checkin-heading" className="bg-surface border-subtle rounded-card print-keep border p-5">
+      <h2 id="checkin-heading" className="flex items-center gap-2">
+        {v.tier === "full" ? (
+          <KeyRound className="text-text-gold h-4 w-4" aria-hidden />
+        ) : (
+          <MapPin className="text-text-muted h-4 w-4" aria-hidden />
+        )}
+        Check-in details
+      </h2>
+      <p className="text-text-secondary mt-1">
+        {v.tier === "full"
+          ? `Released ${formatTimestamp(v.releasedAt!, tz)}. Hidden again 24 hours after check-out.`
+          : p.audience === "partner"
+            ? `The door code and Wi-Fi arrive ${releaseWhen}, by email and here.`
+            : `The access pack releases ${releaseWhen} (${v.timing.offsetHours} hours before check-in).`}
+      </p>
 
-      <dl className="text-foreground grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-        <dt className="text-muted-foreground flex items-center gap-1">
-          <MapPin className="h-3.5 w-3.5" aria-hidden /> Address
-        </dt>
-        <dd className="text-strong">{fullAddress || "Address not on file; contact Live Luxe."}</dd>
-        <Row label="Check-in" value={`${window} (${tz.replace("_", " ")})`} />
-        <Row label="Checkout" value={a.checkoutBy ? `by ${time(a.checkoutBy)}` : null} />
-        <Row label="Parking" value={a.parkingNotes} />
+      <dl className="divide-subtle mt-3 divide-y">
+        <Fact label="Address" value={fullAddress || "Not on file — contact Live Luxe"} copy={!!fullAddress} />
+        <Fact label="Check-in" value={window} />
+        <Fact label="Check-out" value={a.checkoutBy ? `By ${formatClock(a.checkoutBy)}` : null} />
+        <Fact label="Parking" value={a.parkingNotes} />
       </dl>
 
       {v.tier === "full" && v.pack && (
-        <div className="border-border mt-4 border-t pt-4">
-          <p className="text-strong mb-2 flex items-center gap-1 text-sm font-medium">
-            <KeyRound className="h-4 w-4" aria-hidden /> Access pack
+        <div className="border-subtle mt-4 border-t pt-4">
+          <p className="text-attention-fg text-body-sm font-semibold">
+            Confidential — share with the guest only, do not forward.
           </p>
-          <dl className="text-foreground grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-            <Row label="Door code" value={v.pack.doorCode} mono />
-            <Row label="Wi-Fi network" value={v.pack.wifiSsid} />
-            <Row label="Wi-Fi password" value={v.pack.wifiPassword} mono />
-            <Row label="Getting in" value={v.pack.accessInstructions} />
-            <Row label="Check-in instructions" value={v.pack.checkinInstructions} />
-            <Row label="Please note" value={v.pack.specialInstructions} />
-            <Row label="Emergency contact" value={v.pack.emergencyContact} />
+          <dl className="divide-subtle mt-2 divide-y">
+            <Fact label="Door code" value={v.pack.doorCode} copy mono />
+            <Fact label="Wi-Fi network" value={v.pack.wifiSsid} copy />
+            <Fact label="Wi-Fi password" value={v.pack.wifiPassword} copy mono />
+            <Fact label="Getting in" value={v.pack.accessInstructions} />
+            <Fact label="Check-in notes" value={v.pack.checkinInstructions} />
+            <Fact label="Please note" value={v.pack.specialInstructions} />
+            <Fact label="Emergency" value={v.pack.emergencyContact} copy />
           </dl>
           {!v.pack.secretsStored && (
-            <p className="mt-3 rounded-md border border-attention-border bg-attention-bg px-3 py-2 text-xs text-attention-fg">
-              The door code is not stored on this environment. Call or email {p.supportEmail} and quote {r.reference}.
+            <p className="bg-attention-bg text-attention-fg border-attention-border rounded-control text-body-sm mt-3 border px-3 py-2">
+              The door code isn&apos;t stored here yet. Email {p.supportEmail} with the booking reference and we&apos;ll
+              send it.
             </p>
           )}
-          <p className="text-muted-foreground mt-3 text-xs">
-            Every view of this pack is logged with your name, time and IP address. Share it with the guest only.
+          <p className="text-text-muted text-body-sm mt-3">
+            Each time someone opens these details we record who, when and from where.
           </p>
         </div>
       )}
 
-      {p.audience === "ops" && (
-        <div className="border-border mt-4 space-y-3 border-t pt-4 print:hidden">
-          {p.canRelease && v.canReleaseNow && (
-            <form method="post" action={`/api/admin/requests/${r.id}`} className="flex flex-wrap items-center gap-3">
-              <input type="hidden" name="action" value="release_checkin" />
-              <ConfirmButton
-                variant="outline"
-                size="default"
-                confirmLabel="Confirm early release"
-                pendingLabel="Releasing…"
-              >
-                Release access pack now
-              </ConfirmButton>
-              <span className="text-muted-foreground text-xs">Emails the partner and shows the codes immediately.</span>
-            </form>
-          )}
-          {p.accessLog && (
-            <div>
-              <p className="text-muted-foreground text-xs font-medium">Pack views</p>
-              {p.accessLog.length === 0 ? (
-                <p className="text-muted-foreground text-xs">Nobody has opened the pack yet.</p>
-              ) : (
-                <ul className="text-foreground mt-1 space-y-0.5 text-xs">
-                  {p.accessLog.map((x) => (
-                    <li key={x.id}>
-                      {x.who} · {formatTimestamp(x.at)}
-                      {x.ip && <span className="text-muted-foreground font-mono"> · {x.ip}</span>}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+      {p.audience === "ops" && p.accessLog && (
+        <div className="border-subtle mt-4 border-t pt-4 print:hidden">
+          <h3>Who has opened the pack</h3>
+          {p.accessLog.length === 0 ? (
+            <p className="text-text-muted text-body-sm mt-1">Nobody yet.</p>
+          ) : (
+            <ul className="text-text-secondary text-body-sm mt-1 space-y-0.5">
+              {p.accessLog.map((x) => (
+                <li key={x.id}>
+                  {x.who} · {formatTimestamp(x.at)}
+                  {x.ip && <span className="text-text-muted font-mono"> · {x.ip}</span>}
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       )}
-    </Panel>
+    </section>
   );
 }

@@ -56,3 +56,42 @@ export function formatDate(isoDate: string, locale = "en-AU"): string {
     .format(new Date(Date.UTC(y, m - 1, d)))
     .replace(/^(\w+),/, "$1");
 }
+
+/**
+ * A deadline or event in plain words (brief §13 rule 2): "3:00 pm today", "3:00 pm tomorrow",
+ * "Tue 14 Oct, 3:00 pm", always followed by the zone ("AEDT"). Compared in the property's
+ * zone, so "today" means today in Melbourne.
+ */
+export function formatWhen(iso: string, now: Date = new Date(), timeZone = "Australia/Melbourne", locale = "en-AU") {
+  const at = new Date(iso);
+  const dayKey = (d: Date) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+  const time = new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit", timeZone })
+    .format(at)
+    .replace(/\s?([ap])\.?m\.?$/i, " $1m")
+    .toLowerCase();
+  const zone =
+    new Intl.DateTimeFormat(locale, { timeZone, timeZoneName: "short" })
+      .formatToParts(at)
+      .find((p) => p.type === "timeZoneName")?.value ?? "";
+  const today = dayKey(now);
+  const tomorrow = dayKey(new Date(now.getTime() + 86_400_000));
+  const k = dayKey(at);
+  const day =
+    k === today
+      ? "today"
+      : k === tomorrow
+        ? "tomorrow"
+        : new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short", timeZone })
+            .format(at)
+            .replace(/^(\w+),/, "$1");
+  return k === today || k === tomorrow ? `${time} ${day} ${zone}`.trim() : `${day}, ${time} ${zone}`.trim();
+}
+
+/** "3:00 pm" from a Postgres time ("15:00:00"). */
+export function formatClock(t: string | null | undefined): string | null {
+  if (!t) return null;
+  const [h, m] = t.split(":").map(Number);
+  const hh = ((h + 11) % 12) + 1;
+  return `${hh}:${String(m ?? 0).padStart(2, "0")} ${h < 12 ? "am" : "pm"}`;
+}

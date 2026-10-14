@@ -21,13 +21,11 @@ import { RequestsTable } from "@/components/requests/requests-table";
 import { StayCard } from "@/components/requests/stay-card";
 import { QuoteLines } from "@/components/requests/quote-lines";
 import { StatusTimeline } from "@/components/requests/status-timeline";
-import { DecisionPanel } from "@/components/admin/decision-panel";
 import { PartnerForm } from "@/components/admin/partner-form";
 import { PeoplePanel } from "@/components/team/people-panel";
 import { SearchForm } from "@/components/search/search-form";
 import { Pagination } from "@/components/search/pagination";
 import { BOOKING_STATUSES } from "@/lib/domain/booking-state-machine";
-import type { BookingRequestRow } from "@/lib/db/types";
 import type { HistoryEntry, RequestListItem } from "@/lib/requests/load";
 
 export const metadata = { title: "Component kit", robots: { index: false } };
@@ -129,77 +127,6 @@ const rows: RequestListItem[] = [
     updatedAt: iso(-1),
   },
 ];
-
-const request: BookingRequestRow = {
-  id: "1",
-  reference: "LLX-2026-000412",
-  org_id: "o",
-  listing_id: "l",
-  quote_id: "q",
-  created_by: "u",
-  on_behalf_of: false,
-  assigned_to: null,
-  status: "UNDER_REVIEW",
-  check_in: "2026-10-20",
-  check_out: "2026-11-20",
-  nights: 31,
-  guests_adults: 2,
-  guests_children: 1,
-  guests_pets: 0,
-  guest_name: "Rebecca Whitfield",
-  guest_email: "r.whitfield@example.com",
-  guest_phone: "0412 000 000",
-  claim_ref: "CLM-88213",
-  po_number: null,
-  cost_centre: "VIC-04",
-  notes: "Ground floor or lift access please — guest is recovering from surgery.",
-  total_cents: 916920,
-  currency: "AUD",
-  payment_mode: "net30",
-  hold_expires_at: iso(21),
-  decision_due_at: iso(5),
-  sla_paused_at: null,
-  sla_escalation_pct: 0,
-  decline_reason: null,
-  decline_notes: null,
-  hostaway_reservation_id: null,
-  hostaway_write_key: null,
-  hostaway_write_attempted_at: null,
-  hostaway_written_at: null,
-  hostaway_write_attempts: 0,
-  hostaway_last_error: null,
-  confirm_alerted_at: null,
-  checkin_released_at: null,
-  checkin_released_by: null,
-  submitted_at: iso(-3),
-  approved_at: null,
-  approved_by: null,
-  confirmed_at: null,
-  declined_at: null,
-  cancelled_at: null,
-  cancellation_requested_at: null,
-  cancellation_requested_by: null,
-  cancellation_reason: null,
-  cancel_refund_cents: null,
-  cancel_retained_cents: null,
-  cancelled_upstream: false,
-  cancelled_upstream_at: null,
-  submission_key: null,
-  finance_approval_required: false,
-  finance_approval_reason: null,
-  refunds_frozen_at: null,
-  payment_deposit_cents: null,
-  balance_due_at: null,
-  balance_paid_at: null,
-  checked_in_at: null,
-  completed_at: null,
-  credentials_purge_at: null,
-  credentials_purged_at: null,
-  sla_extended_at: null,
-  linked_request_id: null,
-  created_at: iso(-3),
-  updated_at: iso(-1),
-};
 
 const history: HistoryEntry[] = [
   {
@@ -555,7 +482,6 @@ export default async function KitPage({ searchParams }: PageProps<"/dev/kit">) {
               </PanelSection>
             </Panel>
             <div className="space-y-6">
-              <DecisionPanel request={request} today="2026-10-12" paymentGate={{ ok: true }} />
               <Panel aria-labelledby="kit-quote">
                 <PanelHeading id="kit-quote" title="Quote" className="mb-3" />
                 <QuoteLines

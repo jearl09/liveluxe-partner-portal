@@ -35,6 +35,9 @@ const R = ids.requestApproved ?? "";
 const RC = ids.requestCancelled ?? "";
 const RD = ids.requestDeclined ?? "";
 const ORG = ids.org ?? "";
+const RS = ids.requestSubmitted ?? "";
+const RN = ids.requestNoCard ?? "";
+const RCF = ids.requestConfirmed ?? "";
 const dates = "checkIn=2026-11-25&checkOut=2026-11-30";
 
 /** [slug, path, who] */
@@ -55,6 +58,9 @@ const ROUTES = [
   ["request-approved", `/requests/${R}`, "partner"],
   ["request-cancelled", `/requests/${RC}`, "partner"],
   ["request-declined", `/requests/${RD}`, "partner"],
+  ...(RS ? [["request-submitted", `/requests/${RS}`, "partner"]] : []),
+  ...(RN ? [["request-no-card", `/requests/${RN}`, "partner"]] : []),
+  ...(RCF ? [["request-confirmed", `/requests/${RCF}`, "partner"]] : []),
   ["request-new", `/requests/new?listingId=${L}&${dates}&adults=2&children=0&pets=0`, "partner"],
   ["request-pay", `/requests/${R}/pay`, "partner"],
   ["request-not-found", "/requests/00000000-0000-0000-0000-000000000000", "partner"],
@@ -66,6 +72,8 @@ const ROUTES = [
   ["admin-bookings", "/admin/bookings", "ops"],
   ["admin-booking-approved", `/admin/bookings/${R}`, "ops"],
   ["admin-booking-cancelled", `/admin/bookings/${RC}`, "ops"],
+  ...(RS ? [["admin-booking-submitted", `/admin/bookings/${RS}`, "ops"]] : []),
+  ...(RCF ? [["admin-booking-confirmed", `/admin/bookings/${RCF}`, "ops"]] : []),
   ["admin-partners", "/admin/partners", "ops"],
   ["admin-partner", `/admin/partners/${ORG}`, "ops"],
   ["admin-rate-cards", "/admin/rate-cards", "ops"],
