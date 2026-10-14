@@ -62,7 +62,8 @@ const ROUTES = [
   ...(RN ? [["request-no-card", `/requests/${RN}`, "partner"]] : []),
   ...(RCF ? [["request-confirmed", `/requests/${RCF}`, "partner"]] : []),
   ["request-new", `/requests/new?listingId=${L}&${dates}&adults=2&children=0&pets=0`, "partner"],
-  ["request-pay", `/requests/${R}/pay`, "partner"],
+  // The card-hold page only shows for a request still waiting on a hold.
+  ["request-pay", `/requests/${RN}/pay`, "partner"],
   ["request-not-found", "/requests/00000000-0000-0000-0000-000000000000", "partner"],
   ["invoices", "/invoices", "partner"],
   ["team", "/team", "partner"],
@@ -110,7 +111,11 @@ try {
           const file = path.join(OUT, slug, `${theme}-${width}.png`);
           mkdirSync(path.dirname(file), { recursive: true });
           try {
-            await page.goto(`${BASE}${route}`, { waitUntil: "networkidle", timeout: 120_000 });
+            // Stripe's card form keeps a connection open, so the network never goes idle there:
+            // wait for the page, then give the iframe time to draw.
+            const stripe = route.endsWith("/pay");
+            await page.goto(`${BASE}${route}`, { waitUntil: stripe ? "load" : "networkidle", timeout: 120_000 });
+            if (stripe) await page.waitForTimeout(5000);
             await page.waitForTimeout(400);
             await page.screenshot({ path: file, fullPage: true, animations: "disabled" });
             index.push({ slug, route, theme, width, file: file.replace(/\\/g, "/"), finalUrl: page.url() });
