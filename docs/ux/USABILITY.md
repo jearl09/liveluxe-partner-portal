@@ -126,3 +126,17 @@ The card itself was not entered: Stripe's field does not submit in a headless br
    request. Not changed by the redesign; logged as NEEDS_BACKEND.md #5 and raised with the product owner.
 2. On a phone the Search bar was sticky and filled the screen; it now sticks only from 1024 px.
 3. The property page overflowed sideways on a phone (the grid sized itself to its widest child); fixed.
+
+---
+
+## After screen group 5 — Requests, Invoices, Team, Settings (14 Oct 2026)
+
+| Task | Result | Time | Hunts, guesses, re-reads                                                                                                                                                                                                                |
+| ---- | ------ | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| (b)  | Pass   | 10 s | None. The approved booking is in the default "All" view; the answer is the first sentence on the booking.                                                                                                                               |
+| (c)  | —      | —    | Still not testable: the demo organisation pays by card and has no open invoice. The Invoices screen shows Pay now as the primary row action on any open or overdue invoice; this needs an invoice-terms test partner to run end to end. |
+
+### Found and fixed in this group
+
+1. The Dashboard tiles linked to `?tab=` views; they now open the matching Requests chip, and old links still land.
+2. Settings promised features "in Phase 2"; it now shows only what exists, with a way to ask for changes.
