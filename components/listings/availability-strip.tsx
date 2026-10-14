@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition, type KeyboardEvent } from "react";
 import { addDays } from "@/lib/domain/dates";
 import { buildStripMonths, summariseStrip, type StripDay } from "@/lib/domain/search";
 import { formatMoney } from "@/lib/domain/money";
@@ -33,6 +33,10 @@ function describe(d: StripDay, currency: string): { word: string; price: string 
  * actual dates — "open from the 16th" — not a count of dots. State is carried by the
  * cell's form as well as its colour (§13.5): booked nights are struck through,
  * unsynced nights are hatched, and today is ringed in gold.
+ *
+ * Keyboard (brief §10.2, roving focus): the calendar is one tab stop. Arrow keys move a day
+ * (up and down a week), Home and End go to the start and end of the week, skipping nights that
+ * cannot be chosen; Enter or Space picks.
  */
 export function AvailabilityStrip({
   days,
@@ -72,6 +76,43 @@ export function AvailabilityStrip({
     if (open(d)) setStart(d.date);
   };
   const canEnd = (d: StripDay) => !!start && d.date > start && nightsOpen(start, d.date);
+  const selectable = (d: StripDay) => open(d) || canEnd(d);
+  const firstSelectable = days.find(selectable)?.date ?? null;
+  const [cursor, setCursor] = useState<string | null>(null);
+  const cursorDay = cursor ? byDate.get(cursor) : undefined;
+  // The one tab stop: where the arrows last left it, else the chosen check-in, else the first open day.
+  const rover = cursorDay && selectable(cursorDay) ? cursor : start && byDate.get(start) ? start : firstSelectable;
+  const grid = useRef<HTMLDivElement>(null);
+
+  const moveTo = (from: string, step: number, limit: string | null = null) => {
+    for (let x = addDays(from, step), i = 0; i < 92; x = addDays(x, step), i++) {
+      if (limit && (step > 0 ? x > limit : x < limit)) return;
+      const d = byDate.get(x);
+      if (!d) return;
+      if (selectable(d)) {
+        setCursor(x);
+        grid.current?.querySelector<HTMLButtonElement>(`button[data-date="${x}"]`)?.focus();
+        return;
+      }
+    }
+  };
+  const onGridKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    const from = (e.target as HTMLElement).dataset?.date;
+    if (!from) return;
+    const dow = (new Date(`${from}T00:00:00Z`).getUTCDay() + 6) % 7; // Monday = 0
+    const keys: Record<string, () => void> = {
+      ArrowRight: () => moveTo(from, 1),
+      ArrowLeft: () => moveTo(from, -1),
+      ArrowDown: () => moveTo(from, 7),
+      ArrowUp: () => moveTo(from, -7),
+      Home: () => moveTo(addDays(from, -dow - 1), 1, from),
+      End: () => moveTo(addDays(from, 7 - dow), -1, from),
+    };
+    const run = keys[e.key];
+    if (!run) return;
+    e.preventDefault();
+    run();
+  };
 
   const title = (d: StripDay) => {
     const s = describe(d, currency);
@@ -121,7 +162,11 @@ export function AvailabilityStrip({
         )}
       </p>
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-x-6 gap-y-5">
+      <div
+        ref={grid}
+        onKeyDown={onGridKey}
+        className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-x-6 gap-y-5"
+      >
         {months.map((m) => (
           <table key={m.key} className="w-full table-fixed border-separate border-spacing-0.5 self-start">
             <caption className="text-strong mb-1.5 text-left text-sm font-medium">{m.label}</caption>
@@ -158,6 +203,9 @@ export function AvailabilityStrip({
                         {open(d) || canEnd(d) ? (
                           <button
                             type="button"
+                            data-date={d.date}
+                            tabIndex={d.date === rover ? 0 : -1}
+                            onFocus={() => setCursor(d.date)}
                             onClick={() => choose(d)}
                             disabled={pending}
                             className="focus-visible:outline-focus coarse:min-h-9 h-full w-full rounded-[3px] focus-visible:outline-2"

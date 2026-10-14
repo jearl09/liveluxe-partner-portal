@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import * as Menu from "@radix-ui/react-dropdown-menu";
 import { ChevronDown, LogOut, Settings } from "lucide-react";
 import Link from "next/link";
@@ -41,13 +42,14 @@ export function AccountMenu({
   tone: "partner" | "ops";
 }) {
   const navy = tone === "ops";
+  const [open, setOpen] = useState(false);
   return (
-    <Menu.Root>
+    <Menu.Root open={open} onOpenChange={setOpen}>
       <Menu.Trigger
         className={cn(
           "rounded-control flex h-10 items-center gap-2 px-1.5 transition-colors duration-150",
           "coarse:min-h-11",
-          navy ? "text-on-navy hover:bg-white/10" : "text-text-primary hover:bg-surface",
+          navy ? "text-on-navy hover:bg-on-navy-hover" : "text-text-primary hover:bg-surface",
         )}
         aria-label={`Account: ${name ?? email ?? "signed in"}`}
       >
@@ -55,7 +57,7 @@ export function AccountMenu({
           aria-hidden
           className={cn(
             "rounded-pill text-body-sm flex h-8 w-8 items-center justify-center font-semibold",
-            navy ? "text-on-navy bg-white/15" : "bg-text-primary text-surface",
+            navy ? "text-on-navy bg-on-navy-selected" : "bg-text-primary text-surface",
           )}
         >
           {initials(name, email)}
@@ -69,6 +71,11 @@ export function AccountMenu({
           sideOffset={8}
           collisionPadding={12}
           className="bg-surface-raised border-subtle text-text-secondary rounded-card z-50 w-72 border p-2 shadow-md"
+          // The menu library swallows Tab; without this, Tab would sit on the first item forever.
+          // Tab now closes the menu and focus returns to the account button, like Escape.
+          onKeyDown={(e) => {
+            if (e.key === "Tab") setOpen(false);
+          }}
         >
           <div className="px-2 pt-1 pb-2">
             <p className="text-text-primary truncate font-semibold">{name ?? "Signed in"}</p>

@@ -5,14 +5,15 @@ test.describe("submit buttons", () => {
   test("sign-in shows it is working and ignores a second submit", async ({ page }) => {
     await page.goto("/login");
     await page.getByLabel("Email").fill("someone@example.com");
-    await page.getByLabel("Password").fill("not-the-password-123");
+    await page.getByLabel("Password", { exact: true }).fill("not-the-password-123");
 
     let posts = 0;
     await page.route("**/api/auth/sign-in", async (route) => {
       posts += 1;
-      // Hold the response so the pending state has time to show, then bounce back like the real handler.
+      // Hold the request so the pending state has time to show, then let the real handler bounce it
+      // (WebKit cannot fulfil a navigation with a redirect, so the reply has to be the real one).
       await new Promise((r) => setTimeout(r, 600));
-      await route.fulfill({ status: 303, headers: { location: "/login?error=invalid" } });
+      await route.continue();
     });
 
     const button = page.getByRole("button", { name: "Sign in" });

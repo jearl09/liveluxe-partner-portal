@@ -80,17 +80,15 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           className={inputClass}
         />
       </label>
-      <label className="block text-sm">
-        <span className="mb-1 block font-medium">Password</span>
-        <PasswordInput
-          name="password"
-          required
-          autoComplete="current-password"
-          aria-invalid={params.error === "invalid" || params.error === "missing" || undefined}
-          aria-describedby={error ? "signin-error" : undefined}
-          className={inputClass}
-        />
-      </label>
+      <PasswordInput
+        label="Password"
+        name="password"
+        required
+        autoComplete="current-password"
+        aria-invalid={params.error === "invalid" || params.error === "missing" || undefined}
+        aria-describedby={error ? "signin-error" : undefined}
+        className={inputClass}
+      />
       <SubmitButton className="w-full" pendingLabel="Signing in…">
         Sign in
       </SubmitButton>

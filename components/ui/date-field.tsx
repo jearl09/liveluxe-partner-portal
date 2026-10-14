@@ -122,9 +122,13 @@ export function DateRangeField(p: DateRangeFieldProps) {
       <span id={`${id}-label`} className="text-text-primary text-body-sm block font-semibold">
         {p.label}
         {p.required && (
-          <span className="text-gold ml-0.5" aria-hidden>
-            *
-          </span>
+          <>
+            <span className="text-gold ml-0.5" aria-hidden>
+              *
+            </span>
+            {/* A button cannot be marked required in ARIA, so "required" is part of its name instead. */}
+            <span className="sr-only"> (required)</span>
+          </>
         )}
       </span>
       <input type="hidden" name={p.nameFrom ?? "checkIn"} value={toIso(range?.from)} />
@@ -135,7 +139,6 @@ export function DateRangeField(p: DateRangeFieldProps) {
           aria-labelledby={`${id}-label ${id}-value`}
           aria-describedby={p.error ? `${id}-err` : p.hint ? `${id}-hint` : undefined}
           aria-invalid={p.invalid || undefined}
-          aria-required={p.required || undefined}
           className={cn(triggerClass, "mt-1", p.invalid && "border-danger-fg")}
         >
           <CalendarDays className="text-text-muted h-4 w-4 shrink-0" aria-hidden />
@@ -249,9 +252,13 @@ export function DateField(p: DateFieldProps) {
       <span id={`${id}-label`} className="text-text-primary text-body-sm block font-semibold">
         {p.label}
         {p.required && (
-          <span className="text-gold ml-0.5" aria-hidden>
-            *
-          </span>
+          <>
+            <span className="text-gold ml-0.5" aria-hidden>
+              *
+            </span>
+            {/* A button cannot be marked required in ARIA, so "required" is part of its name instead. */}
+            <span className="sr-only"> (required)</span>
+          </>
         )}
       </span>
       <input type="hidden" name={p.name} value={toIso(day)} />
@@ -261,7 +268,6 @@ export function DateField(p: DateFieldProps) {
             type="button"
             aria-labelledby={`${id}-label ${id}-value`}
             aria-describedby={p.error ? `${id}-err` : p.hint ? `${id}-hint` : undefined}
-            aria-required={p.required || undefined}
             className={cn(triggerClass, p.error && "border-danger-fg")}
           >
             <CalendarDays className="text-text-muted h-4 w-4 shrink-0" aria-hidden />

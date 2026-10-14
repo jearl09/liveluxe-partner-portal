@@ -10,7 +10,7 @@ test.describe("smoke", () => {
   test("unauthenticated visitor is redirected to /login", async ({ page }) => {
     await page.goto("/search");
     await expect(page).toHaveURL(/\/login/);
-    await expect(page.getByRole("heading", { name: "Partner sign in" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Sign in", level: 1 })).toBeVisible();
   });
 
   test("cron endpoints reject requests without the shared secret", async ({ request }) => {
