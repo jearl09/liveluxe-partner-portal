@@ -104,7 +104,8 @@ field (see DECISIONS-REQUIRED.md).
   pending visual work, not a product decision.
 - **No brand kit will be supplied.** The current text wordmark ("LIVE LUXE", `components/layout/brand.tsx`) is the
   logo. Do not design or request a logo file; `public/` holds only Next.js placeholders.
-- Typography: keep the existing serif-display / sans-body pairing (Playfair Display headings, Inter body).
+- Typography: keep the existing serif-display / sans-body pairing as shipped: **Newsreader** headings, **DM Sans**
+  body, Geist Mono for references (confirmed 14 Oct 2026; the public site's Playfair/Inter are not binding).
 - Partner chrome cream, Live Luxe ops chrome navy.
 - Voice: plain, calm, factual; Australian English; no exclamation marks. Partners are professionals under time
   pressure; Live Luxe is a premium operator, not a startup. Every partner-facing email carries the booking reference,
