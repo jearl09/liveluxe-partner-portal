@@ -98,11 +98,14 @@ field (see DECISIONS-REQUIRED.md).
 
 - Name: **Live Luxe** (trading name; legal entity Live Luxe Pty Ltd). The repo and spec use "Livluxe" in identifiers;
   user-facing copy says "Live Luxe".
-- Existing in-app identity, derived from the public Docklands website: navy `#101c2c`, cream `#f4efe6`, gold
-  `#b7853a`, Playfair Display headings, Inter body. Partner chrome cream, Live Luxe ops chrome navy.
-- **A brand kit exists** (logo files and style guide) and will be supplied by the engineer. Not yet in the repo:
-  `public/` holds only Next.js placeholders. When it lands, it supersedes the website-derived palette and fonts
-  where they conflict, and the wordmark replaces the text brand in `components/layout/brand.tsx`.
+- **Brand colours (binding, confirmed 14 Oct 2026):** navy `#16243B` and gold `#D3AC60`. Cream `#f4efe6` remains
+  the partner-side surface colour. The app's tokens currently carry the older website-derived navy `#101c2c` and
+  gold `#b7853a` (`app/globals.css`, email templates, the PDF guide); aligning them to the confirmed values is
+  pending visual work, not a product decision.
+- **No brand kit will be supplied.** The current text wordmark ("LIVE LUXE", `components/layout/brand.tsx`) is the
+  logo. Do not design or request a logo file; `public/` holds only Next.js placeholders.
+- Typography: keep the existing serif-display / sans-body pairing (Playfair Display headings, Inter body).
+- Partner chrome cream, Live Luxe ops chrome navy.
 - Voice: plain, calm, factual; Australian English; no exclamation marks. Partners are professionals under time
   pressure; Live Luxe is a premium operator, not a startup. Every partner-facing email carries the booking reference,
   one action and a human contact.
