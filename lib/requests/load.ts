@@ -2,6 +2,7 @@
  * Read models for booking requests (partner pages and the ops console).
  * RLS scopes everything: a partner sees their org's rows, Live Luxe sees all.
  */
+import { displayPropertyName } from "@/lib/domain/property-name";
 import "server-only";
 import { createServerSupabase } from "@/lib/db/server";
 import type { BookingRequestRow } from "@/lib/db/types";
@@ -101,7 +102,7 @@ function toItem(
     status: r.status,
     orgId: r.org_id,
     orgName,
-    propertyName: listing?.public_name ?? "Property",
+    propertyName: displayPropertyName(listing?.public_name),
     suburb: listing?.suburb ?? null,
     checkIn: r.check_in,
     checkOut: r.check_out,

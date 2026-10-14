@@ -1,67 +1,62 @@
 import Link from "next/link";
-import { CalendarArrowDown, CalendarArrowUp, Inbox, KeyRound } from "lucide-react";
+import { CalendarArrowDown, CalendarArrowUp, Hourglass, KeyRound } from "lucide-react";
 import type { Kpis } from "@/lib/domain/dashboard";
-import { cn } from "@/lib/utils";
 
-/** Four KPI tiles, each a link to the pre-filtered /requests view. Zero states show "0", never a dash. */
+/**
+ * KPI row (brief §7.2): four tiles, each a link to the Requests list. Zero shows "0",
+ * never a dash. Links go to the tab that holds those requests until the Requests
+ * list gains its own filters (screen group 5).
+ */
 export function KpiRow({ kpis }: { kpis: Kpis }) {
   const tiles = [
     {
       icon: KeyRound,
       label: "Active placements",
       value: kpis.activePlacements,
-      hint: "Guests currently in a property",
-      href: "/requests?status=active",
-      tone: "navy",
+      hint: kpis.activePlacements === 1 ? "Household in a property now" : "Households in a property now",
+      href: "/requests?tab=upcoming",
     },
     {
-      icon: Inbox,
-      label: "Pending with Live Luxe",
-      value: kpis.pendingWithLivluxe,
-      hint: "Awaiting a decision",
-      href: "/requests?status=pending",
-      tone: "gold",
+      icon: Hourglass,
+      label: "In progress",
+      value: kpis.inProgress,
+      hint:
+        kpis.pendingWithLivluxe > 0
+          ? `${kpis.pendingWithLivluxe} waiting on Live Luxe`
+          : kpis.inProgress > 0
+            ? "None waiting on Live Luxe"
+            : "No live requests",
+      href: "/requests",
     },
     {
       icon: CalendarArrowDown,
       label: "Check-ins next 7 days",
       value: kpis.checkInsNext7,
       hint: kpis.nextCheckInLabel ?? "None scheduled",
-      href: "/requests?window=checkin-7d",
-      tone: "navy",
+      href: "/requests?tab=upcoming",
     },
     {
       icon: CalendarArrowUp,
       label: "Check-outs next 7 days",
       value: kpis.checkOutsNext7,
-      hint: kpis.nextCheckOutLabel ?? "None scheduled",
-      href: "/requests?window=checkout-7d",
-      tone: "navy",
+      hint: kpis.checkOutsNext7 > 0 ? `${kpis.checkOutsNext7} ending — consider extensions` : "None scheduled",
+      href: "/requests?tab=upcoming",
     },
   ] as const;
   return (
-    <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <ul className="grid grid-cols-2 gap-3 xl:grid-cols-4" aria-label="Summary">
       {tiles.map((t) => (
         <li key={t.label}>
           <Link
             href={t.href}
-            className="border-border hover:border-primary/30 focus-visible:ring-ring bg-card block rounded-lg border p-5 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+            className="border-subtle bg-surface rounded-card hover:border-strong-border focus-visible:outline-focus block h-full border p-4 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 sm:p-5"
           >
-            <div className="flex items-center justify-between">
-              <p className="text-foreground text-sm font-medium">{t.label}</p>
-              <span
-                className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-full",
-                  t.tone === "gold" ? "bg-accent/10 text-accent" : "bg-primary/5 text-strong",
-                )}
-              >
-                <t.icon className="h-4 w-4" aria-hidden />
-              </span>
-            </div>
-            <p className={cn("mt-3 font-serif text-4xl", t.tone === "gold" ? "text-accent-ink" : "text-strong")}>
-              {t.value}
-            </p>
-            <p className="text-muted-foreground mt-1 text-xs">{t.hint}</p>
+            <span className="flex items-center justify-between gap-2">
+              <span className="text-text-secondary text-body-sm font-semibold">{t.label}</span>
+              <t.icon className="text-text-muted h-4 w-4 shrink-0" aria-hidden />
+            </span>
+            <span className="text-text-primary text-display mt-2 block font-serif tabular-nums">{t.value}</span>
+            <span className="text-text-muted text-body-sm mt-1 block">{t.hint}</span>
           </Link>
         </li>
       ))}

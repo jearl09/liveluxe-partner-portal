@@ -7,6 +7,10 @@
  * org, and `?demo=1` (non-production only) renders the sample data in lib/dashboard/demo.ts so
  * the design can be reviewed.
  */
+import { approvalPaymentGate, paymentModeFor, paymentStateFromStripe } from "@/lib/domain/payments";
+import { syncState } from "@/lib/domain/progress";
+import { circuitState } from "@/lib/hostaway/client";
+import { displayPropertyName } from "@/lib/domain/property-name";
 import "server-only";
 import { createServerSupabase } from "@/lib/db/server";
 import type { SessionClaims } from "@/lib/domain/permissions";
@@ -21,6 +25,7 @@ import {
   evaluateFreshness,
   firstName,
   greetingForHour,
+  PENDING_WITH_LIVLUXE,
   type DashboardRequestRow,
 } from "@/lib/domain/dashboard";
 import type { BookingStatus } from "@/lib/domain/booking-state-machine";
@@ -67,6 +72,12 @@ export async function loadDashboard(claims: SessionClaims, opts: { demo?: boolea
   const freshness = demo
     ? evaluateFreshness(new Date(now.getTime() - 3 * 60_000).toISOString(), now, 30)
     : evaluateFreshness(fresh?.last_synced_at ?? null, now, fresh?.stale_after_minutes ?? 30);
+  const sync = syncState({
+    lastSyncIso: demo ? new Date(now.getTime() - 3 * 60_000).toISOString() : (fresh?.last_synced_at ?? null),
+    now,
+    staleAfterMinutes: fresh?.stale_after_minutes ?? 30,
+    degraded: !demo && circuitState().open,
+  });
 
   const rowsSection = await section("requests", async (): Promise<DashboardRequestRow[]> => {
     if (demo) return demoRequests(now);
@@ -84,6 +95,26 @@ export async function loadDashboard(claims: SessionClaims, opts: { demo?: boolea
       ? await supabase.from("listings").select("id, public_name, suburb").in("id", listingIds)
       : { data: [] as { id: string; public_name: string; suburb: string | null }[] };
     const byId = new Map((listings ?? []).map((l) => [l.id, l]));
+    // Card-paying partners: which waiting requests still have no card hold (brief §13 rule 1).
+    const waitingIds = (data ?? []).filter((r) => PENDING_WITH_LIVLUXE.includes(r.status)).map((r) => r.id);
+    const [{ data: orgRow }, { data: pays }] = await Promise.all([
+      supabase.from("partner_orgs").select("payment_terms").eq("id", claims.org_id).maybeSingle(),
+      waitingIds.length
+        ? supabase
+            .from("payments")
+            .select("booking_id, status, failure_code, created_at")
+            .in("booking_id", waitingIds)
+            .order("created_at", { ascending: false })
+        : Promise.resolve({ data: [] as { booking_id: string | null; status: string; failure_code: string | null }[] }),
+    ]);
+    const mode = paymentModeFor(orgRow?.payment_terms ?? null);
+    const payBy = new Map<string, { status: string; failure_code: string | null }>();
+    for (const p of pays ?? []) if (p.booking_id && !payBy.has(p.booking_id)) payBy.set(p.booking_id, p);
+    const cardNeeded = (id: string, status: BookingStatus) => {
+      if (mode === "invoice" || !PENDING_WITH_LIVLUXE.includes(status)) return false;
+      const p = payBy.get(id);
+      return !approvalPaymentGate(mode, p ? paymentStateFromStripe(p.status, p.failure_code) : null).ok;
+    };
     return (data ?? []).map((r) => {
       const l = byId.get(r.listing_id);
       const releasesAt = new Date(`${r.check_in}T14:00:00+11:00`); // TODO(phase-5): property-local check-in time
@@ -92,7 +123,7 @@ export async function loadDashboard(claims: SessionClaims, opts: { demo?: boolea
         id: r.id,
         reference: r.reference,
         status: r.status as BookingStatus,
-        propertyName: l?.public_name ?? "Property",
+        propertyName: displayPropertyName(l?.public_name),
         suburb: l?.suburb ?? null,
         checkIn: r.check_in,
         checkOut: r.check_out,
@@ -107,6 +138,7 @@ export async function loadDashboard(claims: SessionClaims, opts: { demo?: boolea
         checkinReleasesAt: ["APPROVED", "CONFIRMED"].includes(r.status) ? releasesAt.toISOString() : null,
         unreadComments: 0, // TODO(phase-3): booking_comments unread count per request
         paymentDue: r.status === "AWAITING_PAYMENT",
+        cardNeeded: cardNeeded(r.id, r.status),
       };
     });
   });
@@ -120,7 +152,7 @@ export async function loadDashboard(claims: SessionClaims, opts: { demo?: boolea
       .from("notifications")
       .select("id, type, payload, created_at")
       .order("created_at", { ascending: false })
-      .limit(6);
+      .limit(8);
     if (error) throw new Error(error.message);
     return (data ?? []).map((n) => {
       const p = (n.payload ?? {}) as Record<string, unknown>;
@@ -128,7 +160,7 @@ export async function loadDashboard(claims: SessionClaims, opts: { demo?: boolea
         id: n.id,
         requestId: typeof p.requestId === "string" ? p.requestId : null,
         reference: typeof p.reference === "string" ? p.reference : null,
-        verb: VERBS[n.type] ?? n.type.replace(/_/g, " "),
+        verb: VERBS[n.type] ?? sentenceCase(n.type.replace(/_/g, " ")),
         actor: typeof p.actor === "string" ? p.actor : null,
         atIso: n.created_at,
         atLabel: fmt.timestamp(n.created_at),
@@ -145,6 +177,7 @@ export async function loadDashboard(claims: SessionClaims, opts: { demo?: boolea
     canBook: can(claims.role, "requests.submit"),
     lastSuburb: null, // TODO(phase-2): saved_searches.last_used
     freshness,
+    sync,
     summary: { activePlacements: kpis?.activePlacements ?? 0, pendingRequests: kpis?.pendingWithLivluxe ?? 0 },
     attention: rowsSection.ok ? { ok: true, data: deriveAttention(rows, now, fmt) } : rowsSection,
     kpis: rowsSection.ok && kpis ? { ok: true, data: kpis } : (rowsSection as Section<never>),
@@ -159,6 +192,8 @@ export async function loadDashboard(claims: SessionClaims, opts: { demo?: boolea
 const VERBS: Record<string, string> = {
   request_received: "Submitted",
   request_approved: "Approved",
+  request_confirmed: "Confirmed",
+  request_cancelled: "Cancelled",
   request_declined: "Declined",
   counter_offer: "Counter-offer made",
   comment_added: "Comment added",
@@ -167,3 +202,7 @@ const VERBS: Record<string, string> = {
   checkin_details: "Check-in details released",
   hold_expiring: "Hold expiring",
 };
+
+function sentenceCase(s: string): string {
+  return s ? s[0]!.toUpperCase() + s.slice(1) : s;
+}

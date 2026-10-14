@@ -1,43 +1,60 @@
 import Link from "next/link";
-import { ArrowLeftRight, CreditCard, Hourglass, MessageSquareReply } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowLeftRight, ArrowRight, CreditCard, Hourglass, MessageSquareReply } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
 import type { AttentionItem, AttentionKind } from "@/lib/domain/dashboard";
+import { cn } from "@/lib/utils";
 
 const ICONS: Record<AttentionKind, typeof CreditCard> = {
   counter_offer: ArrowLeftRight,
   payment_due: CreditCard,
+  card_needed: CreditCard,
   ops_reply: MessageSquareReply,
   hold_expiring: Hourglass,
 };
 
-/** "Needs your attention": up to four single-action cards. Renders nothing when empty (no fluff). */
+/**
+ * Needs your action (brief §7.2): first thing under the greeting, only when there is
+ * something to do. One line per item with one primary link; the most urgent first.
+ */
 export function AttentionStrip({ items }: { items: AttentionItem[] }) {
   if (!items.length) return null;
   return (
-    <section aria-labelledby="attention-heading">
-      <h2 id="attention-heading" className="eyebrow mb-3">
-        Needs your attention
+    <section
+      aria-labelledby="attention-heading"
+      className="border-attention-border bg-attention-bg rounded-card border-l-attention-fg border border-l-4"
+    >
+      <h2 id="attention-heading" className="text-text-primary text-h3 px-5 pt-4 font-semibold">
+        Needs your action{" "}
+        <span className="text-text-secondary text-body font-normal">
+          · {items.length} {items.length === 1 ? "thing" : "things"}
+        </span>
       </h2>
-      <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-4">
-        {items.map((it) => {
+      <ul className="divide-attention-border mt-2 divide-y">
+        {items.map((it, i) => {
           const Icon = ICONS[it.kind];
           return (
             <li
               key={`${it.kind}:${it.requestId}`}
-              className="border-accent/60 bg-card flex min-w-[280px] snap-start flex-col justify-between gap-3 rounded-lg border p-4 md:min-w-0"
+              className="flex flex-col gap-3 px-5 py-3 sm:flex-row sm:items-center sm:justify-between"
             >
-              <div className="flex gap-3">
-                <span className="bg-accent/10 text-accent flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
-                  <Icon className="h-4 w-4" aria-hidden />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-strong text-sm font-medium">{it.title}</p>
-                  <p className="text-muted-foreground line-clamp-2 text-xs">{it.context}</p>
-                </div>
+              <div className="flex min-w-0 items-start gap-3">
+                <Icon className="text-attention-fg mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+                <p className="min-w-0">
+                  <span className="text-text-primary font-semibold">{it.title}</span>
+                  <span className="text-text-secondary text-body-sm block truncate sm:inline sm:before:content-['_·_']">
+                    {it.context}
+                  </span>
+                </p>
               </div>
-              <Button asChild size="sm" variant="outline" className="self-start">
-                <Link href={it.href}>{it.cta}</Link>
-              </Button>
+              <Link
+                href={it.href}
+                className={cn(
+                  buttonVariants({ variant: i === 0 ? "primary" : "secondary", size: "sm" }),
+                  "w-full shrink-0 sm:w-auto",
+                )}
+              >
+                {it.cta} <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              </Link>
             </li>
           );
         })}

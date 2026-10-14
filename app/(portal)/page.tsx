@@ -1,84 +1,103 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { AlertTriangle, Search } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { SyncState } from "@/components/ui/states";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { Agenda } from "@/components/dashboard/agenda";
 import { AttentionStrip } from "@/components/dashboard/attention-strip";
-import { FreshnessPill } from "@/components/dashboard/freshness-pill";
 import { KpiRow } from "@/components/dashboard/kpi-row";
 import { ManualSearch } from "@/components/dashboard/manual-search";
-import { QuickSearch } from "@/components/dashboard/quick-search";
 import { RequestsTable } from "@/components/dashboard/requests-table";
 import { SectionError } from "@/components/dashboard/section-error";
 import { WelcomeCard } from "@/components/dashboard/welcome-card";
+import { SearchForm } from "@/components/search/search-form";
 import { getSessionClaims } from "@/lib/db/server";
 import { loadDashboard } from "@/lib/dashboard/load";
+import { todayIn } from "@/lib/domain/dates";
 import { env } from "@/lib/env";
+import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard" };
 
 /**
- * Partner dashboard (§13.1 "/"). An operational landing page: what is waiting on me, what is
- * waiting on Live Luxe, who arrives or leaves this week. Each section loads independently;
- * a failure shows an inline card with a support reference, never a raw error.
+ * Partner dashboard (brief §7.2): is anything waiting on me, and what is coming up.
+ * Greeting, then what needs the partner's action, then the search bar, the numbers,
+ * the requests in progress with this week beside them, and the manual search card.
+ * Each section loads on its own; a failure shows an inline card with a support
+ * reference, never a raw error.
  */
 export default async function DashboardPage({ searchParams }: PageProps<"/">) {
   const claims = await getSessionClaims();
   if (!claims) redirect("/login");
   const params = await searchParams;
   const d = await loadDashboard(claims, { demo: params.demo === "1" });
-  const stale = d.freshness.state === "stale";
+  const degraded = d.sync.level === "degraded";
+  const today = todayIn("Australia/Melbourne");
 
   return (
     <div className="space-y-8">
-      {/* 1. Header */}
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="eyebrow mb-1">Dashboard</p>
-          <h1 className="text-strong font-serif text-3xl tracking-tight">
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-h1 text-text-primary font-serif tracking-tight">
             {d.greeting}, {d.firstName}.
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {d.orgName} · {d.summary.activePlacements} {d.summary.activePlacements === 1 ? "placement" : "placements"}{" "}
-            active · {d.summary.pendingRequests} {d.summary.pendingRequests === 1 ? "request" : "requests"} pending
-          </p>
-          <div className="mt-3">
-            <FreshnessPill freshness={d.freshness} />
-          </div>
+          <p className="text-text-secondary text-body mt-1">{d.orgName}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 print:hidden">
-          <Button asChild>
-            <Link href={d.lastSuburb ? `/search?q=${encodeURIComponent(d.lastSuburb)}` : "/search"}>
-              <Search className="h-4 w-4" aria-hidden /> Find a property
-            </Link>
-          </Button>
-        </div>
+        {d.canBook && (
+          <Link
+            href={d.lastSuburb ? `/search?q=${encodeURIComponent(d.lastSuburb)}` : "/search"}
+            className={cn(buttonVariants({ variant: "primary" }), "w-full sm:w-auto print:hidden")}
+          >
+            <Search className="h-4 w-4" aria-hidden /> Find a property
+          </Link>
+        )}
       </header>
 
-      {stale && (
-        <div role="alert" className="border-warn-border bg-warn-bg text-warn rounded-md border px-4 py-2 text-sm">
-          Availability shown across the portal may be out of date. Quotes are re-checked before submission.
+      {degraded && (
+        <div
+          role="status"
+          className="border-attention-border bg-attention-bg text-text-primary rounded-card flex gap-3 border px-4 py-3"
+        >
+          <AlertTriangle className="text-attention-fg mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+          <p>
+            Live availability is temporarily unavailable. Search shows what we last confirmed, and every request is
+            re-checked before Live Luxe approves it.
+          </p>
         </div>
       )}
 
       {d.demo && (
-        <p className="text-muted-foreground text-xs">
+        <p className="text-text-muted text-body-sm">
           Showing sample data for design review. Remove <span className="font-mono">?demo=1</span> to see your own.
         </p>
       )}
 
       {d.firstTime && <WelcomeCard supportEmail={env().EMAIL_REPLY_TO} />}
 
-      {/* 2. Needs your attention (renders only when non-empty) */}
       {d.attention.ok ? <AttentionStrip items={d.attention.data} /> : null}
 
-      {/* 3. KPIs */}
+      {d.canBook && (
+        <section
+          aria-labelledby="search-heading"
+          className="border-subtle bg-surface rounded-card border p-5 print:hidden"
+        >
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h2 id="search-heading">Find a property</h2>
+            {!degraded && <SyncState model={d.sync} audience="partner" />}
+          </div>
+          <SearchForm
+            compact
+            today={today}
+            query={{ q: d.lastSuburb ?? "", checkIn: null, checkOut: null, guests: 2, pets: 0, bedrooms: null }}
+          />
+        </section>
+      )}
+
       {d.kpis.ok ? <KpiRow kpis={d.kpis.data} /> : <SectionError what="summary" refCode={d.kpis.ref} />}
 
-      {/* 4. Main area */}
-      <div className="grid gap-6 xl:grid-cols-3">
-        <div className="xl:col-span-2">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="min-w-0">
           {d.requests.ok ? (
             <RequestsTable rows={d.requests.data} firstTime={d.firstTime} />
           ) : (
@@ -95,12 +114,6 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
         </div>
       </div>
 
-      {/* 5. Quick search */}
-      <div className="print:hidden">
-        <QuickSearch lastSuburb={d.lastSuburb} />
-      </div>
-
-      {/* 6. Manual search: a quiet card, a real form (brief §7.2, §13 rule 10) */}
       <section
         aria-labelledby="manual-search-heading"
         className="bg-surface border-subtle rounded-card flex flex-wrap items-center justify-between gap-4 border px-5 py-5 print:hidden"
@@ -113,7 +126,6 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
         </div>
         <ManualSearch to={env().EMAIL_REPLY_TO} orgName={d.orgName} />
       </section>
-
     </div>
   );
 }

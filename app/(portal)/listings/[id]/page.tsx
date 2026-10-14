@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { displayPropertyName } from "@/lib/domain/property-name";
 import { notFound } from "next/navigation";
 import { ArrowLeft, BedDouble, Bath, Users, PawPrint, Clock, MapPin } from "lucide-react";
 import { Gallery } from "@/components/listings/gallery";
@@ -20,7 +21,7 @@ const STRIP_DAYS = 90;
 export async function generateMetadata({ params }: PageProps<"/listings/[id]">) {
   const { id } = await params;
   const detail = await getListing(id);
-  return { title: detail?.listing.public_name ?? "Property" };
+  return { title: detail ? displayPropertyName(detail.listing.public_name) : "Property" };
 }
 
 const int = (v: string | string[] | undefined, fallback: number, min: number, max: number) => {
@@ -72,7 +73,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Back to search
       </Link>
 
-      <Gallery images={images} name={l.public_name} />
+      <Gallery images={images} name={displayPropertyName(l.public_name)} />
 
       {/*
        * Two columns on laptops; on a phone the DOM order is title → price panel → details,
@@ -85,7 +86,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
               <MapPin className="h-3 w-3" aria-hidden /> {place}
             </p>
           )}
-          <h1 className="text-strong font-serif text-3xl tracking-tight">{l.public_name}</h1>
+          <h1 className="text-strong font-serif text-3xl tracking-tight">{displayPropertyName(l.public_name)}</h1>
           <ul className="text-foreground mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
             {l.bedrooms !== null && (
               <li className="flex items-center gap-1.5">

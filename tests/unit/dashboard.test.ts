@@ -91,6 +91,7 @@ describe("dashboard view-model", () => {
     ];
     expect(computeKpis(rows, now)).toEqual({
       activePlacements: 2,
+      inProgress: 2,
       pendingWithLivluxe: 2,
       checkInsNext7: 2,
       checkOutsNext7: 1,
@@ -114,6 +115,23 @@ describe("dashboard view-model", () => {
     expect(table[1]!.dueTone).toBe("red");
     expect(table[2]!.dueLabel).toBe("Decision due in 2 h 15 m");
     expect(table[3]!.dueLabel).toBe("Check-in pack releases T(2026-10-18T03:00:00Z)");
+  });
+
+  it("table: live requests and stays starting within 14 days, at most 6", () => {
+    const rows = [
+      row({ id: "1", status: "CONFIRMED", checkIn: "2026-10-21" }), // 15 days out: left out
+      row({ id: "2", status: "CONFIRMED", checkIn: "2026-10-20" }), // 14 days: in
+      row({ id: "3", status: "CHECKED_IN", checkIn: "2026-09-01", checkOut: "2026-10-30" }),
+      row({ id: "4", status: "APPROVED", checkIn: "2027-03-01" }), // live, however far out
+      row({ id: "5", status: "DECLINED" }),
+    ];
+    expect(
+      buildRequestRows(rows, now, fmt)
+        .map((r) => r.id)
+        .sort(),
+    ).toEqual(["2", "3", "4"]);
+    const many = Array.from({ length: 9 }, (_, i) => row({ id: String(i + 10), status: "SUBMITTED" }));
+    expect(buildRequestRows(many, now, fmt)).toHaveLength(6);
   });
 
   it("builds a 7-day agenda with access-pack notes", () => {

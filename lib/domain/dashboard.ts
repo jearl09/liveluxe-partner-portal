@@ -27,6 +27,8 @@ export interface DashboardRequestRow {
   checkinReleasesAt: string | null; // check-in minus settings.checkin.release_offset_hours, ISO UTC
   unreadComments: number;
   paymentDue: boolean; // AWAITING_PAYMENT and the partner must act
+  /** Sent in a card mode with no card hold yet: the partner's next step. */
+  cardNeeded?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -62,6 +64,15 @@ export const IN_PROGRESS: readonly BookingStatus[] = [
 
 export const PENDING_WITH_LIVLUXE: readonly BookingStatus[] = ["SUBMITTED", "UNDER_REVIEW"];
 
+/** Requests still being worked out between the partner and Live Luxe. */
+export const LIVE: readonly BookingStatus[] = [
+  "SUBMITTED",
+  "UNDER_REVIEW",
+  "COUNTER_OFFERED",
+  "APPROVED",
+  "AWAITING_PAYMENT",
+];
+
 // ---------------------------------------------------------------------------
 // Durations
 // ---------------------------------------------------------------------------
@@ -85,7 +96,7 @@ export function partnerActionRequired(r: DashboardRequestRow): boolean {
 // ---------------------------------------------------------------------------
 // "Needs your attention" strip — up to four single-action cards
 // ---------------------------------------------------------------------------
-export type AttentionKind = "counter_offer" | "payment_due" | "ops_reply" | "hold_expiring";
+export type AttentionKind = "counter_offer" | "payment_due" | "card_needed" | "ops_reply" | "hold_expiring";
 
 export interface AttentionItem {
   kind: AttentionKind;
@@ -135,12 +146,24 @@ export function deriveAttention(
         urgencyMs: r.holdExpiresAt ? new Date(r.holdExpiresAt).getTime() - now.getTime() : 1,
       });
     }
+    if (r.cardNeeded) {
+      items.push({
+        kind: "card_needed",
+        requestId: r.id,
+        reference: r.reference,
+        title: "Hold your card so Live Luxe can decide",
+        context: `${r.reference} · ${r.propertyName}`,
+        cta: "Hold card",
+        href: `${href}/pay`,
+        urgencyMs: 0,
+      });
+    }
     if (r.unreadComments > 0) {
       items.push({
         kind: "ops_reply",
         requestId: r.id,
         reference: r.reference,
-        title: r.unreadComments === 1 ? "Ops replied" : `Ops replied · ${r.unreadComments} unread`,
+        title: r.unreadComments === 1 ? "Live Luxe replied" : `Live Luxe replied · ${r.unreadComments} unread`,
         context: `${r.reference} · ${r.propertyName}`,
         cta: "Open thread",
         href: `${href}#comments`,
@@ -149,7 +172,7 @@ export function deriveAttention(
     }
     if (r.holdExpiresAt && IN_PROGRESS.includes(r.status) && r.status !== "CONFIRMED" && r.status !== "CHECKED_IN") {
       const left = new Date(r.holdExpiresAt).getTime() - now.getTime();
-      if (left > 0 && left <= 6 * 3_600_000 && r.status !== "COUNTER_OFFERED" && !r.paymentDue) {
+      if (left > 0 && left <= 6 * 3_600_000 && r.status !== "COUNTER_OFFERED" && !r.paymentDue && !r.cardNeeded) {
         items.push({
           kind: "hold_expiring",
           requestId: r.id,
@@ -171,6 +194,8 @@ export function deriveAttention(
 // ---------------------------------------------------------------------------
 export interface Kpis {
   activePlacements: number;
+  /** Live requests: sent, being decided, countered, approved or awaiting payment (brief §7.2). */
+  inProgress: number;
   pendingWithLivluxe: number;
   checkInsNext7: number;
   checkOutsNext7: number;
@@ -205,6 +230,7 @@ export function computeKpis(rows: readonly DashboardRequestRow[], now: Date, tim
   const live = rows.filter((r) => ["CONFIRMED", "CHECKED_IN"].includes(r.status));
   const activePlacements = live.filter((r) => r.checkIn <= today && r.checkOut > today).length;
   const pendingWithLivluxe = rows.filter((r) => PENDING_WITH_LIVLUXE.includes(r.status)).length;
+  const inProgress = rows.filter((r) => LIVE.includes(r.status)).length;
   const ins = live
     .filter((r) => withinNextDays(r.checkIn, today, 7))
     .sort((a, b) => a.checkIn.localeCompare(b.checkIn));
@@ -219,6 +245,7 @@ export function computeKpis(rows: readonly DashboardRequestRow[], now: Date, tim
   };
   return {
     activePlacements,
+    inProgress,
     pendingWithLivluxe,
     checkInsNext7: ins.length,
     checkOutsNext7: outs.length,
@@ -241,10 +268,22 @@ export function buildRequestRows(
   rows: readonly DashboardRequestRow[],
   now: Date,
   fmt: { timestamp: (iso: string) => string },
-  limit = 8,
+  limit = 6,
+  timeZone = "Australia/Melbourne",
 ): RequestTableRow[] {
+  // Brief §7.2: live requests, plus confirmed stays in the property or starting within 14 days.
+  const today = todayLocal(now, timeZone);
+  const soon = (d: string) => {
+    const diff = (dateOnly(d).getTime() - dateOnly(today).getTime()) / 86_400_000;
+    return diff >= 0 && diff <= 14;
+  };
   const out: RequestTableRow[] = rows
-    .filter((r) => IN_PROGRESS.includes(r.status))
+    .filter(
+      (r) =>
+        LIVE.includes(r.status) ||
+        r.status === "CHECKED_IN" ||
+        (r.status === "CONFIRMED" && (soon(r.checkIn) || (r.checkIn <= today && r.checkOut > today))),
+    )
     .map((r) => {
       let dueLabel = "—";
       let dueTone: RequestTableRow["dueTone"] = "muted";

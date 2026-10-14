@@ -3,6 +3,7 @@
  * Runs on the RLS client: partners only ever see active, partner-visible listings
  * because the listings_select policy says so, not because this file filters.
  */
+import { displayPropertyName } from "@/lib/domain/property-name";
 import "server-only";
 import { createServerSupabase } from "@/lib/db/server";
 import type { ListingRow } from "@/lib/db/types";
@@ -167,7 +168,7 @@ export async function searchListings(q: SearchQuery, nights: number, hasDates: b
   return {
     items: rows.map((r) => ({
       id: r.id,
-      name: r.public_name,
+      name: displayPropertyName(r.public_name),
       suburb: r.suburb,
       state: r.state,
       bedrooms: r.bedrooms,

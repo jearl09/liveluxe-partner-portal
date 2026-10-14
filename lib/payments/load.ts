@@ -3,6 +3,7 @@
  * the session client so RLS scopes rows: a partner sees only their own org's
  * payments and invoices (policies payments_select / invoices_select).
  */
+import { displayPropertyName } from "@/lib/domain/property-name";
 import "server-only";
 import { createServerSupabase } from "@/lib/db/server";
 import type { InvoiceRow, PaymentRow, RefundRow } from "@/lib/db/types";
@@ -68,7 +69,7 @@ export async function listInvoices(): Promise<InvoiceListItem[]> {
     ? await supabase.from("listings").select("id, public_name").in("id", listingIds)
     : { data: [] as { id: string; public_name: string }[] };
   const byBooking = new Map((bookings ?? []).map((b) => [b.id, b]));
-  const byListing = new Map((listings ?? []).map((l) => [l.id, l.public_name]));
+  const byListing = new Map((listings ?? []).map((l) => [l.id, displayPropertyName(l.public_name)]));
   return (invoices ?? []).map((invoice) => {
     const b = invoice.booking_id ? byBooking.get(invoice.booking_id) : undefined;
     return {

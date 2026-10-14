@@ -1,5 +1,6 @@
 /** Data contract between the dashboard loader and its components. Everything is already formatted for display. */
 import type { AgendaEntry, AttentionItem, Freshness, Kpis, RequestTableRow } from "@/lib/domain/dashboard";
+import type { SyncModel } from "@/lib/domain/progress";
 
 export interface ActivityEvent {
   id: string;
@@ -24,6 +25,7 @@ export interface DashboardData {
   canBook: boolean;
   lastSuburb: string | null;
   freshness: Freshness;
+  sync: SyncModel;
   summary: { activePlacements: number; pendingRequests: number };
   attention: Section<AttentionItem[]>;
   kpis: Section<Kpis>;
