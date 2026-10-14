@@ -98,9 +98,11 @@ async function fillStay(page, checkIn, checkOut) {
       year: "numeric",
       timeZone: "UTC",
     });
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 12; i++) {
       const day = page.getByRole("button", { name: new RegExp(label.replace(/,/g, ",?"), "i") });
       if (await day.count()) return day.first().click();
+      const cell = page.locator(`[data-day="${isoDate}"] button`);
+      if (await cell.count()) return cell.first().click();
       await page.getByRole("button", { name: /next month/i }).click();
     }
     current.fails.push(`could not find ${isoDate} in the calendar`);
@@ -182,36 +184,34 @@ const TASKS = {
     await (
       await find(page, "claim reference", [(p) => p.getByLabel(/claim reference/i)])
     ).fill(opts.claim ?? "CLM-2026-0101");
+    const cont = page.getByRole("button", { name: /continue to review/i });
+    if (await cont.count()) {
+      await cont.first().click();
+      await shot(page, "review");
+    }
     const confirm = page.getByRole("checkbox");
     if (await confirm.count()) {
       await confirm.first().check();
       note("A confirmation checkbox must be ticked before submitting.");
     }
-    await (await find(page, "the submit button", [(p) => p.getByRole("button", { name: /submit request/i })])).click();
-    await page.waitForLoadState("networkidle");
+    await (
+      await find(page, "the send button", [
+        (p) => p.getByRole("button", { name: /send request/i }),
+        (p) => p.getByRole("button", { name: /submit request/i }),
+      ])
+    ).click();
+    await page.waitForURL(/\/requests\/[0-9a-f-]{36}/, { timeout: 60_000 });
+    await page.waitForLoadState("load");
     await shot(page, "after-submit");
-    const holdBtn = page.getByRole("link", { name: /secure with a card hold/i });
-    if (!/\/pay/.test(page.url()) && (await holdBtn.count())) {
-      note("Submitting does not take the card; the request page asks for the card hold as a separate step.");
-      await holdBtn.first().click();
-      await page.waitForLoadState("networkidle");
-    }
     if (/\/pay/.test(page.url())) {
-      await page.locator('iframe[title*="Secure payment input frame"]').first().waitFor({ timeout: 60_000 });
-      const frame = page.frameLocator('iframe[title*="Secure payment input frame"]').first();
-      await frame.locator('input[name="number"]').fill("4242424242424242");
-      await frame.locator('input[name="expiry"]').fill("12 / 30");
-      await frame.locator('input[name="cvc"]').fill("123");
-      const pc = frame.locator('input[name="postalCode"]');
-      if (await pc.count()) await pc.fill("3000");
-      await shot(page, "card");
-      await (
-        await find(page, "the card-hold button", [
-          (p) => p.getByRole("button", { name: /place card hold|secure|pay/i }),
-        ])
-      ).click();
-      await page.waitForURL(/\/requests\/[0-9a-f-]+(\?|$)/, { timeout: 60_000 });
-      await page.waitForLoadState("networkidle");
+      // Stripe's card field does not submit headless (USABILITY.md); the hold step is reached and that ends the task.
+      const body = await page.locator("main").innerText();
+      const ref = body.match(/LLX-\d{4}-\d{6}/)?.[0] ?? null;
+      note(`Sent ${ref}; landed on the card-hold step (${page.url().replace(BASE, "").split("?")[0]}).`);
+      if (!/one more step|hold your card/i.test(body))
+        current.hunts.push("The card-hold page did not say the request was sent.");
+      await context.close();
+      return end(ref ? "pass" : "fail");
     }
     await shot(page, "request-page");
     const ref = (await page.locator("h1").first().textContent())?.trim();

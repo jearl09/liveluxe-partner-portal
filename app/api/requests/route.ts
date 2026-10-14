@@ -3,6 +3,8 @@
  * Form post → validation → atomic submit → redirect to the new request. Failures
  * redirect back to the form with the error code so nothing typed is lost.
  */
+import { paymentModeFor } from "@/lib/domain/payments";
+import { orgPaymentTerms } from "@/lib/payments/load";
 import { requestId } from "@/lib/api/response";
 import { formFields, redirectTo } from "@/lib/auth/request";
 import { getSessionClaims } from "@/lib/db/server";
@@ -44,7 +46,8 @@ export async function POST(req: Request) {
   const adults = Math.min(20, Math.max(1, Number.parseInt(f.adults, 10) || 1));
   const children = Math.min(20, Math.max(0, Number.parseInt(f.children, 10) || 0));
 
-  // Everything the form page needs to re-render itself, minus the terms checkbox.
+  // Everything the form page needs to re-render itself, the confirmation tick included
+  // (brief §13 rule 7: a bounce never clears what the partner already did).
   const back = {
     listingId: f.listingId,
     checkIn: f.checkIn,
@@ -59,6 +62,7 @@ export async function POST(req: Request) {
     poNumber: f.poNumber,
     costCentre: f.costCentre,
     notes: f.notes.slice(0, 500),
+    acceptTerms: f.acceptTerms ? "on" : undefined,
   };
 
   if (!parsed.hasDates || !f.listingId)
@@ -82,6 +86,10 @@ export async function POST(req: Request) {
       },
       reqId,
     );
+    // Card-paying partners go straight on to the card hold, the last step of the same
+    // flow (brief §7.5); Live Luxe cannot approve without it.
+    const mode = paymentModeFor(await orgPaymentTerms(claims.org_id));
+    if (mode !== "invoice") return redirectTo(req, `/requests/${result.id}/pay`, { flow: "1" });
     return redirectTo(req, `/requests/${result.id}`, {
       submitted: "1",
       ...(result.financeApproval ? { finance: "1" } : {}),

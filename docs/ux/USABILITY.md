@@ -94,3 +94,35 @@ still pass; their open findings belong to groups 4 and 5.
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ----------- |
 | Search offered dates that Hostaway's live check then refused, while the shell showed "Sync delayed". The request could be submitted against stale availability. | 4     | §9.2, §11.2 |
 | From a request reached through the queue, the ops nav highlights Bookings, not Queue.                                                                           | 6     | §6.1        |
+
+---
+
+## After screen group 4 — Dashboard, Search, Property, new request (14 Oct 2026)
+
+| Task | Result | Time | Hunts, guesses, re-reads                                                                                                                                                                                                                                                                                                 |
+| ---- | ------ | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| (a)  | Pass   | 35 s | None. Find a property → Docklands, dates in the range picker (night count shown), 4 guests → first result (priced from the search dates, no "Get price") → Request this property → guest and claim → Continue to review → tick → Send request and hold card → lands on "Request LLX-2026-000016 is sent. One more step". |
+| (b)  | Pass   | 10 s | Still finds the approved booking under "Upcoming stays", not the first tab. Fixed with the Requests list in group 5.                                                                                                                                                                                                     |
+
+The card itself was not entered: Stripe's field does not submit in a headless browser (see group 2 notes).
+
+### Group 2 findings fixed here
+
+1. "Request to book" now reads **Request this property**.
+2. **Stale dates have a next step.** When the dates have gone between search and sending, the request page says so in
+   plain words and offers "Pick other dates here", "See what else is free" and "Ask Live Luxe to find one". The
+   property panel offers the same when pricing fails.
+3. **The confirmation tick survives a bounce,** along with everything typed; drafts also autosave in the browser.
+4. **The card hold is part of the request flow:** Guest and references → Review and send → Hold your card, with the
+   option to hold it later from the request.
+5. **No native date boxes:** search, the Dashboard, the price panel and the 90-day calendar all choose a range and show
+   the night count.
+6. **Unit numbers are gone** from property names on partner screens.
+
+### Found in this group
+
+1. **Security: access details in property descriptions.** The 106/387 Docklands Drive description includes the Wi-Fi
+   password, the key-collection point, the parking bay and the street address, visible to any partner before a
+   request. Not changed by the redesign; logged as NEEDS_BACKEND.md #5 and raised with the product owner.
+2. On a phone the Search bar was sticky and filled the screen; it now sticks only from 1024 px.
+3. The property page overflowed sideways on a phone (the grid sized itself to its widest child); fixed.

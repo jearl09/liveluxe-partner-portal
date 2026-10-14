@@ -370,3 +370,10 @@ export const paymentKeys = {
   supplementaryInvoice: (modificationId: string) => `inv:mod:${modificationId}`,
   hostaway: (bookingId: string) => `ha:${bookingId}`,
 };
+
+/** How this partner pays, in one sentence for the price panel and the request review (brief §7.4, §7.5). */
+export const PAY_MODE_SENTENCE: Record<PaymentMode, string> = {
+  card_authorise: "Your card is held when you send the request and charged only if Live Luxe approves.",
+  deposit: "A deposit is charged to your card only if Live Luxe approves; the balance is invoiced before check-in.",
+  invoice: "No card needed. Live Luxe issues an invoice on your account terms when it approves.",
+};

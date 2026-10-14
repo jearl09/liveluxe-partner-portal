@@ -12,7 +12,7 @@ import { loadSyncState } from "@/lib/listings/sync";
 import { amenityFacts, curateAmenities, groupAmenities } from "@/lib/domain/amenities";
 import { addDays, todayIn } from "@/lib/domain/dates";
 import { formatMoney } from "@/lib/domain/money";
-import { paymentModeFor } from "@/lib/domain/payments";
+import { PAY_MODE_SENTENCE, paymentModeFor } from "@/lib/domain/payments";
 import { can } from "@/lib/domain/permissions";
 import { displayPropertyName } from "@/lib/domain/property-name";
 import { buildAvailabilityStrip, parseSearchParams, searchQueryString } from "@/lib/domain/search";
@@ -37,12 +37,6 @@ const int = (v: string | string[] | undefined, fallback: number, min: number, ma
   const n = Number.parseInt((Array.isArray(v) ? v[0] : v) ?? "", 10);
   return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
 };
-
-const PAY_LINE = {
-  card_authorise: "Your card is held when you send the request and charged only if Live Luxe approves.",
-  deposit: "A deposit is charged to your card only if Live Luxe approves; the balance is invoiced before check-in.",
-  invoice: "No card needed. Live Luxe issues an invoice on your account terms when it approves.",
-} as const;
 
 /**
  * Property detail (brief §7.4): is this the right place, and what will it cost for my
@@ -171,7 +165,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
                 ? `/requests/new?listingId=${id}&checkIn=${form.checkIn}&checkOut=${form.checkOut}&adults=${adults}&children=${children}&pets=${pets}`
                 : null
             }
-            payLine={claims ? PAY_LINE[paymentModeFor(terms)] : null}
+            payLine={claims ? PAY_MODE_SENTENCE[paymentModeFor(terms)] : null}
             searchHref={searchHref}
             askHref={askHref}
           />

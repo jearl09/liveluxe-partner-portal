@@ -2,23 +2,25 @@ import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { Banner } from "@/components/ui/banner";
-import { SubmitButton } from "@/components/ui/submit-button";
-import { PageHeader } from "@/components/ui/page-header";
-import { GroupLabel, Panel, PanelHeading, PanelSection } from "@/components/ui/panel";
+import { buttonVariants } from "@/components/ui/button";
 import { ScrubParams } from "@/components/ui/scrub-params";
 import { Flash } from "@/components/requests/flash";
 import { QuoteLines } from "@/components/requests/quote-lines";
+import { RequestForm } from "@/components/requests/request-form";
 import { StayCard } from "@/components/requests/stay-card";
 import { getSessionClaims } from "@/lib/db/server";
 import { todayIn } from "@/lib/domain/dates";
+import { PAY_MODE_SENTENCE, paymentModeFor } from "@/lib/domain/payments";
 import { can } from "@/lib/domain/permissions";
+import { displayPropertyName } from "@/lib/domain/property-name";
 import { parseSearchParams, searchQueryString } from "@/lib/domain/search";
+import { env } from "@/lib/env";
 import { priceStay } from "@/lib/listings/price";
+import { orgPaymentTerms } from "@/lib/payments/load";
 import { loadOrgRules } from "@/lib/requests/submit";
-import { fieldClasses, fieldErrorClass, labelClass } from "@/components/ui/field";
+import { cn } from "@/lib/utils";
 
-export const metadata = { title: "Request to book" };
+export const metadata = { title: "Request this property" };
 
 const str = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
 const int = (v: string | string[] | undefined, fallback: number, min: number, max: number) => {
@@ -27,25 +29,19 @@ const int = (v: string | string[] | undefined, fallback: number, min: number, ma
 };
 
 const FIELD_LABELS: Record<string, string> = {
-  guestName: "Guest name",
-  guestEmail: "Guest email",
-  claimRef: "Claim reference",
+  guestName: "guest name",
+  guestEmail: "guest email",
+  claimRef: "claim reference",
   poNumber: "PO number",
-  acceptTerms: "Confirmation",
-};
-
-/** What to fix, next to the field itself, when the server sends the form back. */
-const FIELD_HINTS: Record<string, string> = {
-  guestName: "Enter the guest's name.",
-  guestEmail: "Enter a valid email address, or leave it blank.",
-  claimRef: "Your organisation requires a claim reference.",
-  poNumber: "Your organisation requires a PO number.",
-  acceptTerms: "Tick the confirmation to submit.",
+  acceptTerms: "confirmation",
 };
 
 /**
- * Submission form (§7.1): the quote is re-priced here and again at submit; the
- * price hash travels with the form so a changed price is caught, never silently applied.
+ * New request (brief §7.5): what do you need from me to send this. Two steps on one
+ * page, guest and references then review and send, beside the stay and the quote.
+ * The quote is re-priced here and again on submit; the price hash travels with the
+ * form so a changed price is caught, never silently applied. Card-paying partners go
+ * on to the card hold as the last step.
  */
 export default async function NewRequestPage({ searchParams }: PageProps<"/requests/new">) {
   const claims = await getSessionClaims();
@@ -61,218 +57,147 @@ export default async function NewRequestPage({ searchParams }: PageProps<"/reque
   const pets = parsed.query.pets;
   const stay = { checkIn: parsed.query.checkIn!, checkOut: parsed.query.checkOut!, adults, children, pets };
 
-  const [priced, org] = await Promise.all([
+  const [priced, org, terms] = await Promise.all([
     priceStay(listingId, stay, { orgId: claims.org_id }),
     loadOrgRules(claims.org_id),
+    orgPaymentTerms(claims.org_id),
   ]);
   if (!priced) notFound();
   const l = priced.detail.listing;
-  const back = `/listings/${listingId}${searchQueryString({ checkIn: stay.checkIn, checkOut: stay.checkOut, pets })}&adults=${adults}&children=${children}`;
-  const errorFields = new Set(str(sp.fields).split(",").filter(Boolean));
+  const name = displayPropertyName(l.public_name);
+  const mode = paymentModeFor(terms);
+  const propertyHref = `/listings/${listingId}${searchQueryString({ checkIn: stay.checkIn, checkOut: stay.checkOut, pets })}&adults=${adults}&children=${children}#price`;
+  const searchHref = `/search${searchQueryString({ q: l.suburb ?? "", checkIn: stay.checkIn, checkOut: stay.checkOut, guests: adults + children, pets, page: 1 })}`;
+  const errorFields = str(sp.fields).split(",").filter(Boolean);
+  const error = str(sp.error);
   const quote = priced.availability.available ? priced.quote : null;
+  const datesGone = error === "DATES_UNAVAILABLE" || error === "DATES_HELD" || !priced.availability.available;
+
+  const review = (
+    <div className="space-y-4">
+      <StayCard
+        listing={{ name, suburb: l.suburb, state: l.state, imageUrl: priced.detail.images[0]?.url ?? null }}
+        checkIn={stay.checkIn}
+        checkOut={stay.checkOut}
+        nights={priced.availability.nights}
+        adults={adults}
+        childGuests={children}
+        pets={pets}
+      />
+      {quote && (
+        <section aria-labelledby="quote-heading" className="border-subtle bg-surface rounded-card border p-5">
+          <h2 id="quote-heading" className="mb-3">
+            Quote
+          </h2>
+          <QuoteLines
+            lines={quote.lines}
+            totalCents={quote.totalCents}
+            depositCents={quote.securityDepositCents}
+            currency={l.currency}
+            nights={quote.nights}
+            compact
+          />
+          <p className="text-text-muted text-body-sm mt-3">
+            Your contracted rates are applied when you send it. GST is shown at the standard rate until Live Luxe&apos;s
+            accountant confirms the treatment of long stays.
+          </p>
+        </section>
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-6">
-      <Link href={back} className="text-foreground inline-flex items-center gap-1 text-sm hover:underline">
-        <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Back to property
+      <Link
+        href={propertyHref}
+        className="text-text-secondary hover:text-text-primary text-body-sm inline-flex items-center gap-1 font-semibold"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden /> Back to the property
       </Link>
-      <PageHeader
-        eyebrow="Booking request"
-        title="Request to book"
-        description={`Submitting on behalf of ${org.name}.`}
-      />
+      <header>
+        <h1 className="text-h1 text-text-primary font-serif tracking-tight">Request this property</h1>
+        <p className="text-text-secondary mt-1">
+          {name} · for {org.name}
+        </p>
+      </header>
 
-      {/* A validation bounce names its fields once, here, and again beside each field below. */}
-      <Flash
-        error={errorFields.size > 0 && str(sp.error) === "VALIDATION_FAILED" ? undefined : str(sp.error) || undefined}
-        detail={str(sp.detail) || undefined}
-        refCode={str(sp.ref) || undefined}
-      />
-      {errorFields.size > 0 && (
+      {datesGone ? (
+        <div role="alert" className="border-danger-border bg-danger-bg rounded-card border px-5 py-4">
+          <p className="text-danger-fg font-semibold">These dates are no longer free at this property.</p>
+          <p className="text-text-primary mt-1">
+            Someone booked them since you searched. Nothing has been sent and nothing is charged. What you typed is kept
+            in this browser for your next request.
+          </p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <Link href={propertyHref} className={cn(buttonVariants({ variant: "primary", size: "sm" }))}>
+              Pick other dates here
+            </Link>
+            <Link href={searchHref} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
+              See what else is free
+            </Link>
+            <a
+              href={`mailto:${env().EMAIL_REPLY_TO}?subject=${encodeURIComponent(`Find a property: ${l.suburb ?? ""} ${stay.checkIn} to ${stay.checkOut}`)}`}
+              className={cn(buttonVariants({ variant: "tertiary", size: "sm" }))}
+            >
+              Ask Live Luxe to find one
+            </a>
+          </div>
+        </div>
+      ) : (
         <>
-          {/* The field list and the typed values stay in the URL (they are the form's state); only the outcome goes. */}
-          <ScrubParams keys={["error", "detail", "ref"]} />
-          <Banner tone="error">
-            Please check {[...errorFields].map((f) => FIELD_LABELS[f] ?? f).join(", ")}. Nothing has been submitted yet.
-          </Banner>
+          <Flash
+            error={errorFields.length > 0 && error === "VALIDATION_FAILED" ? undefined : error || undefined}
+            detail={str(sp.detail) || undefined}
+            refCode={str(sp.ref) || undefined}
+          />
+          {errorFields.length > 0 && (
+            <>
+              <ScrubParams keys={["error", "detail", "ref"]} />
+              <p
+                role="alert"
+                className="border-danger-border bg-danger-bg text-danger-fg rounded-card border px-4 py-3"
+              >
+                Please check the {errorFields.map((f) => FIELD_LABELS[f] ?? f).join(", ")}. Nothing has been sent yet,
+                and everything you typed is still here.
+              </p>
+            </>
+          )}
         </>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_380px] lg:items-start lg:gap-8">
-        <form method="post" action="/api/requests">
-          <input type="hidden" name="listingId" value={listingId} />
-          <input type="hidden" name="checkIn" value={stay.checkIn} />
-          <input type="hidden" name="checkOut" value={stay.checkOut} />
-          <input type="hidden" name="adults" value={adults} />
-          <input type="hidden" name="children" value={children} />
-          <input type="hidden" name="pets" value={pets} />
-          <input type="hidden" name="priceHash" value={quote?.priceHash ?? ""} />
-          {/* §17.2 duplicate submission: a double-click or browser retry returns the first result. */}
-          <input type="hidden" name="submissionKey" value={randomUUID()} />
-
-          <Panel flush className="divide-border divide-y">
-            <PanelSection className="py-5">
-              <GroupLabel className="mb-3">Guest</GroupLabel>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className={labelClass}>
-                  Guest name <span className="text-accent-ink">*</span>
-                  <input
-                    name="guestName"
-                    required
-                    defaultValue={str(sp.guestName)}
-                    aria-invalid={errorFields.has("guestName") || undefined}
-                    className={fieldClasses(errorFields.has("guestName"))}
-                    maxLength={120}
-                    autoComplete="off"
-                  />
-                  {errorFields.has("guestName") && <span className={fieldErrorClass}>{FIELD_HINTS.guestName}</span>}
-                </label>
-                <label className={labelClass}>
-                  Guest email
-                  <input
-                    name="guestEmail"
-                    type="email"
-                    defaultValue={str(sp.guestEmail)}
-                    aria-invalid={errorFields.has("guestEmail") || undefined}
-                    className={fieldClasses(errorFields.has("guestEmail"))}
-                    autoComplete="off"
-                  />
-                  {errorFields.has("guestEmail") && <span className={fieldErrorClass}>{FIELD_HINTS.guestEmail}</span>}
-                </label>
-                <label className={labelClass}>
-                  Guest phone
-                  <input
-                    name="guestPhone"
-                    type="tel"
-                    defaultValue={str(sp.guestPhone)}
-                    className={fieldClasses()}
-                    maxLength={40}
-                    autoComplete="off"
-                  />
-                </label>
-              </div>
-              <p className="text-muted-foreground mt-3 text-xs">
-                Guest details are shared with Live Luxe only for this stay.
-              </p>
-            </PanelSection>
-
-            <PanelSection className="py-5">
-              <GroupLabel className="mb-3">Your references</GroupLabel>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <label className={labelClass}>
-                  Claim reference {org.require_claim_ref && <span className="text-accent-ink">*</span>}
-                  <input
-                    name="claimRef"
-                    required={org.require_claim_ref}
-                    defaultValue={str(sp.claimRef)}
-                    aria-invalid={errorFields.has("claimRef") || undefined}
-                    className={fieldClasses(errorFields.has("claimRef"))}
-                    maxLength={60}
-                  />
-                  {errorFields.has("claimRef") && <span className={fieldErrorClass}>{FIELD_HINTS.claimRef}</span>}
-                </label>
-                <label className={labelClass}>
-                  PO number {org.require_po_number && <span className="text-accent-ink">*</span>}
-                  <input
-                    name="poNumber"
-                    required={org.require_po_number}
-                    defaultValue={str(sp.poNumber) || (org.default_po_number ?? "")}
-                    aria-invalid={errorFields.has("poNumber") || undefined}
-                    className={fieldClasses(errorFields.has("poNumber"))}
-                    maxLength={60}
-                  />
-                  {errorFields.has("poNumber") && <span className={fieldErrorClass}>{FIELD_HINTS.poNumber}</span>}
-                </label>
-                <label className={labelClass}>
-                  Cost centre
-                  <input
-                    name="costCentre"
-                    defaultValue={str(sp.costCentre) || (org.default_cost_centre ?? "")}
-                    className={fieldClasses()}
-                    maxLength={60}
-                  />
-                </label>
-              </div>
-              <label className={`${labelClass} mt-4`}>
-                Notes for Live Luxe
-                <textarea
-                  name="notes"
-                  rows={3}
-                  defaultValue={str(sp.notes)}
-                  className={fieldClasses()}
-                  maxLength={2000}
-                  placeholder="Access needs, arrival time, anything the team should know"
-                />
-              </label>
-            </PanelSection>
-
-            <PanelSection className="bg-muted/40 space-y-4 rounded-b-lg py-5">
-              <label className="flex items-start gap-3 text-sm">
-                <input
-                  name="acceptTerms"
-                  type="checkbox"
-                  required
-                  className="mt-0.5 h-4 w-4"
-                  aria-invalid={errorFields.has("acceptTerms") || undefined}
-                />
-                <span className="text-foreground">
-                  I confirm the stay details and the quoted total, and that this request is made under {org.name}&apos;s
-                  agreement with Live Luxe. The dates are held for Live Luxe&apos;s decision; nothing is charged until
-                  approval.
-                  {errorFields.has("acceptTerms") && <span className={fieldErrorClass}>{FIELD_HINTS.acceptTerms}</span>}
-                </span>
-              </label>
-              <div className="flex flex-wrap items-center gap-3">
-                <SubmitButton variant="gold" className="w-full sm:w-auto" disabled={!quote} pendingLabel="Submitting…">
-                  Submit request
-                </SubmitButton>
-                {quote && (
-                  <span className="text-muted-foreground text-xs">
-                    Live Luxe replies within the decision window; you can track it under Requests.
-                  </span>
-                )}
-              </div>
-              {!quote && (
-                <p className="text-bad text-sm">
-                  This stay can no longer be priced online for these dates. Go back and choose different dates.
-                </p>
-              )}
-            </PanelSection>
-          </Panel>
-        </form>
-
-        <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
-          <StayCard
-            listing={{
-              name: l.public_name,
-              suburb: l.suburb,
-              state: l.state,
-              imageUrl: priced.detail.images[0]?.url ?? null,
-            }}
-            checkIn={stay.checkIn}
-            checkOut={stay.checkOut}
-            nights={priced.availability.nights}
-            adults={adults}
-            childGuests={children}
-            pets={pets}
-          />
-          {quote && (
-            <Panel aria-labelledby="quote-heading">
-              <PanelHeading id="quote-heading" title="Quote" className="mb-3" />
-              <QuoteLines
-                lines={quote.lines}
-                totalCents={quote.totalCents}
-                depositCents={quote.securityDepositCents}
-                currency={l.currency}
-                nights={quote.nights}
-                compact
-              />
-              <p className="text-muted-foreground mt-3 text-xs">
-                Indicative until your contracted rates are applied. GST at the placeholder rate pending sign-off.
-              </p>
-            </Panel>
-          )}
-        </aside>
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-8">
+        <RequestForm
+          hidden={{
+            listingId,
+            checkIn: stay.checkIn,
+            checkOut: stay.checkOut,
+            adults: String(adults),
+            children: String(children),
+            pets: String(pets),
+            priceHash: quote?.priceHash ?? "",
+            // §17.2 duplicate submission: a double-click or browser retry returns the first result.
+            submissionKey: randomUUID(),
+          }}
+          values={{
+            guestName: str(sp.guestName),
+            guestEmail: str(sp.guestEmail),
+            guestPhone: str(sp.guestPhone),
+            claimRef: str(sp.claimRef),
+            poNumber: str(sp.poNumber) || (org.default_po_number ?? ""),
+            costCentre: str(sp.costCentre) || (org.default_cost_centre ?? ""),
+            notes: str(sp.notes),
+            acceptTerms: str(sp.acceptTerms),
+          }}
+          errorFields={errorFields}
+          rules={{ claimRequired: org.require_claim_ref, poRequired: org.require_po_number }}
+          orgName={org.name}
+          canSend={!!quote && !datesGone}
+          withCard={mode !== "invoice"}
+          payLine={PAY_MODE_SENTENCE[mode]}
+          draftKey={`llx:request-draft:${claims.org_id}`}
+          review={review}
+        />
+        <aside className="hidden lg:sticky lg:top-20 lg:block">{review}</aside>
       </div>
     </div>
   );
