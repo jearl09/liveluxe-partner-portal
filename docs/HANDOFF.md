@@ -2,6 +2,8 @@
 
 Read this first when starting a new Claude Code session in this folder.
 
+> Cut-over steps for the pilot live in `docs/GO-LIVE-CHECKLIST.md`.
+
 ## What this is
 
 Livluxe Partner Direct Booking Platform for Live Luxe Pty Ltd (ABN 16 678 772 613). Invite-only portal for insurance
