@@ -1,45 +1,89 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /*
- * iOS presses rather than hovers: the weight of the feedback is in a brief scale-down
- * on :active, with hover kept to a quiet tint. Heights clear 44 px at the default and
- * large sizes, which is Apple's touch floor; `sm` is for dense table rows only.
+ * Exactly four kinds of button (brief §4.4):
+ *   primary      gold fill, navy text — one per view, the thing the visitor came to do
+ *   secondary    outlined on surface — supporting actions
+ *   tertiary     text only, underlined on hover — cancel, back, in-row actions
+ *   destructive  outlined danger; fills danger only inside its confirmation step
+ *
+ * 40 px tall (44 px tap target on touch via the `coarse` variant), 6 px radius, 15 px
+ * sans 600, sentence case. Hover is a quiet tint, press a brief 97 % scale, focus a
+ * 2 px gold ring with a 2 px canvas offset on :focus-visible only. Loading swaps the
+ * label for a spinner at the same width so nothing shifts.
+ *
+ * Legacy variant names (`default`, `gold`, `outline`, `ghost`, `link`) still resolve
+ * so screens awaiting Phase 2 keep working; they map onto the four kinds.
  */
 const buttonVariants = cva(
-  "inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[background-color,border-color,color,box-shadow,transform] duration-150 ease-ios active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50",
+  "relative inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-control text-body font-semibold transition-[background-color,border-color,color,box-shadow,transform] duration-150 ease-out active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:pointer-events-none disabled:opacity-50 coarse:min-h-11",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary-hover shadow-xs",
-        gold: "bg-accent text-accent-foreground hover:bg-accent-hover shadow-xs",
-        destructive: "bg-destructive text-white hover:bg-destructive/90 shadow-xs",
-        outline: "border border-input bg-card text-strong hover:bg-muted",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "text-foreground hover:bg-muted hover:text-strong",
-        link: "text-accent-ink underline-offset-4 hover:underline active:scale-100",
+        primary: "bg-gold text-on-gold hover:bg-gold-hover",
+        secondary: "border border-strong-border bg-surface text-text-primary hover:bg-inset",
+        tertiary: "text-text-primary hover:underline hover:underline-offset-4 active:scale-100",
+        destructive: "border border-danger-fg bg-surface text-danger-fg hover:bg-danger-bg",
+        "destructive-solid": "bg-danger-fg text-surface hover:opacity-90",
+        /* legacy aliases */
+        default: "bg-gold text-on-gold hover:bg-gold-hover",
+        gold: "bg-gold text-on-gold hover:bg-gold-hover",
+        outline: "border border-strong-border bg-surface text-text-primary hover:bg-inset",
+        ghost: "text-text-primary hover:bg-inset",
+        link: "text-text-gold underline-offset-4 hover:underline active:scale-100",
       },
       size: {
-        default: "h-11 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-12 rounded-lg px-8",
-        icon: "h-11 w-11",
+        default: "h-10 px-4",
+        sm: "h-8 px-3 text-body-sm",
+        lg: "h-12 px-6",
+        icon: "h-10 w-10",
       },
     },
-    defaultVariants: { variant: "default", size: "default" },
+    defaultVariants: { variant: "primary", size: "default" },
   },
 );
 
-/** `ref` rides along as an ordinary prop (React 19), so SubmitButton can reach its form. */
 export interface ButtonProps extends React.ComponentProps<"button">, VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  /** Replaces the label with a spinner at the same width; the button is disabled while true. */
+  loading?: boolean;
 }
 
-export function Button({ className, variant, size, asChild = false, ...props }: ButtonProps) {
+export function Button({
+  className,
+  variant,
+  size,
+  asChild = false,
+  loading = false,
+  children,
+  ...props
+}: ButtonProps) {
   const Comp = asChild ? Slot : "button";
-  return <Comp className={cn(buttonVariants({ variant, size, className }))} {...props} />;
+  if (asChild)
+    return (
+      <Comp className={cn(buttonVariants({ variant, size, className }))} {...props}>
+        {children}
+      </Comp>
+    );
+  return (
+    <Comp
+      className={cn(buttonVariants({ variant, size, className }), loading && "disabled:opacity-100")}
+      aria-busy={loading || undefined}
+      disabled={props.disabled || loading}
+      {...props}
+    >
+      <span className={cn("inline-flex items-center gap-2", loading && "invisible")}>{children}</span>
+      {loading && (
+        <span className="absolute inset-0 flex items-center justify-center" aria-hidden>
+          <Loader2 className="h-5 w-5 animate-spin" />
+        </span>
+      )}
+    </Comp>
+  );
 }
 
 export { buttonVariants };

@@ -12,11 +12,11 @@ export const metadata = { title: "Invoices" };
 export const dynamic = "force-dynamic";
 
 const STATUS: Record<string, { label: string; cls: string }> = {
-  paid: { label: "Paid", cls: "border-emerald-200 bg-emerald-50 text-emerald-800" },
-  open: { label: "Due", cls: "border-gold-500 text-gold-600 bg-white" },
+  paid: { label: "Paid", cls: "border-success-border bg-success-bg text-success-fg" },
+  open: { label: "Due", cls: "border-attention-border bg-attention-bg text-attention-fg" },
   draft: { label: "Draft", cls: "border-cream-300 bg-cream-100 text-ink-500" },
   void: { label: "Void", cls: "border-cream-300 bg-cream-100 text-ink-500" },
-  uncollectible: { label: "Overdue", cls: "border-red-200 bg-red-50 text-red-800" },
+  uncollectible: { label: "Overdue", cls: "border-danger-border bg-danger-bg text-danger-fg" },
 };
 
 /** Tax invoices for the caller's organisation (§11.5). Stripe hosts the PDF; we link to it. */

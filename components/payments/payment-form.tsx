@@ -50,7 +50,10 @@ function CheckoutForm({ returnUrl, mode }: { returnUrl: string; mode: "authorise
     <form onSubmit={onSubmit} className="space-y-4">
       <PaymentElement options={{ layout: "tabs" }} />
       {message && (
-        <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+        <p
+          role="alert"
+          className="border-danger-border bg-danger-bg text-danger-fg rounded-md border px-3 py-2 text-sm"
+        >
           {message}
         </p>
       )}
@@ -64,6 +67,20 @@ function CheckoutForm({ returnUrl, mode }: { returnUrl: string; mode: "authorise
       </p>
     </form>
   );
+}
+
+/** Stripe's Payment Element is an iframe: it cannot read our CSS variables, so we resolve the roles at mount. */
+function stripeVariables() {
+  const css = typeof window === "undefined" ? null : getComputedStyle(document.documentElement);
+  const read = (name: string, fallback: string) => css?.getPropertyValue(name).trim() || fallback;
+  return {
+    colorPrimary: read("--accent-gold", "rgb(211 172 96)"),
+    colorText: read("--text-primary", "rgb(22 36 59)"),
+    colorBackground: read("--bg-inset", "rgb(244 239 230)"),
+    colorDanger: read("--status-danger-fg", "rgb(180 35 24)"),
+    fontFamily: "inherit",
+    borderRadius: read("--radius-control", "6px"),
+  };
 }
 
 export function PaymentForm({ bookingId, returnUrl }: { bookingId: string; returnUrl: string }) {
@@ -90,7 +107,7 @@ export function PaymentForm({ bookingId, returnUrl }: { bookingId: string; retur
 
   if (error)
     return (
-      <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+      <p role="alert" className="border-danger-border bg-danger-bg text-danger-fg rounded-md border px-3 py-2 text-sm">
         {error}
       </p>
     );
@@ -111,7 +128,7 @@ export function PaymentForm({ bookingId, returnUrl }: { bookingId: string; retur
         clientSecret: payload.clientSecret,
         appearance: {
           theme: "stripe",
-          variables: { colorPrimary: "#b7853a", colorText: "#101c2c", fontFamily: "inherit", borderRadius: "6px" },
+          variables: stripeVariables(),
         },
       }}
     >

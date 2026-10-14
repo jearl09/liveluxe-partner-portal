@@ -19,8 +19,8 @@ export function ConfirmButton({
   confirmLabel,
   pendingLabel = "Working…",
   children,
-  variant = "ghost",
-  size = "sm",
+  variant = "destructive",
+  size = "default",
   className,
   ...rest
 }: Omit<ButtonProps, "type" | "onClick"> & { confirmLabel: string; pendingLabel?: string; children: ReactNode }) {
@@ -54,7 +54,7 @@ export function ConfirmButton({
       }}
     >
       <SubmitButton
-        variant="destructive"
+        variant="destructive-solid"
         size={size}
         className="flex-1"
         pendingLabel={pendingLabel}
@@ -63,7 +63,7 @@ export function ConfirmButton({
       >
         {confirmLabel}
       </SubmitButton>
-      <Button type="button" variant="ghost" size={size} onClick={() => setArmed(false)}>
+      <Button type="button" variant="tertiary" size={size} onClick={() => setArmed(false)}>
         Cancel
       </Button>
     </span>

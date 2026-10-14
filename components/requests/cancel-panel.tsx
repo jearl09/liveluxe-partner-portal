@@ -37,7 +37,7 @@ export function CancelPanel(p: CancelPanelProps) {
       <PanelHeading id="cancel-heading" title={q.kind === "withdraw" ? "Withdraw" : "Cancellation"} className="mb-2" />
 
       {requested && (
-        <p className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <p className="mb-3 rounded-md border border-attention-border bg-attention-bg px-3 py-2 text-xs text-attention-fg">
           Cancellation requested {formatTimestamp(r.cancellation_requested_at!)}
           {r.cancellation_reason && ` — ${r.cancellation_reason}`}.{" "}
           {p.audience === "partner" ? "Live Luxe will decide and you will be emailed." : "Decide below."}

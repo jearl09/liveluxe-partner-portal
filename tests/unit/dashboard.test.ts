@@ -54,12 +54,12 @@ describe("dashboard view-model", () => {
   });
 
   it("maps every status to the shared pill tones", () => {
-    expect(statusTone("SUBMITTED")).toBe("navy-outline");
-    expect(statusTone("COUNTER_OFFERED")).toBe("gold");
-    expect(statusTone("AWAITING_PAYMENT")).toBe("gold-filled");
-    expect(statusTone("CONFIRMED")).toBe("green");
+    expect(statusTone("SUBMITTED")).toBe("info");
+    expect(statusTone("COUNTER_OFFERED")).toBe("attention");
+    expect(statusTone("AWAITING_PAYMENT")).toBe("attention");
+    expect(statusTone("CONFIRMED")).toBe("success");
     expect(statusTone("DECLINED")).toBe("muted");
-    expect(statusTone("FAILED")).toBe("red");
+    expect(statusTone("FAILED")).toBe("danger");
   });
 
   it("builds the attention strip, most urgent first, capped at four", () => {

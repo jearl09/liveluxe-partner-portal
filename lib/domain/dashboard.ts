@@ -45,48 +45,9 @@ export function firstName(fullName: string | null | undefined): string {
   return n || "there";
 }
 
-// ---------------------------------------------------------------------------
-// Status pills — one mapping used everywhere in the app (§10 states)
-// ---------------------------------------------------------------------------
-export type PillTone = "navy-outline" | "gold" | "gold-filled" | "green" | "muted" | "red";
-
-export const STATUS_LABELS: Record<BookingStatus, string> = {
-  DRAFT: "Draft",
-  SUBMITTED: "Submitted",
-  UNDER_REVIEW: "Under review",
-  COUNTER_OFFERED: "Counter-offered",
-  APPROVED: "Approved",
-  AWAITING_PAYMENT: "Awaiting payment",
-  CONFIRMED: "Confirmed",
-  CHECKED_IN: "Checked in",
-  COMPLETED: "Completed",
-  DECLINED: "Declined",
-  EXPIRED: "Expired",
-  CANCELLED: "Cancelled",
-  FAILED: "Failed",
-};
-
-export function statusTone(status: BookingStatus): PillTone {
-  switch (status) {
-    case "DRAFT":
-    case "SUBMITTED":
-    case "UNDER_REVIEW":
-      return "navy-outline";
-    case "COUNTER_OFFERED":
-      return "gold";
-    case "AWAITING_PAYMENT":
-      return "gold-filled";
-    case "APPROVED":
-    case "CONFIRMED":
-    case "CHECKED_IN":
-    case "COMPLETED":
-      return "green";
-    case "FAILED":
-      return "red";
-    default:
-      return "muted";
-  }
-}
+// Status vocabulary (labels and tones) lives in ./status.ts; re-exported for existing imports.
+export { STATUS_LABELS, statusTone } from "./status";
+export type { StatusTone as PillTone } from "./status";
 
 /** Statuses that still count as "in progress" for the dashboard table. */
 export const IN_PROGRESS: readonly BookingStatus[] = [

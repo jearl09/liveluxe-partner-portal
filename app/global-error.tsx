@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-syntax -- the root layout failed, so no stylesheet or token exists here; values mirror DESIGN.md (DECISIONS.md #15). */
 "use client";
 
 /**
@@ -14,15 +15,15 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
           display: "grid",
           placeItems: "center",
           background: "#faf7f1",
-          color: "#2b3442",
+          color: "#3a4454",
           fontFamily: "ui-sans-serif, system-ui, sans-serif",
         }}
       >
-        <style>{`@media (prefers-color-scheme: dark){body{background:#0b1422!important;color:#c9d1dd!important}h1{color:#f3f5f8!important}}`}</style>
+        <style>{`@media (prefers-color-scheme: dark){body{background:#0b1422!important;color:#c6cbd4!important}h1{color:#f0ece3!important}}`}</style>
         <main style={{ maxWidth: 440, padding: "0 1.5rem" }}>
           <p
             style={{
-              color: "#b7853a",
+              color: "#866206",
               fontSize: 11,
               fontWeight: 600,
               letterSpacing: "0.18em",
@@ -37,7 +38,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
               fontWeight: 500,
               fontSize: 30,
               margin: "0.5rem 0 1rem",
-              color: "#101c2c",
+              color: "#16243b",
             }}
           >
             Something went wrong
@@ -56,7 +57,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
             onClick={() => reset()}
             style={{
               marginTop: "1rem",
-              background: "#101c2c",
+              background: "#16243b",
               color: "#fff",
               border: 0,
               borderRadius: 10,

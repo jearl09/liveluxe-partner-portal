@@ -54,7 +54,7 @@ export function DecisionPanel({
       <PanelSection>
         <PanelHeading id="decision-heading" title="Decision" className="mb-3" />
         {!paymentGate.ok && (
-          <p className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <p className="mb-3 rounded-md border border-attention-border bg-attention-bg px-3 py-2 text-xs text-attention-fg">
             {paymentGate.reason}
           </p>
         )}

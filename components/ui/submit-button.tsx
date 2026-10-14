@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Loader2 } from "lucide-react";
 import { Button, type ButtonProps } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 /**
  * Submit button that shows it is working.
@@ -72,24 +70,12 @@ export function SubmitButton({
   }, [pending]);
 
   return (
-    <Button
-      ref={ref}
-      type="submit"
-      aria-busy={pending || undefined}
-      disabled={disabled || pending}
-      className={cn(pending && "disabled:opacity-80", className)}
-      {...rest}
-    >
-      {pending ? (
-        <>
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-          <span>{pendingLabel ?? children}</span>
-          <span className="sr-only" role="status">
-            Working
-          </span>
-        </>
-      ) : (
-        children
+    <Button ref={ref} type="submit" loading={pending} disabled={disabled || pending} className={className} {...rest}>
+      {pending ? (pendingLabel ?? children) : children}
+      {pending && (
+        <span className="sr-only" role="status">
+          Working
+        </span>
       )}
     </Button>
   );

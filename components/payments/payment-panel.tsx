@@ -39,9 +39,9 @@ export function PaymentPanel(p: PaymentPanelProps) {
   const gate = approvalPaymentGate(p.mode, p.state);
   const tone =
     p.state === "captured" || p.state === "authorised" || p.mode === "invoice"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+      ? "border-success-border bg-success-bg text-success-fg"
       : p.state === "failed"
-        ? "border-red-200 bg-red-50 text-red-900"
+        ? "border-danger-border bg-danger-bg text-danger-fg"
         : "border-gold-500 bg-white text-navy-900";
 
   return (

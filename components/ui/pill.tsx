@@ -1,20 +1,26 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { STATUS_TONE_CLASSES, pillClass } from "./status-pill";
 
-export type PillTone = "ok" | "warn" | "bad" | "muted" | "neutral";
+/** Legacy tone names map onto the five status tones; `info` is the new addition. */
+export type PillTone = "info" | "attention" | "success" | "danger" | "muted" | "neutral" | "ok" | "warn" | "bad";
 
-const TONES: Record<PillTone, string> = {
-  ok: "bg-ok-bg text-ok",
-  warn: "bg-warn-bg text-warn",
-  bad: "bg-bad-bg text-bad",
-  muted: "bg-sunken text-foreground",
-  neutral: "bg-muted text-muted-foreground",
+const ALIAS: Record<PillTone, keyof typeof STATUS_TONE_CLASSES> = {
+  info: "info",
+  attention: "attention",
+  success: "success",
+  danger: "danger",
+  muted: "muted",
+  neutral: "neutral",
+  ok: "success",
+  warn: "attention",
+  bad: "danger",
 };
 
 /**
  * Tinted label for a state that is not a booking status — an SLA band, an account's
- * standing, whether a person is active. Booking statuses keep their own bordered
- * `StatusPill`, which is the one mapping the whole system shares (§10).
+ * standing, whether a person is active, an invoice state. Booking statuses use
+ * `StatusPill`; the decision clock uses `SlaBadge`.
  */
 export function Pill({
   tone = "neutral",
@@ -27,14 +33,7 @@ export function Pill({
   children: ReactNode;
 } & Omit<ComponentPropsWithoutRef<"span">, "className" | "children">) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap",
-        TONES[tone],
-        className,
-      )}
-      {...rest}
-    >
+    <span className={cn(pillClass, STATUS_TONE_CLASSES[ALIAS[tone]], className)} {...rest}>
       {children}
     </span>
   );

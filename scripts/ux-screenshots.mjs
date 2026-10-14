@@ -21,6 +21,7 @@ const OUT = path.join("docs", "ux", phase);
 const WIDTHS = [390, 1024, 1440];
 const THEMES = ["dark", "light"];
 const ids = JSON.parse(process.env.UX_IDS_JSON ?? "{}");
+const only = process.env.UX_ONLY ? new Set(process.env.UX_ONLY.split(",")) : null;
 
 const partner = { email: process.env.UX_PARTNER_EMAIL, password: process.env.UX_PARTNER_PASSWORD };
 const ops = { email: process.env.UX_OPS_EMAIL, password: process.env.UX_OPS_PASSWORD };
@@ -95,6 +96,7 @@ try {
       const page = await context.newPage();
       for (const [slug, route, owner] of ROUTES) {
         if (owner !== who) continue;
+        if (only && !only.has(slug)) continue;
         for (const width of WIDTHS) {
           await page.setViewportSize({ width, height: width < 700 ? 844 : 900 });
           const file = path.join(OUT, slug, `${theme}-${width}.png`);
