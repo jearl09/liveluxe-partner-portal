@@ -114,8 +114,134 @@ Phase 1 lint rule must (COMPONENT_INVENTORY §7).
 
 ## 3. Design critique (`/impeccable critique`, per route)
 
-_Appended below from the isolated design-review agents._
+Run as two isolated design-review agents (partner + auth, operations), each blind to the other and to the detector
+output. Scores are Nielsen's ten heuristics, 0–4 each; `n/a` only where a heuristic cannot apply. The four
+admin-only routes (partners, partner detail, rate cards, rate-card detail) were first captured as redirects because
+the ops test account lacks `partners.manage` / `rate_cards.manage`; they were re-captured with a temporary admin role
+and the account restored (DECISIONS.md #14). Full agent reports are archived in the session; the substance is below.
+
+### 3.1 Scores
+
+| Route                   | Score | Lowest heuristics                                           |
+| ----------------------- | ----- | ----------------------------------------------------------- |
+| login                   | 31/40 | consistency (navy primary), help                            |
+| login-error             | 30/40 | consistency, error prevention (email cleared on bounce)     |
+| reset-password          | 32/40 | consistency                                                 |
+| reset-password-confirm  | 30/40 | user control (no way out once the link is exchanged)        |
+| invite-token-invalid    | 27/36 | user control, flexibility (dead end for expired links)      |
+| not-found               | 32/36 | consistency (no gold primary)                               |
+| dashboard               | 26/40 | minimalism (four ways to start a search), consistency       |
+| search                  | 24/40 | match (from-prices), error prevention (native dates)        |
+| search-dates            | 26/40 | consistency, error prevention                               |
+| listing                 | 25/40 | minimalism (description, 60 amenities, calendar all open)   |
+| listing-priced          | 25/40 | error recovery (unavailable result has no next step)        |
+| requests                | 29/40 | flexibility (no search), recognition (KPI links ignored)    |
+| request-approved        | 22/40 | minimalism (four stacked panels), consistency               |
+| request-cancelled       | 25/36 | consistency (amber banner, green paid panel)                |
+| request-declined        | 26/36 | consistency (red alert for an outcome)                      |
+| request-new             | 28/40 | error prevention (form renders for an unpriceable stay)     |
+| request-pay             | 27/40 | consistency (legacy scale classes, dark broken)             |
+| request-not-found       | 32/36 | —                                                           |
+| invoices                | 24/36 | consistency (theme broken), recognition                     |
+| team                    | 29/40 | minimalism (inline invite), flexibility                     |
+| settings                | 29/40 | consistency, help (Phase 2 note)                            |
+| admin-queue             | 19/40 | flexibility (0: no keyboard, no inline triage), help        |
+| admin-bookings          | 16/40 | match (false SLA alarms), minimalism                        |
+| admin-booking-approved  | 20/40 | consistency (white payment panel in dark)                   |
+| admin-booking-cancelled | 22/40 | consistency                                                 |
+| admin-partners          | 14/40 | visibility, recognition, error prevention                   |
+| admin-partner           | 17/40 | visibility (no overview), error prevention                  |
+| admin-rate-cards        | 18/40 | flexibility, help                                           |
+| admin-rate-card         | 15/40 | control, error prevention (publish without preview/confirm) |
+| admin-settings          | 25/40 | help (Phase 3 note)                                         |
+| admin-not-found         | 17/40 | match, control (renders partner chrome, see 3.3)            |
+
+Partner side averages 27.6/40 ("acceptable"); the ops console 18.3/40 ("poor"). The brief's instinct to spend
+disproportionate effort on the Queue (§6.3) is confirmed by the numbers.
+
+### 3.2 Design-specificity verdict
+
+- **Partner portal:** the voice is authored for insurers (AEDT on every timestamp, claim/PO/cost centre as
+  first-class fields, honest refund lines, the address-disclosure sentence); the structure is generic SaaS. Nothing in
+  the layout says "the family is in a motel tonight": the dashboard does not lead with what needs Dana now, search
+  does not lead with the stay total, the request page does not lead with the next action.
+- **Operations console:** a well-built admin template in Live Luxe colours, not an operations desk. Breach-first
+  strip, next-step column, inline triage, keyboard flow, publish preview and an "anything wrong" partner signal are
+  all absent. With zero requests the Queue shows three filter controls and nothing else.
+
+### 3.3 Priority issues found beyond §3 (P0–P1)
+
+| Sev | Issue                                                                                                                                                                                                                           | Where                                                                             | Fixed by    |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ----------- |
+| P0  | **Dead links:** "New request on behalf of…" and "Request a manual search" go to `/requests/new?onBehalf=1` / `?manual=1`, which `notFound()` without `listingId` and dates.                                                     | `app/(portal)/page.tsx`, `requests/new/page.tsx`                                  | §7.2, §11.3 |
+| P0  | **Payment panel contradicts the state:** an APPROVED invoice-terms request reads "No card hold yet. Live Luxe can only approve once a card is on file." in a gold-bordered white box (invisible heading in dark).               | `components/payments/payment-panel.tsx`                                           | §8.5, §4.1  |
+| P0  | **Rate-card publish** has no preview and no confirmation; tiers are `nights:percent` text. The highest-risk screen in the console.                                                                                              | `components/admin/rate-card-form.tsx`                                             | §6.6        |
+| P0  | **Queue summary:** no KPI strip; the nav carries no live count.                                                                                                                                                                 | `app/(admin)/admin/queue/page.tsx`                                                | §6.3, §6.1  |
+| P1  | **KPI tiles link to query params `/requests` ignores** (`?status=active`, `?window=checkin-7d`); every tile lands on "Open".                                                                                                    | `components/dashboard/kpi-row.tsx`, `app/(portal)/requests/page.tsx`              | §7.2, §7.6  |
+| P1  | **Admin 404 renders partner chrome:** a mistyped `/admin/…` URL shows the root not-found with "Partner portal" wordmark and "Back to the portal"; `app/(admin)/not-found.tsx` is only reached by `notFound()` inside the group. | `app/not-found.tsx`, `app/(admin)/not-found.tsx`                                  | §6.1, §9    |
+| P1  | **Outcome tones disagree on one page:** Cancelled banner amber + pill muted + payment panel green "Paid"; Declined banner red `role="alert"` + pill muted.                                                                      | request detail (both sides)                                                       | §2.3, §4.6  |
+| P1  | **Up to six banners stack** above content on request detail; brief allows one.                                                                                                                                                  | `app/(admin)/admin/bookings/[id]/page.tsx`, `app/(portal)/requests/[id]/page.tsx` | §4.8, §8    |
+| P1  | **Email cleared on a failed sign-in; reset-confirm has no exit** once the recovery session is exchanged.                                                                                                                        | `app/(marketing)/login`, `reset-password/confirm`                                 | §6.2, §5.8  |
+| P1  | **Quote copy undermines the number:** "Indicative… GST at the placeholder rate pending accountant sign-off" on the listing and new-request pages.                                                                               | `components/listings/quote-panel.tsx`, `requests/new/page.tsx`                    | §11.2       |
+| P1  | **New-request form renders in full for a stay that can no longer be priced** (seven enabled fields, disabled submit).                                                                                                           | `app/(portal)/requests/new/page.tsx`                                              | §9.1        |
+| P1  | **Phone chrome:** ~108 px sticky header (nav strip inside it) clips the last nav item ("Set…", "Tea…"); a fixed Search FAB overlaps dashboard content.                                                                          | `app-shell.tsx`, `nav-links.tsx`, `app/(portal)/page.tsx`                         | §10.1       |
+| P1  | **Search card totals are "before fees"** while the property page total includes them; partners carry two numbers.                                                                                                               | `components/search/result-card.tsx`                                               | §7.3        |
+| P1  | **Partner listing description parser** leaves ALL-CAPS section headings glued to list items, so the spec-sheet layout never triggers.                                                                                           | `components/listings/description.tsx`                                             | §7.4        |
+
+### 3.4 Kept on purpose (strengths both reviews named)
+
+Sign-in's calm copy and split layout; the "Needs your attention" strip that renders nothing when empty; the
+"Due / next step" idea on the dashboard; AEDT on every timestamp; claim/PO/cost centre on the request form; the
+address-disclosure line; the dated search summary sentence; the house-rules numbered list; `StayCard`'s
+`Mon 9 Nov 2026 → Thu 12 Nov 2026 · 3 nights`; the cancellation sentence "Refund AUD $1,837.00 · retained AUD
+$0.00 under the cancellation policy"; URL-backed filters; the invite-link-shown-once pattern; the rate-card helper
+sentence on what publishing does to issued quotes.
 
 ## 4. Technical audit (`/impeccable audit`)
 
-_Appended below from the code-level audit agent._
+Run as a code-level agent across both apps, with contrast computed from the hex values in `globals.css` (alpha
+composited over its surface).
+
+| Dimension                   | Score     | Key finding                                                                                                                             |
+| --------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Accessibility (WCAG 2.2 AA) | 2         | Token pairs pass; hard-coded light surfaces in dark give 1.2:1 headings; input edges 1.6–1.7:1; colour-only invalid fields in two forms |
+| Performance                 | 3         | 13 client files / 776 lines, Stripe only on `/pay`; raw `<img>` without dimensions or srcset; 60 s refresh loops                        |
+| Theming                     | 2         | Sound role layer, bypassed by 8 hex, 27 palette and ~40 brand-scale class uses in six files                                             |
+| Responsive                  | 3         | Card lists for request tables; partners, rate cards, invoices, team still scroll sideways at 390                                        |
+| Implementation integrity    | 2         | Two primary looks, seven status→tone maps, 21 hand-rolled pills, seven table implementations, four inline forms                         |
+| **Total**                   | **12/20** | **Acceptable — solid foundation, undermined by bypasses**                                                                               |
+
+Verdict: **fail (conditional)** — drift, not template-ness. Every dark-theme defect is one defect: a light surface
+hard-coded under text that follows the theme.
+
+### 4.1 Findings (P0–P2), with location
+
+| Sev | Finding                                                                                                   | Location                                             | Status after Phase 1                                                                     |
+| --- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| P0  | Payment panel heading 1.18:1 in dark (white box, theme-following heading)                                 | `payment-panel.tsx:45`                               | open (screen)                                                                            |
+| P0  | Invoices table 1.63:1 in dark                                                                             | `invoices/page.tsx:37-78`                            | open (screen)                                                                            |
+| P1  | Pay page sections white with theme text                                                                   | `requests/[id]/pay/page.tsx`                         | open (screen)                                                                            |
+| P1  | Invalid state colour-only in partner and rate-card forms (no `aria-invalid`, no per-field message)        | `partner-form.tsx`, `rate-card-form.tsx`             | open (screen)                                                                            |
+| P1  | Disabled pagination links still keyboard-activatable (`?page=0`)                                          | `list-pagination.tsx:61-77`, `search/pagination.tsx` | open                                                                                     |
+| P1  | Input and outline-button edges 1.57:1 light / 1.71:1 dark                                                 | `globals.css`                                        | **fixed**: `border/strong` 3.4:1 / 3.6:1                                                 |
+| P1  | `aria-live` freshness line re-announces every 15 s                                                        | `components/requests/freshness.tsx:69-85`            | open                                                                                     |
+| P1  | Twelve native date inputs                                                                                 | six files                                            | open (Phase 1 Calendar)                                                                  |
+| P2  | Error hints inside `<label>` become part of the field name; no `aria-describedby`; 79 labels, 0 `htmlFor` | `requests/new/page.tsx`, `people-panel.tsx`          | open (Phase 1 Field)                                                                     |
+| P2  | Reduced-motion rule left infinite animations running at 0.01 ms                                           | `globals.css`                                        | **fixed**: animations off, transitions 0 ms, transforms none                             |
+| P2  | Placeholder text 3.87:1 / 3.93:1                                                                          | `globals.css`                                        | **fixed**: unmixed `text/muted`, 5.3:1 / 7.0:1 on inset                                  |
+| P2  | Light focus ring at the 3:1 floor                                                                         | `globals.css`                                        | **fixed**: Gold Ink, 5.2:1                                                               |
+| P2  | Pending submit changes button width                                                                       | `submit-button.tsx`                                  | **fixed**: spinner overlays a hidden label                                               |
+| P2  | Stripe Element themed with raw light hex, ignores dark                                                    | `payment-form.tsx:114`                               | **fixed**: resolved from role tokens at mount                                            |
+| P2  | Raw hex, palette and arbitrary colours                                                                    | 8 / 27 / 0 uses                                      | **fixed**: 0 / 0 / 0; lint rule enforces                                                 |
+| P2  | Status semantics modelled seven times                                                                     | see Implementation verdict                           | partly: one `statusTone` + `StatusPill`/`Pill`/`SlaBadge`; call sites migrate in Phase 2 |
+| P2  | Raw `<img>` without dimensions or srcset; first result images lazy                                        | `result-card.tsx`, `gallery.tsx`, `stay-card.tsx`    | open (NEEDS_BACKEND: Hostaway CDN remote patterns)                                       |
+| P2  | `<th>` without `scope`, tables without captions                                                           | `requests-table.tsx`, `invoices/page.tsx`            | `DataTable` has both; call sites migrate in Phase 2                                      |
+| P2  | 60 s `router.refresh()` per open ops tab with no change check                                             | `freshness.tsx:51-65`                                | open                                                                                     |
+| P2  | Fonts load full variable axes; three families                                                             | `app/layout.tsx`                                     | open                                                                                     |
+
+### 4.2 False positives
+
+- Detector `border-accent-on-rounded` at `requests/page.tsx:58` is a tab underline, not a card border.
+- Detector `design-system-font-size` at `brand.tsx:22` is the wordmark, which DESIGN.md sets at 22 px.
+- C2 "focus ring stays after click": nav already uses `:focus-visible`; the real gap was the sign-out button with no
+  author focus style. The global `:focus-visible` rule added in Phase 1 covers it.
