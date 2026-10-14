@@ -68,7 +68,7 @@ export function AppShell({
           </div>
           <div className="flex shrink-0 items-center gap-1 md:gap-2">
             <span className={cn("hidden items-center 2xl:flex", navy && "[&_p]:text-on-navy-muted")}>
-              <SyncState model={sync} audience={navy ? "ops" : "partner"} />
+              <SyncState model={sync} audience={navy ? "ops" : "partner"} compact />
             </span>
             <span className="2xl:hidden" title="Availability">
               <SyncDot model={sync} navy={navy} />

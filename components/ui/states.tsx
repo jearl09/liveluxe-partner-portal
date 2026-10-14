@@ -88,10 +88,13 @@ export function SyncState({
   model,
   audience,
   className,
+  compact = false,
 }: {
   model: SyncModel;
   audience: "partner" | "ops";
   className?: string;
+  /** Short wording for the header; the full sentence moves to the tooltip. */
+  compact?: boolean;
 }) {
   const at = model.lastConfirmedAt ? formatTimestamp(model.lastConfirmedAt) : null;
   const time = at ? at.replace(/^.*?, /, "") : null;
@@ -109,13 +112,29 @@ export function SyncState({
           : audience === "ops"
             ? "Not synced yet"
             : "Availability has not been confirmed yet.";
+  const short =
+    model.level === "live"
+      ? text
+      : model.level === "delayed"
+        ? audience === "ops"
+          ? `Sync delayed · ${time}`
+          : `Availability as of ${time}`
+        : model.level === "degraded"
+          ? audience === "ops"
+            ? "Hostaway connection lost"
+            : "Live availability paused"
+          : "Availability not confirmed";
   return (
     <p
-      className={cn("text-text-secondary text-body-sm inline-flex items-center gap-2", className)}
-      title={at ? `Last confirmed ${at}` : undefined}
+      className={cn(
+        "text-text-secondary text-body-sm inline-flex items-center gap-2",
+        compact && "whitespace-nowrap",
+        className,
+      )}
+      title={compact ? text : at ? `Last confirmed ${at}` : undefined}
     >
       <span className={cn("rounded-pill h-2 w-2 shrink-0", DOT[model.level])} aria-hidden />
-      <span>{text}</span>
+      <span>{compact ? short : text}</span>
     </p>
   );
 }
