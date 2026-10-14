@@ -269,7 +269,14 @@ export function RequestDetail({
       </header>
 
       <div className="print:hidden">
-        <Flash toast done={flash.done} error={flash.error} detail={flash.detail} refCode={flash.ref} />
+        <Flash
+          toast
+          audience={ops ? "ops" : "partner"}
+          done={flash.done}
+          error={flash.error}
+          detail={flash.detail}
+          refCode={flash.ref}
+        />
       </div>
       {banner}
 

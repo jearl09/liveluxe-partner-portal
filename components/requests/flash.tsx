@@ -46,6 +46,48 @@ const DONE: Record<string, string> = {
   checkin_released: "Check-in details released to the partner now; the release is logged.",
 };
 
+/**
+ * Brief §9.2: the wording a partner sees for the request-flow codes, in their terms and never
+ * naming internals (a price-hash mismatch is "needs refreshing", never tampering). Replaces the
+ * API message; the next step follows in EXTRA.
+ */
+const PARTNER_WORDS: Partial<Record<ErrorCode, string>> = {
+  DATES_UNAVAILABLE: "These dates are no longer available for this property.",
+  DATES_HELD: "Another partner holds these dates while Live Luxe reviews their request.",
+  QUOTE_EXPIRED: "This price has expired.",
+  PRICE_CHANGED: "The price has changed since you priced this stay.",
+  PAYMENT_REQUIRES_ACTION: "Your bank asked for extra verification and it was not completed.",
+  PRICE_HASH_MISMATCH: "This quote needs refreshing.",
+  MIN_STAY_NOT_MET: "This property needs a longer stay for these dates.",
+  CAPACITY_EXCEEDED: "This property does not sleep that many guests or pets.",
+  CREDIT_LIMIT_EXCEEDED: "This request would take your organisation past its credit limit.",
+  ORG_SUSPENDED:
+    "New requests are paused for your organisation. Existing bookings, invoices and check-in details are unaffected.",
+};
+
+const PARTNER_EXTRA: Partial<Record<ErrorCode, string>> = {
+  DATES_UNAVAILABLE: "Pick other dates on the property's calendar, or see what else is free.",
+  DATES_HELD: "Pick other dates, or see what else is free for these dates.",
+  QUOTE_EXPIRED: "Price the stay again to continue; nothing has been sent.",
+  PRICE_CHANGED: "Review the new total and submit again; nothing has been sent.",
+  PAYMENT_REQUIRES_ACTION: "Place the card hold again; nothing has been charged.",
+  PRICE_HASH_MISMATCH: "Price the stay again to continue; nothing has been sent.",
+  MIN_STAY_NOT_MET: "The property page shows the minimum and can extend the stay for you.",
+  CAPACITY_EXCEEDED: "Search shows properties that fit.",
+  CREDIT_LIMIT_EXCEEDED:
+    "Nothing has been sent. Your finance contact can settle an invoice or ask Live Luxe to raise it.",
+};
+
+/** Next steps written for Live Luxe staff; partners never see these. */
+const OPS_ONLY: ReadonlySet<ErrorCode> = new Set<ErrorCode>([
+  "PAYMENT_NOT_AUTHORISED",
+  "CREDIT_LIMIT_EXCEEDED",
+  "FINANCE_APPROVAL_REQUIRED",
+  "APPROVAL_VALUE_CEILING",
+  "REFUND_EXCEEDS_CAPTURED",
+  "REFUNDS_FROZEN",
+]);
+
 const EXTRA: Partial<Record<ErrorCode, string>> = {
   VALIDATION_FAILED: "Please check the highlighted fields.",
   PRICE_CHANGED: "The price moved since you saw it. Review the new total and submit again.",
@@ -75,6 +117,7 @@ export function Flash({
   refCode,
   toast = false,
   subject,
+  audience = "partner",
 }: {
   done?: string;
   error?: string;
@@ -84,6 +127,8 @@ export function Flash({
   toast?: boolean;
   /** Names what the toast is about ("LLX-2026-000412"), for a confirmation shown away from the record. */
   subject?: string;
+  /** Who is reading: partners get §9.2 wording and never an ops instruction. */
+  audience?: "partner" | "ops";
 }) {
   if (done && DONE[done] && toast) {
     const [title, ...rest] = DONE[done].split(/(?<=\.)\s/);
@@ -107,12 +152,15 @@ export function Flash({
   }
   if (error) {
     const code = (error in ErrorCodes ? error : "INTERNAL") as ErrorCode;
+    const partner = audience === "partner";
+    const words = (partner && PARTNER_WORDS[code]) || ErrorCodes[code].message;
+    const next = partner ? (PARTNER_EXTRA[code] ?? (OPS_ONLY.has(code) ? "" : EXTRA[code])) : EXTRA[code];
     return (
       <>
         <ScrubParams keys={FLASH_KEYS} />
         <Banner tone="error">
           <p>
-            {ErrorCodes[code].message} {EXTRA[code] ?? ""}
+            {words} {next ?? ""}
           </p>
           {detail && <p className="text-xs">{detail}</p>}
           {refCode && <p className="font-mono text-xs">Ref {refCode}</p>}

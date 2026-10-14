@@ -5,6 +5,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { QuoteLines } from "@/components/requests/quote-lines";
 import type { AvailabilityResult } from "@/lib/domain/availability";
 import type { Quote } from "@/lib/domain/quote-engine";
+import { addDays } from "@/lib/domain/dates";
 import { guestsSummary } from "@/lib/domain/requests";
 import { cn, formatDate, formatDayMonth } from "@/lib/utils";
 import { fieldClass, labelClass } from "@/components/ui/field";
@@ -17,12 +18,16 @@ export interface QuoteFormState {
   pets: number;
 }
 
-function reasonText(a: AvailabilityResult): string {
+/** Brief §9.2: say what is wrong in the partner's terms (CAPACITY_EXCEEDED, MIN_STAY_NOT_MET, DATES_UNAVAILABLE). */
+function reasonText(a: AvailabilityResult, form: QuoteFormState, limits: { maxGuests: number | null }): string {
+  const guests = form.adults + form.children;
   switch (a.reason) {
     case "capacity":
-      return "The guest or pet count is above this property's limit.";
+      return limits.maxGuests !== null && guests > limits.maxGuests
+        ? `This property sleeps ${limits.maxGuests}; you've entered ${guests} guests.`
+        : "This property does not take that many pets.";
     case "min_stay":
-      return `These dates need a minimum stay of ${a.requiredMinStay} nights.`;
+      return `This property needs at least ${a.requiredMinStay} nights for these dates.`;
     case "max_stay":
       return "The stay is longer than this property allows in one booking.";
     case "closed_on_arrival":
@@ -32,7 +37,7 @@ function reasonText(a: AvailabilityResult): string {
     case "gap":
       return "We have not confirmed availability for some of these dates yet.";
     default:
-      return "Some of these nights are already booked.";
+      return "These dates are no longer available for this property.";
   }
 }
 
@@ -52,6 +57,8 @@ export function QuotePanel({
   payLine,
   searchHref,
   askHref,
+  basePath,
+  maxGuests = null,
 }: {
   form: QuoteFormState;
   today: string;
@@ -66,6 +73,9 @@ export function QuotePanel({
   searchHref: string;
   /** mailto: Live Luxe for a quote or a manual search. */
   askHref: string;
+  /** This property's page, for one-click fixes ("Extend to 7 nights"). */
+  basePath?: string;
+  maxGuests?: number | null;
 }) {
   const stay = result && form.checkIn && form.checkOut ? { checkIn: form.checkIn, checkOut: form.checkOut } : null;
   const a = result?.availability;
@@ -158,7 +168,7 @@ export function QuotePanel({
           {!a.available && (
             <div role="status" className="border-danger-border bg-danger-bg rounded-control border px-3 py-3">
               <p className="text-danger-fg font-semibold">Not available for these dates</p>
-              <p className="text-text-primary text-body-sm mt-0.5">{reasonText(a)}</p>
+              <p className="text-text-primary text-body-sm mt-0.5">{reasonText(a, form, { maxGuests })}</p>
               {a.unavailableDates.length > 0 && (
                 <p className="text-text-secondary text-body-sm mt-1.5">
                   Booked:{" "}
@@ -170,8 +180,24 @@ export function QuotePanel({
                 </p>
               )}
               <div className="mt-3 flex flex-col gap-2">
+                {a.reason === "min_stay" && basePath && stay && a.requiredMinStay > a.nights && (
+                  <Link
+                    href={`${basePath}?${new URLSearchParams({
+                      checkIn: stay.checkIn,
+                      checkOut: addDays(stay.checkIn, a.requiredMinStay),
+                      adults: String(form.adults),
+                      children: String(form.children),
+                      pets: String(form.pets),
+                    }).toString()}#price`}
+                    className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "w-full")}
+                  >
+                    Extend to {a.requiredMinStay} nights
+                  </Link>
+                )}
                 <Link href={searchHref} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "w-full")}>
-                  See what else is free for these dates
+                  {a.reason === "capacity" && maxGuests !== null && form.adults + form.children > maxGuests
+                    ? `Find properties that sleep ${form.adults + form.children}`
+                    : "See what else is free for these dates"}
                 </Link>
                 <a href={askHref} className={cn(buttonVariants({ variant: "tertiary", size: "sm" }), "w-full")}>
                   Ask Live Luxe to find one

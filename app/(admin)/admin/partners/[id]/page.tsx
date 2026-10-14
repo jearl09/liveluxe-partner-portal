@@ -158,6 +158,7 @@ export default async function PartnerDetailPage({ params, searchParams }: PagePr
       </header>
 
       <Flash
+        audience="ops"
         toast
         done={str(sp.done) || undefined}
         error={str(sp.error) || undefined}

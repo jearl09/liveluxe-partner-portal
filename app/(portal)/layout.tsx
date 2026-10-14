@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { AppShell, type NavItem } from "@/components/layout/app-shell";
+import { Banner } from "@/components/ui/banner";
 import { createServerSupabase, getSessionClaims } from "@/lib/db/server";
 import { getMfaStatus } from "@/lib/auth/mfa";
 import { mfaStepUpRequired } from "@/lib/domain/auth";
@@ -44,6 +45,17 @@ export default async function PortalLayout({ children }: { children: ReactNode }
       sync={shell.sync}
       supportEmail={env().EMAIL_REPLY_TO}
     >
+      {/* Brief §9.2 ORG_SUSPENDED: said on every page, before anyone tries to send a request. */}
+      {shell.orgStatus && shell.orgStatus !== "active" && (
+        <Banner tone="warn" className="mb-6">
+          New requests are paused for your organisation. Existing bookings, invoices and check-in details are
+          unaffected. Contact{" "}
+          <a href={`mailto:${env().EMAIL_REPLY_TO}`} className="font-semibold underline underline-offset-4">
+            {env().EMAIL_REPLY_TO}
+          </a>{" "}
+          to restore it.
+        </Banner>
+      )}
       {children}
     </AppShell>
   );

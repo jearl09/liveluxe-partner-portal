@@ -170,6 +170,7 @@ export default async function PartnersPage({ searchParams }: PageProps<"/admin/p
         {create}
       </header>
       <Flash
+        audience="ops"
         toast
         done={str(sp.done) || undefined}
         error={str(sp.error) || undefined}

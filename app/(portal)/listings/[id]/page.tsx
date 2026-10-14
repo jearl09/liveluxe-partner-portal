@@ -168,6 +168,8 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
             payLine={claims ? PAY_MODE_SENTENCE[paymentModeFor(terms)] : null}
             searchHref={searchHref}
             askHref={askHref}
+            basePath={`/listings/${id}`}
+            maxGuests={l.max_guests}
           />
         </div>
 

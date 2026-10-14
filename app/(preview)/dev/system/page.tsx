@@ -12,6 +12,8 @@ import { StepTracker } from "@/components/ui/step-tracker";
 import { Toast } from "@/components/ui/toast";
 import { WelcomeCard } from "@/components/dashboard/welcome-card";
 import { ManualSearch } from "@/components/dashboard/manual-search";
+import { QuotePanel } from "@/components/listings/quote-panel";
+import { Flash } from "@/components/requests/flash";
 import { requestProgress, syncState } from "@/lib/domain/progress";
 import { Pill } from "@/components/ui/pill";
 import { SlaBadge } from "@/components/ui/sla-badge";
@@ -564,6 +566,71 @@ export default function SystemPage() {
             audience="ops"
             model={syncState({ lastSyncIso: "2026-10-13T22:12:00Z", now: NOW, staleAfterMinutes: 30, degraded: true })}
           />
+        </div>
+      </Section>
+
+      <Section title="Error codes (brief §9.2), as a partner sees them">
+        <div className="grid gap-3 lg:grid-cols-2">
+          {(
+            [
+              "DATES_UNAVAILABLE",
+              "DATES_HELD",
+              "QUOTE_EXPIRED",
+              "PRICE_CHANGED",
+              "PRICE_HASH_MISMATCH",
+              "MIN_STAY_NOT_MET",
+              "CAPACITY_EXCEEDED",
+              "CREDIT_LIMIT_EXCEEDED",
+              "ORG_SUSPENDED",
+              "PAYMENT_REQUIRES_ACTION",
+            ] as const
+          ).map((code) => (
+            <div key={code} className="space-y-1">
+              <p className="text-text-muted text-body-sm font-mono">{code}</p>
+              <Flash error={code} />
+            </div>
+          ))}
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {(
+            [
+              { reason: "min_stay", nights: 3, requiredMinStay: 7, adults: 2 },
+              { reason: "capacity", nights: 30, requiredMinStay: 1, adults: 6 },
+            ] as const
+          ).map((x) => (
+            <QuotePanel
+              key={x.reason}
+              form={{
+                checkIn: "2026-11-02",
+                checkOut: x.reason === "min_stay" ? "2026-11-05" : "2026-12-02",
+                adults: x.adults,
+                children: 0,
+                pets: 0,
+              }}
+              today="2026-10-14"
+              currency="AUD"
+              errors={[]}
+              result={{
+                availability: {
+                  available: false,
+                  quotable: false,
+                  nights: x.nights,
+                  requiredMinStay: x.requiredMinStay,
+                  missingDates: [],
+                  unavailableDates: [],
+                  unpricedDates: [],
+                  reason: x.reason,
+                },
+                quote: null,
+              }}
+              requestHref={null}
+              payLine={null}
+              searchHref="/dev/system"
+              askHref="mailto:bookings@example.com"
+              basePath="/dev/system"
+              maxGuests={4}
+            />
+          ))}
         </div>
       </Section>
 

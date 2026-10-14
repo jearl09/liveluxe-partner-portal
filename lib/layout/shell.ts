@@ -16,6 +16,8 @@ export interface ShellData {
   role: SessionClaims["role"];
   orgName: string | null;
   orgLogoUrl: string | null;
+  /** Partner only: the organisation's status ("active", "suspended", …); null on the ops side. */
+  orgStatus: string | null;
   sync: SyncModel;
   /** Ops only: requests waiting on Live Luxe, and how many of them are past their decision time. */
   queue: { live: number; breached: number } | null;
@@ -27,7 +29,7 @@ export async function loadShell(claims: SessionClaims, side: "partner" | "ops"):
   const [user, org, fresh, live, breached] = await Promise.all([
     supabase.from("partner_users").select("full_name, email").eq("auth_user_id", claims.sub).maybeSingle(),
     side === "partner"
-      ? supabase.from("partner_orgs").select("name, logo_url").eq("id", claims.org_id).maybeSingle()
+      ? supabase.from("partner_orgs").select("name, logo_url, status").eq("id", claims.org_id).maybeSingle()
       : Promise.resolve({ data: null }),
     supabase.rpc("availability_freshness"),
     side === "ops"
@@ -52,6 +54,7 @@ export async function loadShell(claims: SessionClaims, side: "partner" | "ops"):
     role: claims.role,
     orgName: org.data?.name ?? null,
     orgLogoUrl: org.data?.logo_url ?? null,
+    orgStatus: org.data?.status ?? null,
     sync: syncState({
       lastSyncIso: f?.last_synced_at ?? null,
       now,

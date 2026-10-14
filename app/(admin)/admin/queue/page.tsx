@@ -245,7 +245,7 @@ export default async function QueuePage({ searchParams }: PageProps<"/admin/queu
         </div>
       </header>
 
-      <Flash toast done={str(sp.done)} error={str(sp.error)} detail={str(sp.detail)} subject={ref} />
+      <Flash audience="ops" toast done={str(sp.done)} error={str(sp.error)} detail={str(sp.detail)} subject={ref} />
 
       {empty ? (
         <div className="border-subtle bg-surface rounded-card border">

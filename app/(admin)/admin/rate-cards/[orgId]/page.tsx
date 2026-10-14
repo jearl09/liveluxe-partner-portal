@@ -134,6 +134,7 @@ export default async function OrgRateCardPage({ params, searchParams }: PageProp
         </Sheet>
       </header>
       <Flash
+        audience="ops"
         toast
         done={str(sp.done) || undefined}
         error={str(sp.error) || undefined}
