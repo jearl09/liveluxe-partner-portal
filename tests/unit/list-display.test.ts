@@ -74,3 +74,20 @@ describe("booking groups and sort (brief §6.4)", () => {
     expect(parseBookingSort("constructor", "asc")).toEqual({ key: "updated", dir: "desc" });
   });
 });
+
+describe("partner groups and CSV (brief §7.6)", () => {
+  it("maps old tabs onto the chips", async () => {
+    const { parsePartnerGroup } = await import("@/lib/domain/list-display");
+    expect(parsePartnerGroup("action")).toBe("action");
+    expect(parsePartnerGroup(undefined, "upcoming")).toBe("confirmed");
+    expect(parsePartnerGroup(undefined, "history")).toBe("closed");
+    expect(parsePartnerGroup("nope")).toBe("all");
+  });
+  it("escapes CSV cells and blocks formulas", async () => {
+    const { csvCell } = await import("@/lib/domain/list-display");
+    expect(csvCell('Smith, "Jo"')).toBe('"Smith, ""Jo"""');
+    expect(csvCell("=HYPERLINK(1)")).toBe("'=HYPERLINK(1)");
+    expect(csvCell(null)).toBe("");
+    expect(csvCell(42)).toBe("42");
+  });
+});

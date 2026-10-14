@@ -125,3 +125,36 @@ export function parseBookingSort(sort: string | string[] | undefined, dir: strin
   if (!k || !Object.hasOwn(BOOKING_SORTS, k)) return DEFAULT_BOOKING_SORT;
   return { key: k as BookingSortKey, dir: d === "asc" ? "asc" : "desc" };
 }
+
+/** The partner Requests chips (brief §7.6). "Needs my action" is decided per row (a card hold may be missing). */
+export const PARTNER_GROUPS = ["all", "action", "progress", "confirmed", "closed"] as const;
+export type PartnerGroup = (typeof PARTNER_GROUPS)[number];
+
+export const PARTNER_GROUP_LABELS: Record<PartnerGroup, string> = {
+  all: "All",
+  action: "Needs my action",
+  progress: "In progress",
+  confirmed: "Confirmed",
+  closed: "Closed",
+};
+
+/** Old `?tab=` links (Dashboard tiles, emails) land on the matching chip. */
+export function parsePartnerGroup(
+  group: string | string[] | undefined,
+  tab?: string | string[] | undefined,
+): PartnerGroup {
+  const g = Array.isArray(group) ? group[0] : group;
+  if ((PARTNER_GROUPS as readonly string[]).includes(g ?? "")) return g as PartnerGroup;
+  const t = Array.isArray(tab) ? tab[0] : tab;
+  if (t === "upcoming") return "confirmed";
+  if (t === "history") return "closed";
+  return "all";
+}
+
+/** CSV cell: quoted when needed, formula-leading characters neutralised (CSV injection). */
+export function csvCell(v: string | number | null | undefined): string {
+  if (v === null || v === undefined) return "";
+  let s = String(v);
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}

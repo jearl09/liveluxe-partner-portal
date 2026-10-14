@@ -5,6 +5,8 @@
  */
 import "server-only";
 import { createServerSupabase } from "@/lib/db/server";
+import type { BookingRequestRow } from "@/lib/db/types";
+import { displayPropertyName } from "@/lib/domain/property-name";
 import type { BookingStatus } from "@/lib/domain/booking-state-machine";
 import {
   BOOKING_GROUPS,
@@ -81,8 +83,17 @@ export async function loadBookings(opts: {
     .order("id", { ascending: true })
     .range(from, to);
   if (error) throw new Error(`bookings read failed: ${error.message}`);
-  const rows = data ?? [];
-  if (rows.length === 0) return { ...toPage([], total, page, pageSize), counts };
+  const out = await toBookingRows(data ?? []);
+  return { ...toPage(out, total, page, pageSize), counts };
+}
+
+/** List rows with property, partner, "via Live Luxe" and whether a card hold is still missing. RLS applies. */
+export async function toBookingRows(
+  rows: BookingRequestRow[],
+  opts: { partnerNames?: boolean } = {},
+): Promise<BookingListRow[]> {
+  if (rows.length === 0) return [];
+  const supabase = await createServerSupabase();
 
   const listingIds = [...new Set(rows.map((r) => r.listing_id))];
   const orgIds = [...new Set(rows.map((r) => r.org_id))];
@@ -106,7 +117,7 @@ export async function loadBookings(opts: {
   const payBy = new Map<string, { status: string; failure_code: string | null }>();
   for (const p of payments.data ?? []) if (p.booking_id && !payBy.has(p.booking_id)) payBy.set(p.booking_id, p);
 
-  const out: BookingListRow[] = rows.map((r) => {
+  return rows.map((r) => {
     const org = orgBy.get(r.org_id);
     const listing = listingBy.get(r.listing_id);
     const mode = paymentModeFor(org?.payment_terms ?? null);
@@ -123,7 +134,9 @@ export async function loadBookings(opts: {
       poNumber: r.po_number,
       orgName: org?.name ?? null,
       viaLiveLuxe: (roleBy.get(r.created_by) ?? "").startsWith("livluxe_"),
-      propertyName: listing?.public_name ?? "Property",
+      propertyName: opts.partnerNames
+        ? displayPropertyName(listing?.public_name)
+        : (listing?.public_name ?? "Property"),
       suburb: listing?.suburb ?? null,
       checkIn: r.check_in,
       checkOut: r.check_out,
@@ -140,5 +153,4 @@ export async function loadBookings(opts: {
       updatedAt: r.updated_at,
     };
   });
-  return { ...toPage(out, total, page, pageSize), counts };
 }

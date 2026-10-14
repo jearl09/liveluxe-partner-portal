@@ -4,8 +4,7 @@ import type { Kpis } from "@/lib/domain/dashboard";
 
 /**
  * KPI row (brief §7.2): four tiles, each a link to the Requests list. Zero shows "0",
- * never a dash. Links go to the tab that holds those requests until the Requests
- * list gains its own filters (screen group 5).
+ * never a dash. Each links to the Requests chip that holds those requests.
  */
 export function KpiRow({ kpis }: { kpis: Kpis }) {
   const tiles = [
@@ -14,7 +13,7 @@ export function KpiRow({ kpis }: { kpis: Kpis }) {
       label: "Active placements",
       value: kpis.activePlacements,
       hint: kpis.activePlacements === 1 ? "Household in a property now" : "Households in a property now",
-      href: "/requests?tab=upcoming",
+      href: "/requests?group=confirmed",
     },
     {
       icon: Hourglass,
@@ -26,21 +25,21 @@ export function KpiRow({ kpis }: { kpis: Kpis }) {
           : kpis.inProgress > 0
             ? "None waiting on Live Luxe"
             : "No live requests",
-      href: "/requests",
+      href: "/requests?group=progress",
     },
     {
       icon: CalendarArrowDown,
       label: "Check-ins next 7 days",
       value: kpis.checkInsNext7,
       hint: kpis.nextCheckInLabel ?? "None scheduled",
-      href: "/requests?tab=upcoming",
+      href: "/requests?group=confirmed",
     },
     {
       icon: CalendarArrowUp,
       label: "Check-outs next 7 days",
       value: kpis.checkOutsNext7,
       hint: kpis.checkOutsNext7 > 0 ? `${kpis.checkOutsNext7} ending — consider extensions` : "None scheduled",
-      href: "/requests?tab=upcoming",
+      href: "/requests?group=confirmed",
     },
   ] as const;
   return (
