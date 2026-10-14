@@ -1,5 +1,6 @@
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Notice, inputClass } from "@/components/auth/notice";
+import { PasswordInput } from "@/components/auth/password-input";
 import { safeRedirectPath } from "@/lib/domain/auth";
 
 export const metadata = { title: "Sign in" };
@@ -7,7 +8,7 @@ export const metadata = { title: "Sign in" };
 const ERRORS: Record<string, string> = {
   invalid: "Email or password not recognised.",
   missing: "Please enter both your email and password.",
-  rate_limited: "Too many sign-in attempts. Please wait 15 minutes before trying again.",
+  rate_limited: "Too many sign-in attempts. Try again in 15 minutes, or reset your password now.",
   link_invalid: "That link is invalid or has expired. Request a new one.",
 };
 
@@ -24,7 +25,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const next = safeRedirectPath(params.next);
   return (
     <form className="space-y-4" action="/api/auth/sign-in" method="post">
-      <h1 className="text-strong font-serif text-2xl">Partner sign in</h1>
+      <h1 className="text-strong font-serif text-2xl">Sign in</h1>
       {hookOff && (
         <Notice tone="warn">
           <p>
@@ -41,7 +42,19 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         <Notice tone="success">Your password has been changed. Sign in with the new one.</Notice>
       )}
       {params.invited === "1" && <Notice tone="success">Your account is ready. Sign in to continue.</Notice>}
-      {error && <Notice tone="error">{error}</Notice>}
+      {error && (
+        <Notice tone="error">
+          <span id="signin-error">{error}</span>
+          {params.error === "rate_limited" && (
+            <>
+              {" "}
+              <a href="/reset-password" className="font-semibold underline">
+                Reset your password
+              </a>
+            </>
+          )}
+        </Notice>
+      )}
       {/* Only forward an explicit destination; otherwise the role decides (ops → /admin/queue). */}
       {params.next ? <input type="hidden" name="next" value={next} /> : null}
       {needsSetup && (
@@ -51,16 +64,32 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           See docs/GETTING-STARTED.md.
         </Notice>
       )}
-      <p className="text-foreground text-sm">
-        Access is by invitation only. Contact your organisation&apos;s administrator if you need an account.
+      <p className="text-text-secondary text-sm">
+        Access is by invitation. Ask your organisation&apos;s administrator if you need an account.
       </p>
       <label className="block text-sm">
         <span className="mb-1 block font-medium">Email</span>
-        <input name="email" type="email" required autoComplete="email" className={inputClass} />
+        <input
+          name="email"
+          type="email"
+          required
+          autoComplete="email"
+          autoFocus
+          aria-invalid={params.error === "invalid" || params.error === "missing" || undefined}
+          aria-describedby={error ? "signin-error" : undefined}
+          className={inputClass}
+        />
       </label>
       <label className="block text-sm">
         <span className="mb-1 block font-medium">Password</span>
-        <input name="password" type="password" required autoComplete="current-password" className={inputClass} />
+        <PasswordInput
+          name="password"
+          required
+          autoComplete="current-password"
+          aria-invalid={params.error === "invalid" || params.error === "missing" || undefined}
+          aria-describedby={error ? "signin-error" : undefined}
+          className={inputClass}
+        />
       </label>
       <SubmitButton className="w-full" pendingLabel="Signing in…">
         Sign in

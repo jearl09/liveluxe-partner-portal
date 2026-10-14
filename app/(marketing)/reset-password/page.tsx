@@ -11,6 +11,7 @@ export default async function ResetPasswordPage({ searchParams }: PageProps<"/re
 
   return (
     <form className="space-y-4" action="/api/auth/reset-password" method="post">
+      <p className="text-text-muted text-body-sm font-semibold">Step 1 of 2 · Get a reset link</p>
       <h1 className="text-strong font-serif text-2xl">Reset your password</h1>
       {sent ? (
         <Notice tone="success">

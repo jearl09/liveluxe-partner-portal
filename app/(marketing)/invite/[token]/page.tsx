@@ -49,6 +49,7 @@ export default async function InvitePage({ params, searchParams }: PageProps<"/i
 
   return (
     <form className="space-y-4" action="/api/auth/accept-invite" method="post">
+      <p className="text-text-muted text-body-sm font-semibold">Step 1 of 2 · Set a password</p>
       <h1 className="text-strong font-serif text-2xl">Join {inv.org_name}</h1>
       <p className="text-foreground text-sm">
         You have been invited as <strong>{ROLE_LABELS[inv.role] ?? inv.role}</strong>. Set a password to activate{" "}

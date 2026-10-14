@@ -1,5 +1,6 @@
 import { PASSWORD_POLICY } from "@/lib/domain/auth";
 import { inputClass } from "./notice";
+import { PasswordInput } from "./password-input";
 
 /** New-password pair used by invite acceptance and password reset. */
 export function PasswordFields({ autoFocus = false }: { autoFocus?: boolean }) {
@@ -7,9 +8,8 @@ export function PasswordFields({ autoFocus = false }: { autoFocus?: boolean }) {
     <>
       <label className="block text-sm">
         <span className="mb-1 block font-medium">New password</span>
-        <input
+        <PasswordInput
           name="password"
-          type="password"
           required
           minLength={PASSWORD_POLICY.minLength}
           maxLength={PASSWORD_POLICY.maxLength}
@@ -23,7 +23,7 @@ export function PasswordFields({ autoFocus = false }: { autoFocus?: boolean }) {
       </label>
       <label className="block text-sm">
         <span className="mb-1 block font-medium">Confirm password</span>
-        <input name="confirm" type="password" required autoComplete="new-password" className={inputClass} />
+        <PasswordInput name="confirm" required autoComplete="new-password" className={inputClass} />
       </label>
     </>
   );

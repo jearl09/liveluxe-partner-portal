@@ -13,7 +13,7 @@ import { AUTH_FLASH_KEYS, ScrubParams } from "@/components/ui/scrub-params";
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
     <div className="grid min-h-screen lg:grid-cols-[5fr_6fr]">
-      <aside className="bg-navy-900 relative flex flex-col justify-between overflow-hidden border-white/[0.06] px-8 py-8 text-white lg:border-r lg:px-14 lg:py-12">
+      <aside className="bg-navy-900 relative flex flex-col justify-between overflow-hidden border-white/[0.06] px-6 py-6 text-white sm:px-8 sm:py-8 lg:border-r lg:px-14 lg:py-12">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 opacity-[0.07]"
@@ -24,13 +24,13 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
           }}
         />
         <Wordmark descriptor="Partner portal" tone="dark" className="relative" />
-        <div className="relative my-12 max-w-md lg:my-0">
-          <p className="eyebrow eyebrow-on-navy mb-4">Docklands, Melbourne</p>
-          <h1 className="font-serif text-4xl leading-[1.08] font-normal text-white lg:text-5xl">
+        <div className="relative mt-8 max-w-md lg:my-0">
+          <p className="eyebrow eyebrow-on-navy mb-4">Melbourne · Sydney · Brisbane</p>
+          <h1 className="font-serif text-3xl leading-[1.08] font-normal text-white lg:text-5xl">
             Long-stay apartments for the people you look after.
           </h1>
-          <div className="gold-rule my-6" />
-          <p className="text-base leading-relaxed text-white/80">
+          <div className="gold-rule my-6 hidden lg:block" />
+          <p className="hidden text-base leading-relaxed text-white/80 lg:block">
             Live availability, partner rates and a decision from our team within the agreed SLA. Built for insurance,
             corporate and government placements.
           </p>
@@ -44,7 +44,9 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
         </div>
         {/* "Password changed", "code not accepted" and friends are one-shot: shown, then dropped from the URL. */}
         <ScrubParams keys={AUTH_FLASH_KEYS} />
-        <div className="border-border bg-card w-full max-w-md rounded-2xl border p-8 shadow-md">{children}</div>
+        <div className="border-subtle bg-surface rounded-card w-full max-w-[420px] border p-6 shadow-md sm:p-8">
+          {children}
+        </div>
       </main>
     </div>
   );

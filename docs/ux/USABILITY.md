@@ -149,3 +149,11 @@ Tasks (a)–(e) do not touch these screens. Checked by hand as an administrator:
 (status, how they pay, card in force, open requests, money owed); partner detail answers "is anything wrong" in the
 first screen; publishing a card states what it will close before it does. The ops test account was raised to
 administrator for the screenshots and set back to operations afterwards.
+
+---
+
+## After screen group 7 — Sign in, invitation, reset (14 Oct 2026)
+
+Every task starts by signing in; all runs in groups 3 to 6 passed through it. Fixed here: the heading said "Partner
+sign in" to ops staff; the password could not be shown; a lock-out gave no way forward (it now links to password
+reset); on a phone the brand panel pushed the form below the first screen.
