@@ -65,7 +65,7 @@ export default async function MfaEnrolPage({ searchParams }: PageProps<"/mfa/enr
       )}
       {error === "rate_limited" && <Notice tone="error">Too many attempts. Please wait 15 minutes.</Notice>}
       {/* Always white: a QR code on a dark surface will not scan, whatever the theme. */}
-      <div className="border-border flex justify-center rounded-md border bg-white p-3">
+      <div className="border-border flex justify-center rounded-md border bg-qr-surface p-3">
         {/* eslint-disable-next-line @next/next/no-img-element -- inline SVG data URI, never optimised */}
         <img src={qrSrc} alt="Authenticator QR code" width={192} height={192} />
       </div>

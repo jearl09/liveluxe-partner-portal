@@ -52,7 +52,7 @@ export function NavLinks({ items, tone }: { items: NavItem[]; tone: "partner" | 
                   n.alert
                     ? "bg-danger-fg text-surface"
                     : navy
-                      ? "text-on-navy bg-white/15"
+                      ? "text-on-navy bg-on-navy-selected"
                       : "bg-inset text-text-primary",
                 )}
               >

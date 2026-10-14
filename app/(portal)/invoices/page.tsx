@@ -17,7 +17,7 @@ import { formatMoney } from "@/lib/domain/money";
 import { can } from "@/lib/domain/permissions";
 import { formatDuration, type StatusTone } from "@/lib/domain/status";
 import { listInvoices, type InvoiceListItem } from "@/lib/payments/load";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, formatTimestamp } from "@/lib/utils";
 
 export const metadata = { title: "Invoices" };
 export const dynamic = "force-dynamic";
@@ -151,6 +151,7 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/invoice
     {
       key: "actions",
       header: <span className="sr-only">Actions</span>,
+      printHidden: true,
       hideOnCard: false,
       cardLabel: " ",
       cell: (x) => {
@@ -214,6 +215,9 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/invoice
 
   return (
     <div className="space-y-6">
+      <p className="print-only text-text-muted text-body-sm hidden border-b pb-3">
+        Live Luxe · Invoice summary · printed {formatTimestamp(now.toISOString())}
+      </p>
       <header>
         <h1 className="text-h1 text-text-primary font-serif tracking-tight">Invoices</h1>
         <p className="text-text-secondary mt-1">

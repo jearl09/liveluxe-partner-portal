@@ -17,11 +17,14 @@ export function SearchForm({
   query,
   today,
   compact = false,
+  quiet = false,
   className,
 }: {
   query: Omit<SearchQuery, "page"> & { page?: number };
   today: string;
   compact?: boolean;
+  /** Secondary Search button, for a page whose one gold action is something else. */
+  quiet?: boolean;
   className?: string;
 }) {
   return (
@@ -95,6 +98,7 @@ export function SearchForm({
         </label>
       )}
       <SubmitButton
+        variant={quiet ? "secondary" : "primary"}
         pendingLabel="Searching…"
         className="col-span-6 w-full md:col-span-2 xl:col-span-1 xl:w-auto xl:px-6"
       >

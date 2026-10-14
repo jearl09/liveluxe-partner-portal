@@ -157,7 +157,7 @@ export function OpsDrawer({ items }: { items: NavItem[] }) {
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-label={alert ? "Open menu (requests overdue)" : "Open menu"}
-        className="text-on-navy rounded-control relative flex h-11 w-11 items-center justify-center hover:bg-white/10 md:hidden"
+        className="text-on-navy rounded-control relative flex h-11 w-11 items-center justify-center hover:bg-on-navy-hover md:hidden"
       >
         <Menu className="h-5 w-5" aria-hidden />
         {alert && <span aria-hidden className="bg-danger-fg rounded-pill absolute top-2 right-2 h-2 w-2" />}

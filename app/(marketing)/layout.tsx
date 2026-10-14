@@ -13,24 +13,24 @@ import { AUTH_FLASH_KEYS, ScrubParams } from "@/components/ui/scrub-params";
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
     <div className="grid min-h-screen lg:grid-cols-[5fr_6fr]">
-      <aside className="bg-navy-900 relative flex flex-col justify-between overflow-hidden border-white/[0.06] px-6 py-6 text-white sm:px-8 sm:py-8 lg:border-r lg:px-14 lg:py-12">
+      <aside className="bg-navy-900 relative flex flex-col justify-between overflow-hidden border-on-navy-line px-6 py-6 text-on-navy sm:px-8 sm:py-8 lg:border-r lg:px-14 lg:py-12">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 opacity-[0.07]"
           style={{
             backgroundImage:
-              "linear-gradient(transparent 31px, rgba(255,255,255,.6) 32px), linear-gradient(90deg, transparent 31px, rgba(255,255,255,.6) 32px)",
+              "linear-gradient(transparent 31px, var(--on-navy-grid) 32px), linear-gradient(90deg, transparent 31px, var(--on-navy-grid) 32px)",
             backgroundSize: "32px 32px",
           }}
         />
         <Wordmark descriptor="Partner portal" tone="dark" className="relative" />
         <div className="relative mt-8 max-w-md lg:my-0">
           <p className="eyebrow eyebrow-on-navy mb-4">Melbourne · Sydney · Brisbane</p>
-          <h1 className="font-serif text-3xl leading-[1.08] font-normal text-white lg:text-5xl">
+          <h1 className="font-serif text-3xl leading-[1.08] font-normal text-on-navy lg:text-5xl">
             Long-stay apartments for the people you look after.
           </h1>
           <div className="gold-rule my-6 hidden lg:block" />
-          <p className="hidden text-base leading-relaxed text-white/80 lg:block">
+          <p className="hidden text-base leading-relaxed text-on-navy-muted lg:block">
             Live availability, partner rates and a decision from our team within the agreed SLA. Built for insurance,
             corporate and government placements.
           </p>

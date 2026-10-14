@@ -77,6 +77,13 @@
   --on-navy-success: #6ee7b7;
   --on-navy-attention: #fbbf24;
   --on-navy-danger: #fca5a5;
+  /* Light veils on navy: hover, selected, hairlines and the sign-in panel's grid. */
+  --on-navy-hover: rgb(255 255 255 / 0.1);
+  --on-navy-selected: rgb(255 255 255 / 0.15);
+  --on-navy-line: rgb(255 255 255 / 0.06);
+  --on-navy-grid: rgb(255 255 255 / 0.6);
+  /* Behind a QR code: always white, or it will not scan on a dark theme. */
+  --qr-surface: #ffffff;
 
   /* ---- Legacy role aliases (screens migrate to the roles above in Phase 2) ---- */
   --background: var(--bg-canvas);
@@ -243,6 +250,10 @@
   --color-on-navy-success: var(--on-navy-success);
   --color-on-navy-attention: var(--on-navy-attention);
   --color-on-navy-danger: var(--on-navy-danger);
+  --color-on-navy-hover: var(--on-navy-hover);
+  --color-on-navy-selected: var(--on-navy-selected);
+  --color-on-navy-line: var(--on-navy-line);
+  --color-qr-surface: var(--qr-surface);
   --color-info-bg: var(--status-info-bg);
   --color-info-fg: var(--status-info-fg);
   --color-info-border: var(--status-info-border);
@@ -653,6 +664,39 @@
   li,
   tr {
     break-inside: avoid;
+  }
+  /* Paper is denser than a screen: tighter cards and gaps keep a booking record to two pages. */
+  .print-keep {
+    padding: 10pt 12pt !important;
+  }
+  main [class*="space-y-"] > :not(:first-child) {
+    margin-top: 10pt !important;
+  }
+  main [class*="gap-"] {
+    row-gap: 10pt !important;
+  }
+  /* Tables on A4: smaller type, references and figures on one line. */
+  main table {
+    font-size: 9.5pt;
+  }
+  main td .font-mono,
+  main td.tabular-nums,
+  main td .tabular-nums {
+    white-space: nowrap;
+  }
+  main .text-h1:not(h1) {
+    font-size: 16pt;
+  }
+  /* Paper cannot scroll or hover: show names in full. */
+  main .truncate {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+  /* Long lists may run on to the next page (each entry stays whole), so the record does not leave half-empty pages. */
+  section[aria-labelledby="timeline-heading"],
+  section[aria-labelledby="messages-heading"] {
+    break-inside: auto;
   }
   h2,
   h3 {

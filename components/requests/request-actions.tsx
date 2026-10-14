@@ -734,7 +734,8 @@ export function ActionPanel({ set, audience }: { set: ActionSet; audience: "part
         )}
       </h2>
       <div className="mt-3 space-y-2">
-        {set.primary}
+        {/* Below 1024 px the primary lives in the sticky bar at the bottom (request-detail), so one gold per view. */}
+        {set.primary && <div className="max-lg:hidden">{set.primary}</div>}
         {set.secondary}
         {set.note && <p className="text-text-secondary">{set.note}</p>}
       </div>

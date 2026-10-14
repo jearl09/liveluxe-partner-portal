@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { createServerSupabase, getSessionClaims } from "@/lib/db/server";
-import { isLivluxeRole } from "@/lib/domain/permissions";
+import { can, isLivluxeRole } from "@/lib/domain/permissions";
 import { getMfaStatus } from "@/lib/auth/mfa";
 import { mfaStepUpRequired } from "@/lib/domain/auth";
 import { env } from "@/lib/env";
@@ -24,8 +24,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const nav = [
     { href: "/admin/queue", label: "Queue", count: shell.queue?.live, alert: (shell.queue?.breached ?? 0) > 0 },
     { href: "/admin/bookings", label: "Bookings" },
-    { href: "/admin/partners", label: "Partners" },
-    { href: "/admin/rate-cards", label: "Rate cards" },
+    // Only links the role can open: operations staff would be sent straight back to the queue.
+    ...(can(claims.role, "partners.manage") ? [{ href: "/admin/partners", label: "Partners" }] : []),
+    ...(can(claims.role, "rate_cards.manage") ? [{ href: "/admin/rate-cards", label: "Rate cards" }] : []),
     { href: "/admin/settings", label: "Settings" },
   ];
   return (

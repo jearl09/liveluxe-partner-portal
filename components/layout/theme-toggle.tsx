@@ -81,7 +81,7 @@ export function ThemeToggle({ tone = "partner" }: { tone?: "partner" | "admin" }
         title={`Theme: ${current.label}`}
         className={cn(
           "rounded-control coarse:h-11 coarse:w-11 flex h-10 w-10 items-center justify-center transition-colors duration-150 lg:hidden",
-          dark ? "text-on-navy hover:bg-white/10" : "text-text-primary hover:bg-surface",
+          dark ? "text-on-navy hover:bg-on-navy-hover" : "text-text-primary hover:bg-surface",
         )}
       >
         <current.Icon className="h-4 w-4" aria-hidden />
@@ -91,7 +91,7 @@ export function ThemeToggle({ tone = "partner" }: { tone?: "partner" | "admin" }
         aria-label="Colour theme"
         className={cn(
           "rounded-control hidden items-center gap-0.5 p-0.5 lg:inline-flex",
-          dark ? "bg-white/10" : "bg-surface border-subtle border",
+          dark ? "bg-on-navy-hover" : "bg-surface border-subtle border",
         )}
       >
         {OPTIONS.map(({ value, label, Icon }) => {
@@ -109,7 +109,7 @@ export function ThemeToggle({ tone = "partner" }: { tone?: "partner" | "admin" }
                 "flex h-8 w-9 items-center justify-center rounded-[4px] transition-colors duration-150",
                 selected
                   ? dark
-                    ? "text-on-navy bg-white/20"
+                    ? "text-on-navy bg-on-navy-selected"
                     : "bg-inset text-text-primary"
                   : dark
                     ? "text-on-navy-muted hover:text-on-navy"

@@ -47,7 +47,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
         {d.canBook && (
           <Link
             href={d.lastSuburb ? `/search?q=${encodeURIComponent(d.lastSuburb)}` : "/search"}
-            className={cn(buttonVariants({ variant: "primary" }), "w-full sm:w-auto print:hidden")}
+            className={cn(buttonVariants({ variant: "secondary" }), "w-full sm:w-auto print:hidden")}
           >
             <Search className="h-4 w-4" aria-hidden /> Find a property
           </Link>
@@ -86,8 +86,10 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
             <h2 id="search-heading">Find a property</h2>
             {!degraded && <SyncState model={d.sync} audience="partner" />}
           </div>
+          {/* One gold action per view: the first "Needs your action" item when there is one, else Search. */}
           <SearchForm
             compact
+            quiet={d.attention.ok && d.attention.data.length > 0}
             today={today}
             query={{ q: d.lastSuburb ?? "", checkIn: null, checkOut: null, guests: 2, pets: 0, bedrooms: null }}
           />
