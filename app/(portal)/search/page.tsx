@@ -10,10 +10,9 @@ import { SearchForm } from "@/components/search/search-form";
 import { SortSelect } from "@/components/search/sort-select";
 import { createServerSupabase, getSessionClaims } from "@/lib/db/server";
 import { todayIn } from "@/lib/domain/dates";
-import { syncState } from "@/lib/domain/progress";
 import { parseSearchParams, searchQueryString } from "@/lib/domain/search";
 import { env } from "@/lib/env";
-import { circuitState } from "@/lib/hostaway/client";
+import { loadSyncState } from "@/lib/listings/sync";
 import { nearbyAvailability, searchListings, type SearchResults } from "@/lib/listings/load";
 import { log, supportRef } from "@/lib/observability/logger";
 import { cn, formatDayMonth } from "@/lib/utils";
@@ -38,20 +37,13 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
 
   const supabase = await createServerSupabase();
   const claims = await getSessionClaims();
-  const [freshnessRes, orgRes] = await Promise.all([
-    supabase.rpc("availability_freshness"),
+  const [sync, orgRes] = await Promise.all([
+    loadSyncState(now),
     claims?.org_id
       ? supabase.from("partner_orgs").select("name").eq("id", claims.org_id).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
   const orgName = orgRes.data?.name ?? "";
-  const fresh = freshnessRes.data?.[0];
-  const sync = syncState({
-    lastSyncIso: fresh?.last_synced_at ?? null,
-    now,
-    staleAfterMinutes: fresh?.stale_after_minutes ?? 30,
-    degraded: circuitState().open,
-  });
 
   let results: SearchResults | null = null;
   let failRef: string | null = null;

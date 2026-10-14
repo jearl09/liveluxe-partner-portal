@@ -97,7 +97,8 @@ export interface CheckinView {
   pack: FullTier | null;
 }
 
-async function loadOffsetSetting(): Promise<number> {
+/** settings `checkin.release_offset_hours`: how long before check-in the full pack is released. */
+export async function loadOffsetSetting(): Promise<number> {
   const { data } = await adminDb()
     .from("settings")
     .select("value")

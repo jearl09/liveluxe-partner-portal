@@ -23,7 +23,7 @@ const toDate = (iso?: string | null) => {
 };
 const toIso = (d?: Date) => (d ? format(d, ISO) : "");
 
-const CAL_CLASSES = {
+export const CAL_CLASSES = {
   root: "text-body-sm",
   months: "flex flex-col gap-6 sm:flex-row",
   month: "space-y-3",

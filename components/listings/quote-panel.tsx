@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { DateRangeField } from "@/components/ui/date-field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { QuoteLines } from "@/components/requests/quote-lines";
 import type { AvailabilityResult } from "@/lib/domain/availability";
 import type { Quote } from "@/lib/domain/quote-engine";
 import { guestsSummary } from "@/lib/domain/requests";
-import { formatDate, formatDayMonth } from "@/lib/utils";
+import { cn, formatDate, formatDayMonth } from "@/lib/utils";
 import { fieldClass, labelClass } from "@/components/ui/field";
 
 export interface QuoteFormState {
@@ -29,19 +30,17 @@ function reasonText(a: AvailabilityResult): string {
     case "closed_on_departure":
       return "Check-out is not possible on that date. Try the day before or after.";
     case "gap":
-      return "Availability for some of these dates has not been synced yet.";
+      return "We have not confirmed availability for some of these dates yet.";
     default:
-      return "Some of these nights are already booked or blocked.";
+      return "Some of these nights are already booked.";
   }
 }
 
 /**
- * Right-hand pricing panel (§13.3). A GET form keeps the stay in the URL; the result
- * is computed server-side by lib/listings/price so it matches POST /api/quotes exactly.
- *
- * Fields are grouped by the question they answer — when, then who — and the result
- * restates the stay in words (en-AU dates, nights, guests) before any number, so a
- * date typed into a US-format browser picker is confirmed before it is trusted.
+ * Price a stay (brief §7.4). A GET form keeps the stay in the URL; the result is
+ * priced on the server exactly as a request would be. After pricing: the stay in
+ * words, the full breakdown, how this partner pays, and one gold "Request this
+ * property". When the dates do not work, the panel says why and what to try next.
  */
 export function QuotePanel({
   form,
@@ -50,59 +49,47 @@ export function QuotePanel({
   result,
   errors,
   requestHref,
+  payLine,
+  searchHref,
+  askHref,
 }: {
   form: QuoteFormState;
   today: string;
   currency: string;
   result: { availability: AvailabilityResult; quote: Quote | null } | null;
   errors: string[];
-  /** Link to the submission form; null when the viewer cannot submit requests. */
+  /** Link to the request form; null when the viewer cannot submit requests. */
   requestHref: string | null;
+  /** "Your card is held now and charged only if Live Luxe approves." */
+  payLine: string | null;
+  /** Search for other properties on these dates. */
+  searchHref: string;
+  /** mailto: Live Luxe for a quote or a manual search. */
+  askHref: string;
 }) {
   const stay = result && form.checkIn && form.checkOut ? { checkIn: form.checkIn, checkOut: form.checkOut } : null;
+  const a = result?.availability;
 
   return (
-    <aside className="border-border bg-card sticky top-20 rounded-lg border" aria-labelledby="quote-heading">
+    <aside
+      id="price"
+      className="border-subtle bg-surface rounded-card scroll-mt-24 border lg:sticky lg:top-20"
+      aria-labelledby="quote-heading"
+    >
       <div className="space-y-4 p-5">
         <div>
-          <h2 id="quote-heading" className="font-serif text-xl">
-            Price a stay
-          </h2>
+          <h2 id="quote-heading">Price a stay</h2>
           {!result && errors.length === 0 && (
-            <p className="text-muted-foreground mt-0.5 text-sm">
-              Enter dates for live availability and a full breakdown.
+            <p className="text-text-secondary text-body-sm mt-0.5">
+              Choose dates for live availability and the full price.
             </p>
           )}
         </div>
 
-        <form method="get" className="space-y-3">
-          <fieldset className="grid grid-cols-2 gap-3">
-            <legend className="sr-only">Dates</legend>
-            <label className={labelClass}>
-              Check-in
-              <input
-                name="checkIn"
-                type="date"
-                min={today}
-                defaultValue={form.checkIn ?? ""}
-                className={`${fieldClass} mt-1`}
-                required
-              />
-            </label>
-            <label className={labelClass}>
-              Check-out
-              <input
-                name="checkOut"
-                type="date"
-                min={today}
-                defaultValue={form.checkOut ?? ""}
-                className={`${fieldClass} mt-1`}
-                required
-              />
-            </label>
-          </fieldset>
+        <form method="get" action="#price" className="space-y-3">
+          <DateRangeField label="Dates" defaultFrom={form.checkIn} defaultTo={form.checkOut} min={today} required />
           <fieldset className="grid grid-cols-3 gap-3">
-            <legend className="sr-only">Guests</legend>
+            <legend className="sr-only">Who is staying</legend>
             <label className={labelClass}>
               Adults
               <input
@@ -140,13 +127,16 @@ export function QuotePanel({
               />
             </label>
           </fieldset>
-          <SubmitButton className="w-full" pendingLabel="Pricing…">
-            Get price
+          <SubmitButton variant={result?.quote ? "secondary" : "primary"} className="w-full" pendingLabel="Pricing…">
+            {result ? "Update price" : "Get price"}
           </SubmitButton>
         </form>
 
         {errors.length > 0 && (
-          <ul role="alert" className="border-warn-border bg-warn-bg text-warn rounded-md border px-3 py-2 text-sm">
+          <ul
+            role="alert"
+            className="border-danger-border bg-danger-bg text-danger-fg rounded-control border px-3 py-2"
+          >
             {errors.map((e) => (
               <li key={e}>{e}</li>
             ))}
@@ -154,41 +144,52 @@ export function QuotePanel({
         )}
       </div>
 
-      {result && stay && (
-        <div className="border-border space-y-4 border-t p-5">
+      {result && stay && a && (
+        <div className="border-subtle space-y-4 border-t p-5">
           <div>
-            <p className="text-strong text-sm font-medium">
+            <p className="text-text-primary font-semibold">
               {formatDate(stay.checkIn)} → {formatDate(stay.checkOut)}
             </p>
-            <p className="text-muted-foreground mt-0.5 text-xs">
-              {result.availability.nights} {result.availability.nights === 1 ? "night" : "nights"} ·{" "}
-              {guestsSummary(form.adults, form.children, form.pets)}
+            <p className="text-text-secondary text-body-sm mt-0.5">
+              {a.nights} {a.nights === 1 ? "night" : "nights"} · {guestsSummary(form.adults, form.children, form.pets)}
             </p>
           </div>
 
-          {!result.availability.available && (
-            <div className="border-bad-border bg-bad-bg text-bad rounded-md border px-3 py-3 text-sm">
-              <p className="font-medium">Not available</p>
-              <p className="mt-0.5">{reasonText(result.availability)}</p>
-              {result.availability.unavailableDates.length > 0 && (
-                <p className="mt-1.5 text-xs">
-                  Blocked:{" "}
-                  {result.availability.unavailableDates
+          {!a.available && (
+            <div role="status" className="border-danger-border bg-danger-bg rounded-control border px-3 py-3">
+              <p className="text-danger-fg font-semibold">Not available for these dates</p>
+              <p className="text-text-primary text-body-sm mt-0.5">{reasonText(a)}</p>
+              {a.unavailableDates.length > 0 && (
+                <p className="text-text-secondary text-body-sm mt-1.5">
+                  Booked:{" "}
+                  {a.unavailableDates
                     .slice(0, 6)
                     .map((d) => formatDayMonth(d))
                     .join(", ")}
-                  {result.availability.unavailableDates.length > 6 && " …"}
+                  {a.unavailableDates.length > 6 && " …"}
                 </p>
               )}
+              <div className="mt-3 flex flex-col gap-2">
+                <Link href={searchHref} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "w-full")}>
+                  See what else is free for these dates
+                </Link>
+                <a href={askHref} className={cn(buttonVariants({ variant: "tertiary", size: "sm" }), "w-full")}>
+                  Ask Live Luxe to find one
+                </a>
+              </div>
+              <p className="text-text-muted text-body-sm mt-2">Or pick open dates on the calendar below.</p>
             </div>
           )}
 
-          {result.availability.available && !result.quote && (
-            <div className="bg-background border-border rounded-md border px-3 py-3 text-sm">
-              <p className="text-strong font-medium">Available · price on application</p>
-              <p className="text-muted-foreground mt-0.5 text-xs">
-                Some nights have no rate loaded yet. Live Luxe will price this stay when you submit a request.
+          {a.available && !result.quote && (
+            <div className="border-subtle bg-inset rounded-control border px-3 py-3">
+              <p className="text-text-primary font-semibold">Available · price on application</p>
+              <p className="text-text-secondary text-body-sm mt-0.5">
+                Some nights have no rate loaded yet. Live Luxe will quote this stay for you.
               </p>
+              <a href={askHref} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "mt-3 w-full")}>
+                Ask for a quote
+              </a>
             </div>
           )}
 
@@ -201,16 +202,19 @@ export function QuotePanel({
                 currency={currency}
                 nights={result.quote.nights}
               />
-              <p className="text-muted-foreground text-xs leading-relaxed">
-                Indicative. Your organisation&apos;s contracted rates are applied when a request is submitted. GST is
-                shown at the placeholder rate pending accountant sign-off.
+              {payLine && <p className="text-text-primary text-body-sm">{payLine}</p>}
+              <p className="text-text-muted text-body-sm leading-relaxed">
+                Your organisation&apos;s contracted rates are applied when you send the request. GST is shown at the
+                standard rate until Live Luxe&apos;s accountant confirms the treatment of long stays.
               </p>
               {requestHref ? (
-                <Button asChild variant="gold" className="w-full">
-                  <Link href={requestHref}>Request to book</Link>
-                </Button>
+                <Link href={requestHref} className={cn(buttonVariants({ variant: "primary" }), "w-full")}>
+                  Request this property
+                </Link>
               ) : (
-                <p className="text-muted-foreground text-xs">Your role can view prices but not submit requests.</p>
+                <p className="text-text-muted text-body-sm">
+                  Your role can see prices but not send requests. Ask an admin in your team.
+                </p>
               )}
             </>
           )}

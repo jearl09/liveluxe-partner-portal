@@ -53,9 +53,7 @@ export function PropertyDescription({ html }: { html: string | null }) {
 
   return (
     <section aria-labelledby="about-heading" className="space-y-3">
-      <h2 id="about-heading" className="font-serif text-xl">
-        About this property
-      </h2>
+      <h2 id="about-heading">About this property</h2>
 
       {view.kind === "html" ? (
         // Sanitised with DOMPurify at sync time (lib/hostaway/mappers.ts).
@@ -65,12 +63,27 @@ export function PropertyDescription({ html }: { html: string | null }) {
         />
       ) : (
         <div className="max-w-prose">
-          {view.intro && <p className="text-foreground text-sm leading-relaxed">{view.intro}</p>}
-          <div className="divide-border mt-1 divide-y">
-            {view.blocks.map((block, i) => (
-              <Block key={i} block={block} />
-            ))}
-          </div>
+          <details className="group">
+            <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+              <span className="relative block max-h-40 overflow-hidden group-open:hidden">
+                {view.intro && <span className="text-foreground block text-sm leading-relaxed">{view.intro}</span>}
+                {view.blocks[0] && <Block block={view.blocks[0]} />}
+                <span
+                  className="from-canvas absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t to-transparent"
+                  aria-hidden
+                />
+              </span>
+              <span className="text-text-primary mt-2 inline-block font-semibold underline underline-offset-4 group-open:hidden">
+                Read the full description
+              </span>
+            </summary>
+            {view.intro && <p className="text-foreground text-sm leading-relaxed">{view.intro}</p>}
+            <div className="divide-border mt-1 divide-y">
+              {view.blocks.map((block, i) => (
+                <Block key={i} block={block} />
+              ))}
+            </div>
+          </details>
         </div>
       )}
     </section>
