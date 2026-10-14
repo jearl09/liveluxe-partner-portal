@@ -1,9 +1,18 @@
 import { notFound } from "next/navigation";
-import { AlertTriangle, Search } from "lucide-react";
+import { AlertTriangle, Inbox, Search } from "lucide-react";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { DateField, DateRangeField } from "@/components/ui/date-field";
+import { ConfirmDialog, Sheet, SheetForm } from "@/components/ui/dialog";
+import { HelpTip } from "@/components/ui/help-tip";
+import { EmptyState, ErrorState, SyncState } from "@/components/ui/states";
+import { StepTracker } from "@/components/ui/step-tracker";
+import { Toast } from "@/components/ui/toast";
+import { WelcomeCard } from "@/components/dashboard/welcome-card";
+import { ManualSearch } from "@/components/dashboard/manual-search";
+import { requestProgress, syncState } from "@/lib/domain/progress";
 import { Pill } from "@/components/ui/pill";
 import { SlaBadge } from "@/components/ui/sla-badge";
 import { StatusPill } from "@/components/ui/status-pill";
@@ -422,6 +431,139 @@ export default function SystemPage() {
               placeholder="Access needs, arrival time, anything the team should know"
             />
           </label>
+        </div>
+      </Section>
+
+      <Section title="Date fields">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <DateRangeField
+            label="Stay dates"
+            defaultFrom="2026-11-25"
+            defaultTo="2026-11-30"
+            min="2026-10-14"
+            required
+          />
+          <DateRangeField
+            label="Stay dates (empty)"
+            min="2026-10-14"
+            hint="Check-in from 3:00 pm, check-out by 10:00 am."
+          />
+          <DateField label="Takes effect" name="validFrom" defaultValue="2026-10-15" min="2026-10-14" required />
+          <DateField
+            label="Last day in force (optional)"
+            name="validTo"
+            clearable
+            hint="Leave empty to keep it open."
+          />
+        </div>
+      </Section>
+
+      <Section title="Help, progress and first visit">
+        <p className="text-text-secondary flex items-center gap-1">
+          Your card is held, not charged
+          <HelpTip label="What is a hold?">
+            A hold reserves the amount on the card so the dates are yours while Live Luxe reviews. You are only charged
+            if Live Luxe approves. If not, the hold drops off by itself.
+          </HelpTip>
+        </p>
+        <div className="space-y-6">
+          <StepTracker model={requestProgress({ status: "UNDER_REVIEW" })} />
+          <StepTracker model={requestProgress({ status: "CONFIRMED" })} />
+          <StepTracker model={requestProgress({ status: "DECLINED", reachedBeforeEnd: "UNDER_REVIEW" })} />
+        </div>
+        <WelcomeCard supportEmail="contact@liveluxeau.com" />
+      </Section>
+
+      <Section title="Sheet, dialog, confirm, toast">
+        <div className="flex flex-wrap gap-3">
+          <Sheet
+            title="New partner"
+            description="You can change all of this later."
+            trigger={<Button variant="primary">New partner</Button>}
+          >
+            <SheetForm action="#" submit={<Button variant="primary">Create partner</Button>}>
+              <label className="text-text-primary text-body-sm block font-semibold">
+                Organisation name{" "}
+                <span className="text-gold" aria-hidden>
+                  *
+                </span>
+                <input name="name" className="mt-1 w-full" aria-required required />
+              </label>
+              <label className="text-text-primary text-body-sm block font-semibold">
+                ABN
+                <input name="abn" className="mt-1 w-full font-mono" inputMode="numeric" />
+              </label>
+            </SheetForm>
+          </Sheet>
+          <ConfirmDialog
+            triggerLabel="Approve"
+            title="Approve LLX-2026-000412?"
+            consequences={[
+              "Capture AUD $9,169.20 on Visa ••4417",
+              "Create the reservation in Hostaway for Tue 20 Oct → Fri 20 Nov 2026",
+              "Issue the tax invoice",
+            ]}
+            notifies="Dana Partner (Demo Insurance Co) and ops@ are emailed."
+            confirmLabel="Approve and charge"
+            action="#"
+          />
+          <ConfirmDialog
+            triggerLabel="Decline"
+            tone="destructive"
+            title="Decline LLX-2026-000412?"
+            consequences={["Release the dates and the card hold", "Email the partner the reason below"]}
+            confirmLabel="Decline request"
+            action="#"
+          >
+            <label className="text-text-primary text-body-sm block font-semibold">
+              Reason{" "}
+              <span className="text-gold" aria-hidden>
+                *
+              </span>
+              <select name="reason" className="mt-1 w-full" defaultValue="unavailable">
+                <option value="unavailable">The property is no longer available</option>
+                <option value="policy">Outside the partner agreement</option>
+              </select>
+            </label>
+          </ConfirmDialog>
+          <ManualSearch to="contact@liveluxeau.com" orgName="Demo Insurance Co" />
+        </div>
+        <Toast title="Request sent" body="Live Luxe will reply by 3:00 pm today. We've emailed you a copy." />
+      </Section>
+
+      <Section title="Empty, error and sync states">
+        <div className="bg-surface border-subtle rounded-card border">
+          <EmptyState
+            icon={Inbox}
+            title="You're all caught up"
+            body="Nothing is waiting on Live Luxe. New requests appear here the moment a partner submits them."
+            action={<Button variant="tertiary">See all bookings</Button>}
+          />
+        </div>
+        <ErrorState
+          title="We couldn't load your requests."
+          meaning="Nothing has been changed; this is only a problem showing the list."
+          next="Try again in a moment. If it keeps happening, quote the reference below."
+          refCode="req_8f2a19"
+          action={<Button variant="secondary">Try again</Button>}
+        />
+        <div className="flex flex-col gap-2">
+          <SyncState
+            audience="partner"
+            model={syncState({ lastSyncIso: "2026-10-14T02:57:00Z", now: NOW, staleAfterMinutes: 30 })}
+          />
+          <SyncState
+            audience="partner"
+            model={syncState({ lastSyncIso: "2026-10-13T22:12:00Z", now: NOW, staleAfterMinutes: 30 })}
+          />
+          <SyncState
+            audience="ops"
+            model={syncState({ lastSyncIso: "2026-10-13T22:12:00Z", now: NOW, staleAfterMinutes: 30 })}
+          />
+          <SyncState
+            audience="ops"
+            model={syncState({ lastSyncIso: "2026-10-13T22:12:00Z", now: NOW, staleAfterMinutes: 30, degraded: true })}
+          />
         </div>
       </Section>
 

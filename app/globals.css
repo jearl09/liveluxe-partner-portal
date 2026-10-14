@@ -440,6 +440,7 @@
     border: 1px solid var(--border-strong);
     border-radius: var(--radius-control);
     font-size: var(--text-body);
+    font-weight: 400;
     line-height: var(--text-body--line-height);
     min-height: 2.5rem;
     padding-inline: 0.75rem;
@@ -458,6 +459,8 @@
   input::placeholder,
   textarea::placeholder {
     color: var(--text-muted);
+    font-weight: 400;
+    text-transform: none;
   }
   input:focus-visible,
   select:focus-visible,
@@ -520,6 +523,40 @@
     background-color 180ms var(--ease-out),
     border-color 180ms var(--ease-out),
     color 180ms var(--ease-out) !important;
+}
+
+/* Motion (brief §4.3): 200 ms for sheets and dialogs, ease-out, from an already-visible state. */
+@keyframes ll-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes ll-sheet {
+  from {
+    transform: translateX(2rem);
+    opacity: 0;
+  }
+}
+@keyframes ll-rise {
+  from {
+    transform: translateY(1rem);
+    opacity: 0;
+  }
+}
+.anim-fade[data-state="open"] {
+  animation: ll-fade var(--duration-sheet) var(--ease-out);
+}
+.anim-sheet[data-state="open"] {
+  animation: ll-sheet var(--duration-sheet) var(--ease-out);
+}
+.anim-dialog[data-state="open"],
+.anim-toast[data-state="open"] {
+  animation: ll-rise var(--duration-sheet) var(--ease-out);
+}
+@media (min-width: 640px) {
+  .anim-dialog[data-state="open"] {
+    animation: ll-fade var(--duration-sheet) var(--ease-out);
+  }
 }
 
 /*
