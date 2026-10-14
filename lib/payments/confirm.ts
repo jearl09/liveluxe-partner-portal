@@ -225,8 +225,11 @@ export async function confirmBooking(
   }
 
   // D. CONFIRMED. Both sides are now true: inventory written, money captured or invoiced.
+  // The approve request and the Stripe webhook can both get here for the same booking;
+  // whichever makes the transition does the paperwork, the other stands down.
   b = await loadBookingAdmin(b.id);
-  if (b.status !== "CONFIRMED") {
+  if (b.status === "CONFIRMED") return { status: "CONFIRMED", note: "already confirmed by a concurrent run" };
+  try {
     b = await systemTransition(b, "CONFIRMED", {
       reason: `confirmed via ${trigger}`,
       metadata: {
@@ -238,6 +241,10 @@ export async function confirmBooking(
         ...(depositCents != null ? { depositCents } : {}),
       },
     });
+  } catch (e) {
+    const now = await loadBookingAdmin(b.id);
+    if (now.status === "CONFIRMED") return { status: "CONFIRMED", note: "confirmed by a concurrent run" };
+    throw e;
   }
 
   // E. Paperwork: never fails the confirmation; a missing receipt is a finance follow-up.

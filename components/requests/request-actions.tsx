@@ -136,6 +136,194 @@ function MoneyField({
   );
 }
 
+type DecisionTarget = Pick<
+  BookingRequestRow,
+  "id" | "reference" | "total_cents" | "currency" | "check_in" | "check_out"
+>;
+
+/** Hidden fields that send a decision taken in the queue back to the queue. */
+const back = (r: DecisionTarget, returnTo?: string): Record<string, string> =>
+  returnTo ? { returnTo, ref: r.reference } : {};
+
+/** Approve, with the consequences for this partner's payment mode (brief §6.3, §5.6). */
+export function ApproveAction({
+  r,
+  mode,
+  gate,
+  notifies,
+  className = "w-full",
+  size,
+  returnTo,
+}: {
+  r: DecisionTarget;
+  mode: PaymentMode;
+  gate: { ok: boolean; reason?: string };
+  notifies: string;
+  className?: string;
+  size?: "sm" | "default";
+  returnTo?: string;
+}) {
+  const money = (c: number) => formatMoney(c, r.currency);
+  if (!gate.ok)
+    return (
+      <span className="block space-y-1">
+        <Button variant="primary" size={size} className={className} disabled aria-describedby={`approve-why-${r.id}`}>
+          Approve
+        </Button>
+        <span id={`approve-why-${r.id}`} className="text-text-muted text-body-sm block">
+          {gate.reason}
+        </span>
+      </span>
+    );
+  return (
+    <ConfirmDialog
+      triggerLabel="Approve"
+      triggerClassName={className}
+      triggerSize={size}
+      shortcut="a"
+      title={`Approve ${r.reference}?`}
+      consequences={[
+        "Re-check availability and create the reservation in Hostaway",
+        mode === "invoice"
+          ? `Issue a tax invoice for ${money(r.total_cents ?? 0)} on the partner's terms`
+          : mode === "deposit"
+            ? "Charge the deposit to the card on hold and schedule the balance invoice"
+            : `Charge ${money(r.total_cents ?? 0)} to the card on hold`,
+        "Confirm the booking",
+      ]}
+      notifies={notifies}
+      confirmLabel="Approve and confirm"
+      action={`/api/admin/requests/${r.id}`}
+      hidden={{ action: "approve", ...back(r, returnTo) }}
+    />
+  );
+}
+
+/** Counter-offer in a Sheet: new total and/or dates, and a message (brief §6.3). */
+export function CounterAction({
+  r,
+  today,
+  className = "w-full",
+  size,
+  returnTo,
+}: {
+  r: DecisionTarget;
+  today: string;
+  className?: string;
+  size?: "sm" | "default";
+  returnTo?: string;
+}) {
+  const money = (c: number) => formatMoney(c, r.currency);
+  return (
+    <Sheet
+      title="Counter-offer"
+      description="Propose a different price or dates. The decision clock pauses until the partner answers."
+      trigger={
+        <Button variant="secondary" size={size} className={className} data-shortcut="c" aria-keyshortcuts="c">
+          Counter-offer
+        </Button>
+      }
+    >
+      <SheetForm
+        action={`/api/admin/requests/${r.id}`}
+        hidden={{ action: "counter", ...back(r, returnTo) }}
+        submit={<SubmitButton pendingLabel="Sending…">Send counter-offer</SubmitButton>}
+      >
+        <p className="text-text-secondary">
+          Now: {formatDate(r.check_in)} → {formatDate(r.check_out)} · {money(r.total_cents ?? 0)}. Change either or
+          both.
+        </p>
+        <MoneyField
+          name="newTotal"
+          labelText="New total, including GST"
+          placeholder={r.total_cents != null ? (r.total_cents / 100).toFixed(2) : ""}
+          hint="Leave empty to keep the current total."
+        />
+        <DateRangeField
+          label="Dates"
+          nameFrom="newCheckIn"
+          nameTo="newCheckOut"
+          defaultFrom={r.check_in}
+          defaultTo={r.check_out}
+          min={today}
+          hint="Leave as they are to keep the current dates."
+        />
+        <label className={label}>
+          Message to the partner{req}
+          <textarea
+            name="message"
+            rows={3}
+            required
+            aria-required
+            maxLength={1000}
+            className="mt-1 w-full"
+            placeholder="Why you are proposing this, in a sentence or two"
+          />
+        </label>
+      </SheetForm>
+    </Sheet>
+  );
+}
+
+/** Decline with a structured reason (brief §6.3). */
+export function DeclineAction({
+  r,
+  notifies,
+  className = "w-full",
+  size,
+  returnTo,
+}: {
+  r: DecisionTarget;
+  notifies: string;
+  className?: string;
+  size?: "sm" | "default";
+  returnTo?: string;
+}) {
+  return (
+    <ConfirmDialog
+      triggerLabel="Decline"
+      triggerClassName={className}
+      triggerSize={size}
+      tone="destructive"
+      shortcut="d"
+      title={`Decline ${r.reference}?`}
+      consequences={["Release the dates and any card hold", "Email the partner the reason below"]}
+      notifies={notifies}
+      confirmLabel="Decline request"
+      action={`/api/admin/requests/${r.id}`}
+      hidden={{ action: "decline", ...back(r, returnTo) }}
+    >
+      <ReasonFields kind="decline" />
+    </ConfirmDialog>
+  );
+}
+
+/** Take ownership of a submitted request. */
+export function AssignAction({
+  id,
+  className = "w-full",
+  size,
+  returnTo,
+  reference,
+}: {
+  id: string;
+  className?: string;
+  size?: "sm" | "default";
+  returnTo?: string;
+  reference?: string;
+}) {
+  return (
+    <form method="post" action={`/api/admin/requests/${id}`}>
+      <input type="hidden" name="action" value="review" />
+      {returnTo && <input type="hidden" name="returnTo" value={returnTo} />}
+      {returnTo && reference && <input type="hidden" name="ref" value={reference} />}
+      <SubmitButton variant="tertiary" size={size} className={className} pendingLabel="Assigning…">
+        Assign to me
+      </SubmitButton>
+    </form>
+  );
+}
+
 export function buildActions(i: ActionInput): ActionSet {
   const { r } = i;
   const money = (c: number) => formatMoney(c, r.currency);
@@ -395,109 +583,12 @@ export function buildActions(i: ActionInput): ActionSet {
     const who = `${i.createdByName ?? "The partner"}${i.orgName ? ` (${i.orgName})` : ""} is emailed.`;
 
     if ((s === "SUBMITTED" || s === "UNDER_REVIEW") && i.can.approve) {
-      const consequences = [
-        "Re-check availability and create the reservation in Hostaway",
-        i.mode === "invoice"
-          ? `Issue a tax invoice for ${money(r.total_cents ?? 0)} on the partner's terms`
-          : i.mode === "deposit"
-            ? "Charge the deposit to the card on hold and schedule the balance invoice"
-            : `Charge ${money(r.total_cents ?? 0)} to the card on hold`,
-        "Confirm the booking",
-      ];
-      primary = i.gate.ok ? (
-        <ConfirmDialog
-          key="approve"
-          triggerLabel="Approve"
-          triggerClassName="w-full"
-          title={`Approve ${r.reference}?`}
-          consequences={consequences}
-          notifies={who}
-          confirmLabel="Approve and confirm"
-          action={opsRoute}
-          hidden={{ action: "approve" }}
-        />
-      ) : (
-        <div key="approve-blocked" className="space-y-1">
-          <Button variant="primary" className="w-full" disabled aria-describedby="approve-why">
-            Approve
-          </Button>
-          <p id="approve-why" className="text-text-muted text-body-sm">
-            {i.gate.reason}
-          </p>
-        </div>
-      );
+      primary = <ApproveAction key="approve" r={r} mode={i.mode} gate={i.gate} notifies={who} />;
       secondary.push(
-        <Sheet
-          key="counter"
-          title="Counter-offer"
-          description="Propose a different price or dates. The decision clock pauses until the partner answers."
-          trigger={
-            <Button variant="secondary" className="w-full">
-              Counter-offer
-            </Button>
-          }
-        >
-          <SheetForm
-            action={opsRoute}
-            hidden={{ action: "counter" }}
-            submit={<SubmitButton pendingLabel="Sending…">Send counter-offer</SubmitButton>}
-          >
-            <p className="text-text-secondary">
-              Now: {stay} · {money(r.total_cents ?? 0)}. Change either or both.
-            </p>
-            <MoneyField
-              name="newTotal"
-              labelText="New total, including GST"
-              placeholder={r.total_cents != null ? (r.total_cents / 100).toFixed(2) : ""}
-              hint="Leave empty to keep the current total."
-            />
-            <DateRangeField
-              label="Dates"
-              nameFrom="newCheckIn"
-              nameTo="newCheckOut"
-              defaultFrom={r.check_in}
-              defaultTo={r.check_out}
-              min={i.today}
-              hint="Leave as they are to keep the current dates."
-            />
-            <label className={label}>
-              Message to the partner{req}
-              <textarea
-                name="message"
-                rows={3}
-                required
-                aria-required
-                maxLength={1000}
-                className="mt-1 w-full"
-                placeholder="Why you are proposing this, in a sentence or two"
-              />
-            </label>
-          </SheetForm>
-        </Sheet>,
-        <ConfirmDialog
-          key="decline"
-          triggerLabel="Decline"
-          triggerClassName="w-full"
-          tone="destructive"
-          title={`Decline ${r.reference}?`}
-          consequences={["Release the dates and any card hold", "Email the partner the reason below"]}
-          notifies={who}
-          confirmLabel="Decline request"
-          action={opsRoute}
-          hidden={{ action: "decline" }}
-        >
-          <ReasonFields kind="decline" />
-        </ConfirmDialog>,
+        <CounterAction key="counter" r={r} today={i.today} />,
+        <DeclineAction key="decline" r={r} notifies={who} />,
       );
-      if (s === "SUBMITTED")
-        secondary.push(
-          <form key="review" method="post" action={opsRoute}>
-            <input type="hidden" name="action" value="review" />
-            <SubmitButton variant="tertiary" className="w-full" pendingLabel="Assigning…">
-              Assign to me
-            </SubmitButton>
-          </form>,
-        );
+      if (s === "SUBMITTED") secondary.push(<AssignAction key="review" id={r.id} />);
     }
 
     if ((s === "CONFIRMED" || s === "CHECKED_IN") && i.can.approve) {

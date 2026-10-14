@@ -226,6 +226,8 @@ export interface ConfirmDialogProps {
   /** Extra fields shown above the consequences (a reason, a note). */
   children?: ReactNode;
   pendingLabel?: string;
+  /** Single-key shortcut the ops queue presses for the focused row ("a", "d"). */
+  shortcut?: string;
 }
 
 /** Irreversible actions (brief §5.6): the consequences listed, then one button that does it. */
@@ -240,6 +242,8 @@ export function ConfirmDialog(p: ConfirmDialogProps) {
           variant={p.triggerVariant ?? (p.tone === "destructive" ? "destructive" : "primary")}
           size={p.triggerSize}
           className={p.triggerClassName}
+          data-shortcut={p.shortcut}
+          aria-keyshortcuts={p.shortcut}
         >
           {p.triggerLabel}
         </Button>

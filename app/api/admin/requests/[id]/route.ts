@@ -4,6 +4,7 @@
  * modification_decline | release_checkin. Form posts from /admin/bookings/{id}.
  */
 import { requestId } from "@/lib/api/response";
+import { formatDayMonth } from "@/lib/utils";
 import { formFields, redirectTo } from "@/lib/auth/request";
 import { adminDb } from "@/lib/db/admin";
 import { getSessionClaims } from "@/lib/db/server";
@@ -44,26 +45,35 @@ export async function POST(req: Request, ctx: Ctx) {
     "message",
     "refundAmount",
     "modificationId",
+    "returnTo",
+    "ref",
   ] as const);
+  // A decision taken from the queue goes back to the queue with a toast naming the
+  // request; errors still land on the request page, where its full context is.
+  const fromQueue = f.returnTo === "/admin/queue";
+  const okBack = fromQueue ? "/admin/queue" : back;
+  const okRef = fromQueue && /^LLX-\d{4}-\d{6}$/.test(f.ref ?? "") ? f.ref : undefined;
 
   try {
     switch (f.action) {
       case "review":
         await startReview(claims, id);
-        return redirectTo(req, back, { done: "review" });
+        return redirectTo(req, okBack, { ref: okRef, done: "review" });
       case "approve": {
         await approve(claims, id, reqId);
         // Capture → Hostaway → CONFIRMED → invoice → email. Approval stands even if this step
         // fails; the Stripe webhook and the drain job retry it.
         try {
           const out = await confirmBooking(id, reqId, "approval");
-          if (out.status === "CONFIRMED") return redirectTo(req, back, { done: "confirmed" });
-          if (out.status === "AWAITING_PAYMENT") return redirectTo(req, back, { done: "approved_payment_pending" });
+          if (out.status === "CONFIRMED") return redirectTo(req, okBack, { ref: okRef, done: "confirmed" });
+          if (out.status === "AWAITING_PAYMENT")
+            return redirectTo(req, okBack, { ref: okRef, done: "approved_payment_pending" });
           if (out.status === "FAILED")
             return redirectTo(req, back, { error: "HOSTAWAY_UNAVAILABLE", detail: out.note });
           await notifyPartnerOfDecision(id, "approved", reqId);
-          if (out.note.startsWith("hostaway:")) return redirectTo(req, back, { done: "approved_hostaway_pending" });
-          return redirectTo(req, back, { done: "approved", detail: out.note });
+          if (out.note.startsWith("hostaway:"))
+            return redirectTo(req, okBack, { ref: okRef, done: "approved_hostaway_pending" });
+          return redirectTo(req, okBack, { ref: okRef, done: "approved", detail: out.note });
         } catch (e) {
           log.error("booking.confirm_after_approve_failed", {
             requestId: reqId,
@@ -84,7 +94,7 @@ export async function POST(req: Request, ctx: Ctx) {
         if (!reason) return redirectTo(req, back, { error: "VALIDATION_FAILED", detail: "decline_reason" });
         await decline(claims, id, { reason, notes: f.notes.slice(0, 1000) });
         await notifyPartnerOfDecision(id, "declined", reqId);
-        return redirectTo(req, back, { done: "declined" });
+        return redirectTo(req, okBack, { ref: okRef, done: "declined" });
       }
       case "counter": {
         const current = await getRequest(id);
@@ -100,7 +110,7 @@ export async function POST(req: Request, ctx: Ctx) {
         if (!v.ok) return redirectTo(req, back, { error: "VALIDATION_FAILED", detail: v.errors.join(" ") });
         await counterOffer(claims, id, v.value, await loadPolicy());
         await notifyPartnerOfDecision(id, "counter", reqId);
-        return redirectTo(req, back, { done: "countered" });
+        return redirectTo(req, okBack, { ref: okRef, done: "countered" });
       }
       case "cancel": {
         const reason = (CANCELLATION_REASONS as readonly string[]).includes(f.reason)
@@ -136,16 +146,16 @@ export async function POST(req: Request, ctx: Ctx) {
             reqId,
           );
         }
-        return redirectTo(req, back, { done: "modification_approved" });
+        return redirectTo(req, okBack, { ref: okRef, done: "modification_approved" });
       }
       case "modification_decline": {
         if (!f.modificationId) return redirectTo(req, back, { error: "VALIDATION_FAILED", detail: "modification" });
         await declineModification(claims, f.modificationId, f.notes, reqId);
-        return redirectTo(req, back, { done: "modification_declined" });
+        return redirectTo(req, okBack, { ref: okRef, done: "modification_declined" });
       }
       case "release_checkin": {
         await releaseCheckinNow(claims, id, reqId);
-        return redirectTo(req, back, { done: "checkin_released" });
+        return redirectTo(req, okBack, { ref: okRef, done: "checkin_released" });
       }
       default:
         return redirectTo(req, back, { error: "VALIDATION_FAILED", detail: "unknown action" });
@@ -156,7 +166,7 @@ export async function POST(req: Request, ctx: Ctx) {
         typeof e.details?.detail === "string"
           ? e.details.detail
           : Array.isArray(e.details?.conflictingDates)
-            ? `Unavailable: ${(e.details.conflictingDates as string[]).slice(0, 5).join(", ")}`
+            ? takenDates(e.details.conflictingDates as string[])
             : undefined;
       return redirectTo(req, back, { error: e.code, detail });
     }
@@ -167,4 +177,12 @@ export async function POST(req: Request, ctx: Ctx) {
     });
     return redirectTo(req, back, { error: "INTERNAL", ref: reqId });
   }
+}
+
+/** "Hostaway shows 26 Oct – 30 Oct taken (5 nights). Nothing was charged. …" — the next step, not a list of ISO dates. */
+function takenDates(dates: string[]): string {
+  const d = [...new Set(dates)].sort();
+  if (d.length === 0) return "Nothing was charged. Counter-offer other dates or decline.";
+  const span = d.length === 1 ? formatDayMonth(d[0]) : `${formatDayMonth(d[0])} – ${formatDayMonth(d.at(-1)!)}`;
+  return `Hostaway shows ${span} taken (${d.length} ${d.length === 1 ? "night" : "nights"}). Nothing was charged. Counter-offer other dates or decline.`;
 }

@@ -74,6 +74,7 @@ export function Flash({
   detail,
   refCode,
   toast = false,
+  subject,
 }: {
   done?: string;
   error?: string;
@@ -81,13 +82,18 @@ export function Flash({
   refCode?: string;
   /** Confirm a success as a toast (brief §4.8) rather than a banner. Errors always stay inline. */
   toast?: boolean;
+  /** Names what the toast is about ("LLX-2026-000412"), for a confirmation shown away from the record. */
+  subject?: string;
 }) {
   if (done && DONE[done] && toast) {
     const [title, ...rest] = DONE[done].split(/(?<=\.)\s/);
     return (
       <>
         <ScrubParams keys={FLASH_KEYS} />
-        <Toast title={title} body={[...rest, detail].filter(Boolean).join(" ") || undefined} />
+        <Toast
+          title={subject ? `${subject}: ${title}` : title}
+          body={[...rest, detail].filter(Boolean).join(" ") || undefined}
+        />
       </>
     );
   }

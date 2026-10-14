@@ -33,8 +33,8 @@ export interface DataTableColumn<T> {
   hideOnCard?: boolean;
   /** Mark the status column so cards place it top-right beside the identity. */
   status?: boolean;
-  /** Hide below the `lg` breakpoint on the table (cards still show it). */
-  optional?: boolean;
+  /** Hide below the `lg` breakpoint on the table, or below `xl` with "xl" (cards still show it). */
+  optional?: boolean | "xl";
 }
 
 export interface DataTableProps<T> {
@@ -101,7 +101,7 @@ export function DataTable<T>(p: DataTableProps<T>) {
                     className={cn(
                       "text-text-muted text-body-sm px-3 py-2.5 font-semibold whitespace-nowrap first:pl-5 last:pr-5",
                       (c.numeric || c.align === "right") && "text-right",
-                      c.optional && "hidden lg:table-cell",
+                      c.optional && (c.optional === "xl" ? "hidden xl:table-cell" : "hidden lg:table-cell"),
                     )}
                   >
                     {c.sortable && p.sortHref ? (
@@ -143,7 +143,7 @@ export function DataTable<T>(p: DataTableProps<T>) {
                         "px-3 py-2 align-middle first:pl-5 last:pr-5",
                         (c.numeric || c.align === "right") && "text-right whitespace-nowrap tabular-nums",
                         c.primary && "whitespace-nowrap",
-                        c.optional && "hidden lg:table-cell",
+                        c.optional && (c.optional === "xl" ? "hidden xl:table-cell" : "hidden lg:table-cell"),
                       )}
                     >
                       {c === primary && href ? (

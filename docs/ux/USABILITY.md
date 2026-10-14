@@ -60,3 +60,37 @@ screens are logged here and fixed in group 4. Everything on the request detail s
   submitted); the same flow worked by hand on 13 Oct. Test card holds were placed by confirming the test-mode
   PaymentIntent with `pm_card_visa` server-side and then visiting the app's own return URL, which syncs it exactly as
   after a real hold.
+
+---
+
+## After screen group 3 — ops Queue and Bookings (14 Oct 2026)
+
+Tasks (d) and (e) were run against the new queue. Tasks (a) and (b) were re-run as part of creating test requests and
+still pass; their open findings belong to groups 4 and 5.
+
+| Task | Result | Time | Hunts, guesses, re-reads                                                                                                                             |
+| ---- | ------ | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| (d)  | Pass   | 26 s | None. Queue → Approve on the top row → the dialog lists what will happen → Approve and confirm. Back on the queue with "LLX-2026-000012: Confirmed." |
+| (e)  | Pass   | 16 s | None after the fix below. Decline on the row → reason and note → Decline request. Back on the queue with "LLX-2026-000013: Declined."                |
+
+### Found and fixed in this group
+
+1. **Decline was hidden.** In the first build, Decline sat in the row's details and task (e) had to open them to find
+   it. Decline now sits on the row next to Approve.
+2. **A false failure after approving.** The approve request and the Stripe webhook both tried to confirm the booking;
+   the loser said "Confirmation step failed and will be retried; ops have been alerted" although the booking was
+   confirmed. Whichever run confirms now does the paperwork, and the other stands down quietly.
+3. **An approval refused for dates with no next step.** When Hostaway's live check finds the dates taken, the banner
+   listed raw dates ("2026-10-26, 2026-10-27, …"). It now reads "Hostaway shows 26 Oct – 30 Oct taken (5 nights).
+   Nothing was charged. Counter-offer other dates or decline."
+4. **Deciding sent you away from the queue.** Decisions taken in the queue now return to it, with a toast that names
+   the reference.
+5. **Layout.** At 1024 px the reference ran into the partner name and the total touched Approve; columns were re-cut.
+   The Bookings table header floated over the first row because its wrapper clipped the sticky header; fixed.
+
+### Logged for later groups
+
+| Finding                                                                                                                                                         | Group | Brief       |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ----------- |
+| Search offered dates that Hostaway's live check then refused, while the shell showed "Sync delayed". The request could be submitted against stale availability. | 4     | §9.2, §11.2 |
+| From a request reached through the queue, the ops nav highlights Bookings, not Queue.                                                                           | 6     | §6.1        |

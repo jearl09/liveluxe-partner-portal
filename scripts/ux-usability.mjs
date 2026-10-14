@@ -304,34 +304,33 @@ const TASKS = {
     const page = await signIn(context, "OPS");
     await page.goto(`${BASE}/admin/queue`, { waitUntil: "networkidle" });
     await shot(page, "queue");
-    const first = await find(page, "the most urgent request", [
-      (p) => p.getByRole("link", { name: /open request LLX-/i }),
-      (p) => p.getByRole("link", { name: /LLX-/ }),
+    // The most urgent request is the first row; Approve sits on it.
+    const approve = await find(page, "Approve on the most urgent request", [
+      (p) =>
+        p
+          .locator("li[data-tone]")
+          .first()
+          .getByRole("button", { name: /^approve$/i }),
+      (p) => p.getByRole("button", { name: /^approve$/i }),
     ]);
-    await first.click();
-    await page.waitForLoadState("networkidle");
-    await shot(page, "request");
-    await (
-      await find(page, "Approve", [
-        (p) => p.getByRole("button", { name: /^approve$/i }),
-        (p) => p.getByRole("button", { name: /approve/i }),
-      ])
-    ).click();
+    const ref = await page.locator("li[data-tone]").first().locator("[data-row-link]").innerText();
+    await approve.click();
     await shot(page, "confirm-dialog");
     const confirmBtn = page.getByRole("dialog").getByRole("button", { name: /approve/i });
     if (await confirmBtn.count()) await confirmBtn.first().click();
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(1500);
     await shot(page, "after-approve");
-    const status =
-      (await page
-        .locator("[data-status]")
-        .first()
-        .getAttribute("data-status")
-        .catch(() => null)) ?? "?";
-    note(`Status after approving: ${status}.`);
+    const toast = (
+      await page
+        .locator("ol li")
+        .allInnerTexts()
+        .catch(() => [])
+    ).join(" ");
+    note(`Back on ${new URL(page.url()).pathname}; confirmation: "${toast.replace(/\s+/g, " ").trim()}".`);
+    const ok = /confirmed|approved/i.test(toast) && toast.includes(ref.split("\n")[0].trim());
     await context.close();
-    end(["APPROVED", "CONFIRMED", "AWAITING_PAYMENT"].includes(status) ? "pass" : "fail");
+    end(ok ? "pass" : "fail");
   },
 
   async e(browser) {
@@ -339,13 +338,18 @@ const TASKS = {
     const context = await browser.newContext({ viewport: { width: WIDTH, height: 900 } });
     const page = await signIn(context, "OPS");
     await page.goto(`${BASE}/admin/queue`, { waitUntil: "networkidle" });
-    const first = await find(page, "a request in the queue", [
-      (p) => p.getByRole("link", { name: /open request LLX-/i }),
-      (p) => p.getByRole("link", { name: /LLX-/ }),
-    ]);
-    await first.click();
-    await page.waitForLoadState("networkidle");
-    await (await find(page, "Decline", [(p) => p.getByRole("button", { name: /^decline$/i })])).click();
+    await shot(page, "queue");
+    const row = page.locator("li[data-tone]").first();
+    const ref = (await row.locator("[data-row-link]").innerText()).split("\n")[0].trim();
+    // A first-time user looks for Decline on the row; it is in the row's details.
+    let decline = row.getByRole("button", { name: /^decline$/i });
+    if (!(await decline.isVisible().catch(() => false))) {
+      current.hunts.push("Decline is not on the row; opened the row's details to find it (one click).");
+      await row.getByRole("button", { name: /show details/i }).click();
+      decline = row.getByRole("button", { name: /^decline$/i });
+      await decline.waitFor({ state: "visible", timeout: 3000 });
+    }
+    await decline.click();
     const dialog = page.getByRole("dialog");
     await (
       await find(page, "the reason list", [(p) => p.getByRole("dialog").getByLabel(/reason/i)])
@@ -354,17 +358,17 @@ const TASKS = {
     await shot(page, "decline-dialog");
     await dialog.getByRole("button", { name: /decline request/i }).click();
     await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(800);
+    await page.waitForTimeout(1500);
     await shot(page, "after-decline");
-    const status =
-      (await page
-        .locator("[data-status]")
-        .first()
-        .getAttribute("data-status")
-        .catch(() => null)) ?? "?";
-    note(`Status after declining: ${status}.`);
+    const toast = (
+      await page
+        .locator("ol li")
+        .allInnerTexts()
+        .catch(() => [])
+    ).join(" ");
+    note(`Back on ${new URL(page.url()).pathname}; confirmation: "${toast.replace(/\s+/g, " ").trim()}".`);
     await context.close();
-    end(status === "DECLINED" ? "pass" : "fail");
+    end(/declined/i.test(toast) && toast.includes(ref) ? "pass" : "fail");
   },
 };
 

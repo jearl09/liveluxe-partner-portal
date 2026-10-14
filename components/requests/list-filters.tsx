@@ -39,12 +39,12 @@ export function ListFilters({
       {Object.entries(carry).map(([k, v]) => v && <input key={k} type="hidden" name={k} value={v} />)}
       {params.pageSize !== 25 && <input type="hidden" name="pageSize" value={params.pageSize} />}
       <label className={labelClass}>
-        Reference or guest
+        Reference, claim, PO or guest
         <input
           name="q"
           type="search"
           defaultValue={params.q}
-          placeholder="LLX-2026-000412 or a guest's name"
+          placeholder="LLX-2026-000412, a claim number or a name"
           maxLength={80}
           autoComplete="off"
           className={`${fieldClass} mt-1`}
