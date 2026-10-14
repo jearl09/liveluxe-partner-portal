@@ -17,13 +17,20 @@ export function Wordmark({
     <Link
       href={href}
       className={cn("flex shrink-0 items-baseline gap-2 whitespace-nowrap", className)}
-      aria-label="Live Luxe home"
+      aria-label={descriptor ? `Live Luxe ${descriptor}, home` : "Live Luxe home"}
     >
-      <span className={cn("font-serif text-[1.375rem] leading-none", tone === "dark" ? "text-white" : "text-strong")}>
+      <span
+        className={cn(
+          "font-serif text-[1.375rem] leading-none",
+          tone === "dark" ? "text-on-navy" : "text-text-primary",
+        )}
+      >
         Live Luxe
       </span>
       {descriptor && (
-        <span className={cn("eyebrow hidden sm:inline", tone === "dark" && "eyebrow-on-navy")}>{descriptor}</span>
+        <span className={cn("eyebrow hidden min-[400px]:inline", tone === "dark" && "eyebrow-on-navy")}>
+          {descriptor}
+        </span>
       )}
     </Link>
   );

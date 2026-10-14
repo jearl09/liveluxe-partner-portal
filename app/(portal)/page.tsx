@@ -114,13 +114,6 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
         <ManualSearch to={env().EMAIL_REPLY_TO} orgName={d.orgName} />
       </section>
 
-      {/* Phone: sticky search shortcut */}
-      <Link
-        href="/search"
-        className="bg-primary text-primary-foreground fixed right-4 bottom-4 z-40 flex items-center gap-2 rounded-full px-4 py-3 text-sm font-medium shadow-lg md:hidden print:hidden"
-      >
-        <Search className="h-4 w-4" aria-hidden /> Search
-      </Link>
     </div>
   );
 }

@@ -5,18 +5,14 @@ import { createServerSupabase, getSessionClaims } from "@/lib/db/server";
 import { isLivluxeRole } from "@/lib/domain/permissions";
 import { getMfaStatus } from "@/lib/auth/mfa";
 import { mfaStepUpRequired } from "@/lib/domain/auth";
+import { env } from "@/lib/env";
+import { loadShell } from "@/lib/layout/shell";
 
-// Only screens that exist are linked; the rest (calendar, rate cards, reports,
-// integrations, audit) are added back as each one ships (spec §13.4).
-const NAV = [
-  { href: "/admin/queue", label: "Queue" },
-  { href: "/admin/bookings", label: "Bookings" },
-  { href: "/admin/partners", label: "Partners" },
-  { href: "/admin/rate-cards", label: "Rate cards" },
-  { href: "/admin/settings", label: "Settings" },
-];
-
-/** Livluxe-authenticated console. Users who turned MFA on must verify a code each session. */
+/**
+ * Live Luxe console. Only screens that exist are linked; calendar, reports, integrations
+ * and audit slot in after Settings when they ship (brief §6.1). Users who turned MFA on
+ * must verify a code each session.
+ */
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const claims = await getSessionClaims();
   if (!claims) redirect("/login");
@@ -24,8 +20,22 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const mfa = await getMfaStatus(await createServerSupabase());
   if (mfaStepUpRequired({ aal: mfa.aal, hasVerifiedFactor: mfa.verifiedTotp.length > 0 }))
     redirect("/mfa/verify?next=/admin/queue");
+  const shell = await loadShell(claims, "ops");
+  const nav = [
+    { href: "/admin/queue", label: "Queue", count: shell.queue?.live, alert: (shell.queue?.breached ?? 0) > 0 },
+    { href: "/admin/bookings", label: "Bookings" },
+    { href: "/admin/partners", label: "Partners" },
+    { href: "/admin/rate-cards", label: "Rate cards" },
+    { href: "/admin/settings", label: "Settings" },
+  ];
   return (
-    <AppShell tone="admin" title="Operations console" nav={NAV} user={{ email: claims.email, role: claims.role }}>
+    <AppShell
+      tone="ops"
+      nav={nav}
+      user={{ name: shell.name, email: shell.email, role: shell.role, orgName: "Live Luxe" }}
+      sync={shell.sync}
+      supportEmail={env().EMAIL_REPLY_TO}
+    >
       {children}
     </AppShell>
   );

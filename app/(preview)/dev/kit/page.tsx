@@ -310,8 +310,9 @@ export default async function KitPage({ searchParams }: PageProps<"/dev/kit">) {
   if (p.throw === "1") throw new Error("Deliberate preview error");
   return (
     <AppShell
-      title="Partner portal"
-      tone={tone}
+      tone={tone === "admin" ? "ops" : "partner"}
+      sync={{ level: "live", lastConfirmedAt: new Date().toISOString(), ageMinutes: 2 }}
+      supportEmail="contact@liveluxeau.com"
       nav={[
         { href: "/", label: "Dashboard" },
         { href: "/search", label: "Search" },
@@ -319,7 +320,12 @@ export default async function KitPage({ searchParams }: PageProps<"/dev/kit">) {
         { href: "/team", label: "Team" },
         { href: "/settings", label: "Settings" },
       ]}
-      user={{ email: "claudia@acme-insurance.example", role: "partner_admin", orgName: "Acme Insurance" }}
+      user={{
+        name: "Dana Partner",
+        email: "claudia@acme-insurance.example",
+        role: "partner_admin",
+        orgName: "Acme Insurance",
+      }}
     >
       <div className="space-y-12">
         <PageHeader

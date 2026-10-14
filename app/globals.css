@@ -73,6 +73,10 @@
   --surface-navy-hover: var(--brand-navy-hover);
   --text-on-navy: #f0ece3;
   --text-on-navy-muted: #c6cbd4;
+  /* Status dots on the navy ops header: fixed, because the header is navy in both themes. */
+  --on-navy-success: #6ee7b7;
+  --on-navy-attention: #fbbf24;
+  --on-navy-danger: #fca5a5;
 
   /* ---- Legacy role aliases (screens migrate to the roles above in Phase 2) ---- */
   --background: var(--bg-canvas);
@@ -236,6 +240,9 @@
   --color-navy-hover: var(--surface-navy-hover);
   --color-on-navy: var(--text-on-navy);
   --color-on-navy-muted: var(--text-on-navy-muted);
+  --color-on-navy-success: var(--on-navy-success);
+  --color-on-navy-attention: var(--on-navy-attention);
+  --color-on-navy-danger: var(--on-navy-danger);
   --color-info-bg: var(--status-info-bg);
   --color-info-fg: var(--status-info-fg);
   --color-info-border: var(--status-info-border);

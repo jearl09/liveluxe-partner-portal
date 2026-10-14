@@ -35,7 +35,9 @@ export default async function DashboardPreview({ searchParams }: PageProps<"/dev
   const kpis = computeKpis(rows, now);
   return (
     <AppShell
-      title="Partner portal"
+      tone="partner"
+      sync={{ level: "live", lastConfirmedAt: new Date().toISOString(), ageMinutes: 2 }}
+      supportEmail="contact@liveluxeau.com"
       nav={[
         { href: "/", label: "Dashboard" },
         { href: "/search", label: "Search" },
@@ -44,7 +46,12 @@ export default async function DashboardPreview({ searchParams }: PageProps<"/dev
         { href: "/team", label: "Team" },
         { href: "/settings", label: "Settings" },
       ]}
-      user={{ email: "claudia@acme-insurance.example", role: "partner_admin", orgName: "Acme Insurance" }}
+      user={{
+        name: "Dana Partner",
+        email: "claudia@acme-insurance.example",
+        role: "partner_admin",
+        orgName: "Acme Insurance",
+      }}
     >
       <div className="space-y-8">
         <header className="flex flex-wrap items-start justify-between gap-4">

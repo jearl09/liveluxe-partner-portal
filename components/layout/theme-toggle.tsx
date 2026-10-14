@@ -80,8 +80,8 @@ export function ThemeToggle({ tone = "partner" }: { tone?: "partner" | "admin" }
         aria-label={`Colour theme: ${current.label}. Switch to ${nextLabel}`}
         title={`Theme: ${current.label}`}
         className={cn(
-          "ease-ios focus-visible:ring-ring flex h-9 w-9 items-center justify-center rounded-md transition-colors duration-150 focus-visible:ring-2 focus-visible:outline-none lg:hidden",
-          dark ? "bg-white/10 text-white hover:bg-white/20" : "bg-muted border-border text-strong hover:bg-card border",
+          "rounded-control coarse:h-11 coarse:w-11 flex h-10 w-10 items-center justify-center transition-colors duration-150 lg:hidden",
+          dark ? "text-on-navy hover:bg-white/10" : "text-text-primary hover:bg-surface",
         )}
       >
         <current.Icon className="h-4 w-4" aria-hidden />
@@ -90,8 +90,8 @@ export function ThemeToggle({ tone = "partner" }: { tone?: "partner" | "admin" }
         role="radiogroup"
         aria-label="Colour theme"
         className={cn(
-          "hidden items-center gap-0.5 rounded-md p-0.5 lg:inline-flex",
-          dark ? "bg-white/10" : "bg-muted border-border border",
+          "rounded-control hidden items-center gap-0.5 p-0.5 lg:inline-flex",
+          dark ? "bg-white/10" : "bg-surface border-subtle border",
         )}
       >
         {OPTIONS.map(({ value, label, Icon }) => {
@@ -106,14 +106,14 @@ export function ThemeToggle({ tone = "partner" }: { tone?: "partner" | "admin" }
               title={label}
               onClick={() => apply(value)}
               className={cn(
-                "ease-ios focus-visible:ring-ring flex h-7 w-8 items-center justify-center rounded-[0.4rem] transition-colors duration-150 focus-visible:ring-2 focus-visible:outline-none",
+                "flex h-8 w-9 items-center justify-center rounded-[4px] transition-colors duration-150",
                 selected
                   ? dark
-                    ? "bg-white/20 text-white"
-                    : "bg-card text-strong shadow-xs"
+                    ? "text-on-navy bg-white/20"
+                    : "bg-inset text-text-primary"
                   : dark
-                    ? "text-white/60 hover:text-white"
-                    : "text-muted-foreground hover:text-strong",
+                    ? "text-on-navy-muted hover:text-on-navy"
+                    : "text-text-muted hover:text-text-primary",
               )}
             >
               <Icon className="h-3.5 w-3.5" aria-hidden />
