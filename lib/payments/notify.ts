@@ -9,6 +9,7 @@ import type { BookingRequestRow, InvoiceRow, PaymentRow } from "@/lib/db/types";
 import { env } from "@/lib/env";
 import { formatMoney } from "@/lib/domain/money";
 import { sendEmail } from "@/lib/notifications/email";
+import { CheckinPackReleased } from "@/lib/notifications/templates/checkin";
 import { BookingCancelled, BookingConfirmed, PaymentRequired } from "@/lib/notifications/templates/payment";
 import { log } from "@/lib/observability/logger";
 import { formatDate, formatTimestamp } from "@/lib/utils";
@@ -137,6 +138,46 @@ export async function sendBookingCancelled(
     log.warn("payment.notify_failed", {
       requestId,
       kind: "booking_cancelled",
+      reference: b.reference,
+      error: String(e),
+    });
+  }
+}
+
+/** Appendix D "Check-in pack released": address and link only; codes stay behind login (§8.4). */
+export async function sendCheckinPackReleased(b: BookingRequestRow, propertyName: string, requestId: string) {
+  try {
+    const to = await recipientForBooking(b);
+    if (!to) return;
+    const { data: l } = await adminDb()
+      .from("listings")
+      .select("address_line, suburb, state, postcode, checkin_from, checkin_to, checkout_by")
+      .eq("id", b.listing_id)
+      .maybeSingle();
+    const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : null);
+    const addressLine = l
+      ? [l.address_line, [l.suburb, l.state, l.postcode].filter(Boolean).join(" ")].filter(Boolean).join(", ") || null
+      : null;
+    await sendEmail({
+      to,
+      subject: `Check-in details ready — ${b.reference}`,
+      idempotencyKey: `checkin_released:${b.id}:${b.checkin_released_at ?? ""}`,
+      tags: { type: "checkin_released" },
+      template: CheckinPackReleased({
+        ...common(b, propertyName),
+        guestName: b.guest_name,
+        addressLine,
+        arrivalWindow: hhmm(l?.checkin_from)
+          ? `from ${hhmm(l?.checkin_from)}${hhmm(l?.checkin_to) ? ` to ${hhmm(l?.checkin_to)}` : ""}`
+          : null,
+        checkoutBy: hhmm(l?.checkout_by),
+        requestUrl: `${env().NEXT_PUBLIC_APP_URL}/requests/${b.id}`,
+      }),
+    });
+  } catch (e) {
+    log.warn("payment.notify_failed", {
+      requestId,
+      kind: "checkin_released",
       reference: b.reference,
       error: String(e),
     });

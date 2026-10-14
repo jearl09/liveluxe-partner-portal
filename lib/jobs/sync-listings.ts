@@ -6,16 +6,19 @@
  * vanished from the feed are soft-deleted, but only when every page was fetched,
  * so a mid-run failure can never hide the whole portfolio (§17.3).
  *
- * Sensitive access fields (door codes, Wi-Fi) are NOT persisted yet — that lands
- * with the encrypted listing_access_details writer. Nothing here logs them either.
+ * Sensitive access fields (door codes, Wi-Fi, entry instructions) go to
+ * listing_access_details encrypted with ACCESS_DETAILS_KEY (§8.4). Nothing here
+ * logs them. Without a key the secrets are dropped and only the plain notes kept.
  */
+import { createHash } from "node:crypto";
 import { adminDb } from "@/lib/db/admin";
 import { hostaway } from "@/lib/hostaway/api";
-import { mapListing, type ListingRow as MappedListing } from "@/lib/hostaway/mappers";
+import { mapListing, type AccessDetailsRow, type ListingRow as MappedListing } from "@/lib/hostaway/mappers";
 import { chunk, looksInternalListing, planListingSync } from "@/lib/domain/sync";
 import { jitterPoint, toEwktPoint } from "@/lib/domain/geo";
 import { log } from "@/lib/observability/logger";
 import type { Database, Json } from "@/lib/db/types";
+import { accessKeyConfigured, encryptSecret } from "@/lib/security/access-crypto";
 import type { JobFn } from "./registry";
 
 const PAGE_SIZE = 100;
@@ -43,14 +46,42 @@ function toListingInsert(m: MappedListing, syncedAt: string): ListingInsert {
   };
 }
 
+/**
+ * Encrypted access-details row. The hash covers the plaintext so an unchanged
+ * property is not rewritten every hour just because the IV differs.
+ */
+function toAccessInsert(
+  listingId: string,
+  a: AccessDetailsRow,
+  keyed: boolean,
+): Database["public"]["Tables"]["listing_access_details"]["Insert"] {
+  const content_hash = createHash("sha256")
+    .update(JSON.stringify({ ...a, keyed }))
+    .digest("hex");
+  return {
+    listing_id: listingId,
+    door_code_encrypted: keyed ? encryptSecret(a.door_code) : null,
+    wifi_ssid: a.wifi_ssid,
+    wifi_password_encrypted: keyed ? encryptSecret(a.wifi_password) : null,
+    access_instructions_encrypted: keyed ? encryptSecret(a.access_instructions) : null,
+    checkin_instructions: a.checkin_instructions,
+    special_instructions: a.special_instructions,
+    content_hash,
+    updated_at: new Date().toISOString(),
+  };
+}
+
 export const syncListings: JobFn = async ({ requestId }) => {
   const db = adminDb();
   const syncedAt = new Date().toISOString();
   let apiCalls = 0;
   let quarantined = 0;
+  const keyed = accessKeyConfigured();
+  if (!keyed) log.warn("sync.listings.access_key_missing", { requestId });
 
   // 1. Fetch every page. A failure after page 0 leaves `complete` false.
   const mapped: MappedListing[] = [];
+  const accessById = new Map<number, AccessDetailsRow>();
   let complete = false;
   for (let page = 0; page < MAX_PAGES; page++) {
     const res = await hostaway.listListings(PAGE_SIZE, page * PAGE_SIZE);
@@ -62,7 +93,9 @@ export const syncListings: JobFn = async ({ requestId }) => {
     }
     for (const src of res.data) {
       try {
-        mapped.push(mapListing(src).listing);
+        const m = mapListing(src);
+        mapped.push(m.listing);
+        accessById.set(m.listing.hostaway_listing_id, m.access);
       } catch (e) {
         quarantined++;
         log.error("sync.listings.quarantined", { requestId, hostawayListingId: src.id, error: String(e) });
@@ -147,6 +180,39 @@ export const syncListings: JobFn = async ({ requestId }) => {
     }
   }
 
+  // 4b. Access packs for every fetched listing, rewritten only when the content moved (§8.4).
+  let accessWritten = 0;
+  if (mapped.length) {
+    const { data: ids, error: idErr } = await db
+      .from("listings")
+      .select("id, hostaway_listing_id")
+      .in(
+        "hostaway_listing_id",
+        mapped.map((m) => m.hostaway_listing_id),
+      );
+    if (idErr) throw new Error(`listings id read failed: ${idErr.message}`);
+    const { data: current, error: curErr } = await db
+      .from("listing_access_details")
+      .select("listing_id, content_hash")
+      .in(
+        "listing_id",
+        (ids ?? []).map((x) => x.id),
+      );
+    if (curErr) throw new Error(`listing_access_details read failed: ${curErr.message}`);
+    const hashByListing = new Map((current ?? []).map((c) => [c.listing_id, c.content_hash]));
+    const rows = (ids ?? [])
+      .map((x) => {
+        const a = accessById.get(x.hostaway_listing_id);
+        return a ? toAccessInsert(x.id, a, keyed) : null;
+      })
+      .filter((r): r is NonNullable<typeof r> => !!r && hashByListing.get(r.listing_id!) !== r.content_hash);
+    for (const batch of chunk(rows, UPSERT_BATCH)) {
+      const { error } = await db.from("listing_access_details").upsert(batch, { onConflict: "listing_id" });
+      if (error) throw new Error(`listing_access_details upsert failed: ${error.message}`);
+      accessWritten += batch.length;
+    }
+  }
+
   // 5. Unchanged rows: just record that we saw them.
   for (const ids of chunk(plan.touch, 200)) {
     const { error } = await db.from("listings").update({ last_synced_at: syncedAt }).in("hostaway_listing_id", ids);
@@ -169,6 +235,7 @@ export const syncListings: JobFn = async ({ requestId }) => {
     `unchanged=${plan.touch.length}`,
     `deactivated=${plan.deactivate.length}`,
     `reactivated=${plan.reactivate.length}`,
+    `access_packs=${accessWritten}${keyed ? "" : " (no key: secrets dropped)"}`,
     quarantined ? `quarantined=${quarantined}` : null,
   ]
     .filter(Boolean)

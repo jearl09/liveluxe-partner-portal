@@ -172,6 +172,12 @@ export async function cancelBooking(
 
   // 2. Inventory: release the Hostaway reservation before touching money.
   const ha = await cancelHostawayReservation(b, requestId);
+  // §8.4: the pack is hidden at once by the status change; if codes were already out, ops must rotate them.
+  if (b.checkin_released_at)
+    await slack(
+      "alerts",
+      `:rotating_light: ${b.reference} cancelled after its access pack was released ${b.checkin_released_at}. Rotate the door code and Wi-Fi password for ${d.listing.name} in Hostaway.`,
+    );
 
   // 3. Money: void any uncaptured hold, refund the captured part, keep the tax record straight.
   await voidBookingAuthorisations(b.id, "cancelled");

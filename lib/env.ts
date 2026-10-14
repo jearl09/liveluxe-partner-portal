@@ -41,6 +41,10 @@ const serverSchema = z.object({
   EMAIL_FROM: z.string().email(),
   EMAIL_REPLY_TO: z.string().email(),
 
+  // Check-in pack encryption at rest (lib/security/access-crypto.ts). 32 bytes, hex or base64.
+  // Optional: without it door codes and Wi-Fi passwords are not stored and the pack says to call.
+  ACCESS_DETAILS_KEY: z.string().min(32).optional(),
+
   // Slack
   SLACK_WEBHOOK_URL: z.string().url().optional(),
   SLACK_ALERTS_WEBHOOK_URL: z.string().url().optional(),

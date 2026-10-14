@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Banner } from "@/components/ui/banner";
@@ -8,11 +9,13 @@ import { GroupLabel, Panel, PanelHeading, PanelSection } from "@/components/ui/p
 import { StatusPill } from "@/components/ui/status-pill";
 import { PaymentPanel } from "@/components/payments/payment-panel";
 import { CancelPanel } from "@/components/requests/cancel-panel";
+import { CheckinPanel } from "@/components/requests/checkin-panel";
 import { Flash } from "@/components/requests/flash";
 import { QuoteLines } from "@/components/requests/quote-lines";
 import { StatusTimeline } from "@/components/requests/status-timeline";
 import { StayCard } from "@/components/requests/stay-card";
 import { getSessionClaims } from "@/lib/db/server";
+import { env } from "@/lib/env";
 import { humanizeDuration } from "@/lib/domain/dashboard";
 import { formatMoney } from "@/lib/domain/money";
 import { paymentModeFor } from "@/lib/domain/payments";
@@ -20,6 +23,7 @@ import { can } from "@/lib/domain/permissions";
 import { DECLINE_REASON_LABELS } from "@/lib/domain/requests";
 import { orgPaymentTerms, paymentViewForBooking } from "@/lib/payments/load";
 import { cancellationView } from "@/lib/requests/cancel";
+import { checkinView, recordCheckinAccess } from "@/lib/requests/checkin";
 import { getRequest } from "@/lib/requests/load";
 import { formatDate, formatTimestamp } from "@/lib/utils";
 
@@ -40,11 +44,22 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
   const d = await getRequest(id);
   if (!d) notFound();
   const r = d.request;
-  const [terms, pay, cancel] = await Promise.all([
+  const [terms, pay, cancel, checkin] = await Promise.all([
     orgPaymentTerms(r.org_id),
     paymentViewForBooking(id),
     cancellationView(d),
+    checkinView(r),
   ]);
+  if (checkin.tier === "full") {
+    // §8.4: every view of a released pack is logged with user, time and IP.
+    const h = await headers();
+    await recordCheckinAccess({
+      bookingId: r.id,
+      claims,
+      ip: h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip"),
+      userAgent: h.get("user-agent"),
+    });
+  }
   const mode = paymentModeFor(terms);
   const showPayment = !["DRAFT", "DECLINED", "EXPIRED", "FAILED", "COUNTER_OFFERED"].includes(r.status);
   const now = new Date();
@@ -210,11 +225,16 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
         <Banner tone="success">
           <p className="font-medium">Confirmed</p>
           <p>
-            The booking is locked in. Check-in details are released in the portal before arrival; your tax invoice is
-            under Invoices.
+            The booking is locked in.{" "}
+            {checkin.tier === "full"
+              ? "The access pack is below."
+              : "Door code and Wi-Fi appear below once the access pack is released."}{" "}
+            Your tax invoice is under Invoices.
           </p>
         </Banner>
       )}
+
+      <CheckinPanel audience="partner" request={r} view={checkin} supportEmail={env().EMAIL_REPLY_TO} />
 
       {showPayment && (
         <div className="print:hidden">

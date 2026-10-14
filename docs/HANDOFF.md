@@ -467,5 +467,35 @@ Built against a Stripe **sandbox** (test keys in `.env.local` and on Vercel; the
     `apply_booking_transition` lets partners withdraw/cancel; `cancellation_policy()` RPC.
 - **Deploy note**: a GitHub push did not trigger a Vercel build this session; run `node scripts/deploy-hobby.mjs`
   after pushing and check `/api/health` version.
-- Not built yet: early departure (partial refund on a shortened stay), extensions, check-in pack, reconcile-stripe,
+- Not built yet: early departure (partial refund on a shortened stay), extensions, reconcile-stripe,
   consolidated monthly invoices, dunning, SetupIntent, Stripe Tax.
+
+## Session 8 (14 Oct 2026) — email live, check-in pack
+
+- **Email is live**: Resend account under contact@liveluxeau.com, sending domain `booking.liveluxe.au` verified
+  (DKIM + SPF via GoDaddy). `EMAIL_FROM=bookings@booking.liveluxe.au`, `EMAIL_REPLY_TO=contact@liveluxeau.com`.
+  Test emails delivered. The three vars must also be set in Vercel → Production.
+- **Check-in pack** (§8.4 exposure tiers, §10.6 release, §21.2 `release-checkin`):
+  - `lib/domain/checkin.ts` (pure, 11 tests): `checkinTier` → `none | approx | address | full`;
+    `checkinTiming` (property-local check-in/out instants via new `localToUtc` in `lib/domain/dates.ts`; release at
+    check-in − N h; hidden 24 h after checkout); `releaseDue`; `canReleaseManually`. N =
+    `settings.checkin.release_offset_hours` (48) or `listings.checkin_release_offset_hours`.
+  - `lib/security/access-crypto.ts` (6 tests): AES-256-GCM with `ACCESS_DETAILS_KEY` (32 bytes hex/base64).
+    Door code, Wi-Fi password and entry instructions are stored as `\x…` bytea. **Without the key the sync stores
+    no secrets** and the pack tells the partner to call; the app still boots.
+  - `sync-listings` now writes `listing_access_details` (content-hashed, so unchanged rows are not rewritten).
+    Needs a real Hostaway key + a sync run before any pack has codes.
+  - `lib/requests/checkin.ts`: `checkinView` (tier + address + decrypted pack, decrypt only at `full`),
+    `releaseCheckin` (idempotent stamp of `checkin_released_at`/`_by`, audit row `checkin.released`, notification
+    row `checkin_released`, email "Check-in details ready" with address + link but **no codes**, Slack #bookings),
+    `releaseCheckinNow` (ops, permission `checkin.release`), `recordCheckinAccess` (one `checkin_access_log` row per
+    partner view with IP + UA), `checkinAccessLog` (ops list).
+  - Job `lib/jobs/release-checkin.ts` replaces the stub; hourly in `vercel.json`.
+  - UI `components/requests/checkin-panel.tsx` on both pages: address tier once approved; full pack once released;
+    ops get "Release access pack now" and the view log. Admin route action `release_checkin`.
+  - Cancel after release → #alerts asks ops to rotate the code/Wi-Fi in Hostaway (§8.4 revocation).
+  - **Migration `20261014090000_checkin_pack.sql`** (apply in Supabase SQL editor): access-details content hash,
+    `booking_requests.checkin_released_by`, access-log index, revoke client writes on the two sensitive tables.
+  - Env: `ACCESS_DETAILS_KEY` (optional; `openssl rand -hex 32`). Same value locally and in Vercel.
+- Not tested end to end: no listing has access details until `sync-listings` runs against a Hostaway account that
+  has door codes. The release path can be exercised by "Release access pack now" on any CONFIRMED booking.

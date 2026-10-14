@@ -11,6 +11,7 @@ import { expireHolds } from "./expire-holds";
 import { slaEscalation } from "./sla-escalation";
 import { drainWebhooks } from "./drain-webhooks";
 import { checkAuthorisations } from "./check-authorisations";
+import { releaseCheckinJob } from "./release-checkin";
 
 export interface JobResult {
   examined?: number;
@@ -64,8 +65,8 @@ export const JOBS: Record<string, { schedule: string; description: string; run: 
   },
   "release-checkin": {
     schedule: "0 * * * *",
-    description: "Release access packs at T-48h (configurable).",
-    run: todo("release-checkin"),
+    description: "Release access packs at check-in minus N hours (settings, per-listing override).",
+    run: releaseCheckinJob,
   },
   "reconcile-hostaway": {
     schedule: "15 3 * * *",

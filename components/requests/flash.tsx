@@ -27,6 +27,7 @@ const DONE: Record<string, string> = {
   cancelled_refund_pending:
     "Cancelled and the dates released, but the Stripe refund did not go through. Finance has been alerted to process it by hand.",
   withdrawn: "Request withdrawn. The dates and the card hold are released.",
+  checkin_released: "Access pack released. The partner has been emailed and the codes are visible below.",
   cancellation_requested:
     "Cancellation request sent. Live Luxe will review it against the policy and email you the outcome.",
   approved_payment_pending:

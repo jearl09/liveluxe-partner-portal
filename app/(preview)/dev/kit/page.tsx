@@ -165,6 +165,7 @@ const request: BookingRequestRow = {
   hostaway_reservation_id: null,
   hostaway_write_key: null,
   checkin_released_at: null,
+  checkin_released_by: null,
   submitted_at: iso(-3),
   approved_at: null,
   approved_by: null,

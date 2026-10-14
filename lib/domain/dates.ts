@@ -42,3 +42,33 @@ export function calendarWindow(kind: keyof typeof CALENDAR_WINDOWS, today: strin
   const w = CALENDAR_WINDOWS[kind];
   return { from: addDays(today, w.fromOffset), to: addDays(today, w.toOffset) };
 }
+
+function wallClockOffsetMs(instantMs: number, timeZone: string): number {
+  const p = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  })
+    .formatToParts(new Date(instantMs))
+    .reduce<Record<string, string>>((acc, x) => ((acc[x.type] = x.value), acc), {});
+  const wall = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+  return wall - instantMs;
+}
+
+/**
+ * The UTC instant of a wall-clock time in a timezone, e.g. "2026-11-25" "15:00" in
+ * Australia/Melbourne -> 2026-11-25T04:00:00Z. Two passes settle the DST offset.
+ */
+export function localToUtc(isoDate: string, time: string, timeZone: string): Date {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const [hh = 0, mm = 0] = time.split(":").map(Number);
+  const asUtc = Date.UTC(y, m - 1, d, hh, mm);
+  let guess = asUtc - wallClockOffsetMs(asUtc, timeZone);
+  guess = asUtc - wallClockOffsetMs(guess, timeZone);
+  return new Date(guess);
+}

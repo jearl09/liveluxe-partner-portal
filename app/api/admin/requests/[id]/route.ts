@@ -1,6 +1,6 @@
 /**
  * POST /api/admin/requests/{id} — ops decisions (spec §13.4, §10.1).
- * action=review | approve | decline | counter | cancel. Form posts from /admin/bookings/{id}.
+ * action=review | approve | decline | counter | cancel | release_checkin. Form posts from /admin/bookings/{id}.
  */
 import { requestId } from "@/lib/api/response";
 import { formFields, redirectTo } from "@/lib/auth/request";
@@ -14,6 +14,7 @@ import { validateCounterOffer } from "@/lib/domain/requests";
 import { log } from "@/lib/observability/logger";
 import { confirmBooking } from "@/lib/payments/confirm";
 import { cancelBooking } from "@/lib/requests/cancel";
+import { releaseCheckinNow } from "@/lib/requests/checkin";
 import { approve, counterOffer, decline, loadPolicy, startReview } from "@/lib/requests/decide";
 import { notifyPartnerOfDecision } from "@/lib/requests/notify";
 import { getRequest } from "@/lib/requests/load";
@@ -109,6 +110,12 @@ export async function POST(req: Request, ctx: Ctx) {
           done: out.refundOk ? "cancelled" : "cancelled_refund_pending",
           detail: out.note,
         });
+      }
+      case "release_checkin": {
+        const current = await getRequest(id);
+        if (!current) return redirectTo(req, "/admin/queue", { error: "NOT_FOUND" });
+        await releaseCheckinNow(claims, current.request, reqId);
+        return redirectTo(req, back, { done: "checkin_released" });
       }
       default:
         return redirectTo(req, back, { error: "VALIDATION_FAILED", detail: "unknown action" });

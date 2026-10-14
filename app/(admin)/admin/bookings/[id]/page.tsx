@@ -4,6 +4,7 @@ import { ArrowLeft, Clock } from "lucide-react";
 import { DecisionPanel } from "@/components/admin/decision-panel";
 import { PaymentPanel } from "@/components/payments/payment-panel";
 import { CancelPanel } from "@/components/requests/cancel-panel";
+import { CheckinPanel } from "@/components/requests/checkin-panel";
 import { Banner } from "@/components/ui/banner";
 import { PrintButton } from "@/components/ui/print-button";
 import { GroupLabel, Panel, PanelHeading, PanelSection } from "@/components/ui/panel";
@@ -18,9 +19,11 @@ import { approvalPaymentGate, paymentModeFor } from "@/lib/domain/payments";
 import { DECLINE_REASON_LABELS } from "@/lib/domain/requests";
 import { orgPaymentTerms, paymentViewForBooking } from "@/lib/payments/load";
 import { getSessionClaims } from "@/lib/db/server";
+import { env } from "@/lib/env";
 import { formatMoney } from "@/lib/domain/money";
 import { can } from "@/lib/domain/permissions";
 import { cancellationView } from "@/lib/requests/cancel";
+import { checkinAccessLog, checkinView } from "@/lib/requests/checkin";
 import { getRequest } from "@/lib/requests/load";
 import { formatTimestamp } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -49,12 +52,15 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
   const d = await getRequest(id);
   if (!d) notFound();
   const r = d.request;
-  const [terms, pay, cancel, claims] = await Promise.all([
+  const [terms, pay, cancel, claims, checkin, accessLog] = await Promise.all([
     orgPaymentTerms(r.org_id),
     paymentViewForBooking(id),
     cancellationView(d),
     getSessionClaims(),
+    checkinView(r),
+    checkinAccessLog(id),
   ]);
+  const canRelease = !!claims && can(claims.role, "checkin.release");
   const mode = paymentModeFor(terms);
   const gate = approvalPaymentGate(mode, pay.state);
   const showPayment = !["DRAFT", "DECLINED", "EXPIRED", "FAILED"].includes(r.status);
@@ -144,6 +150,15 @@ export default async function AdminBookingPage({ params, searchParams }: PagePro
           </p>
         </Banner>
       )}
+
+      <CheckinPanel
+        audience="ops"
+        request={r}
+        view={checkin}
+        canRelease={canRelease}
+        accessLog={accessLog}
+        supportEmail={env().EMAIL_REPLY_TO}
+      />
 
       {showPayment && (
         <div className="print:hidden">

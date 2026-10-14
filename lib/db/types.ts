@@ -90,6 +90,7 @@ export type BookingRequestRow = {
   hostaway_reservation_id: number | null;
   hostaway_write_key: string | null;
   checkin_released_at: string | null;
+  checkin_released_by: string | null;
   submitted_at: string | null;
   approved_at: string | null;
   approved_by: string | null;
@@ -212,6 +213,31 @@ export type ListingRow = {
   last_synced_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+/** public.listing_access_details — SENSITIVE. bytea columns hold AES-GCM blobs as PostgREST `\x…` literals. */
+export type ListingAccessDetailsRow = {
+  listing_id: string;
+  door_code_encrypted: string | null;
+  wifi_ssid: string | null;
+  wifi_password_encrypted: string | null;
+  access_instructions_encrypted: string | null;
+  checkin_instructions: string | null;
+  special_instructions: string | null;
+  parking_notes: string | null;
+  emergency_contact: string | null;
+  content_hash: string | null;
+  updated_at: string;
+};
+
+/** public.checkin_access_log — who viewed a released access pack (§8.4). */
+export type CheckinAccessLogRow = {
+  id: number;
+  booking_id: string;
+  user_id: string | null;
+  ip: string | null;
+  user_agent: string | null;
+  viewed_at: string;
 };
 
 export interface Database {
@@ -395,6 +421,8 @@ export interface Database {
         sort_order: number;
       }>;
       listing_amenities: Row<{ listing_id: string; amenity_code: string; label: string | null }>;
+      listing_access_details: Row<ListingAccessDetailsRow>;
+      checkin_access_log: Row<CheckinAccessLogRow>;
       calendar_days: Row<{
         listing_id: string;
         date: string;
