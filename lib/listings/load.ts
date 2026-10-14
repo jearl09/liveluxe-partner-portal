@@ -108,6 +108,69 @@ export interface SearchResults {
 /** Characters that are safe inside a PostgREST `or=` filter value. */
 const cleanTerm = (q: string) => q.replace(/[^\p{L}\p{N}\s-]/gu, "").trim();
 
+/** PostgREST returns at most this many rows per request (Supabase `max_rows`); larger reads are split. */
+const MAX_ROWS = 1000;
+type Db = Awaited<ReturnType<typeof createServerSupabase>>;
+
+/**
+ * Each listing's cover photo. Reads only the lowest sort position per listing rather than every
+ * photo (2,000+ rows, silently cut at MAX_ROWS), then looks up the few listings whose first photo
+ * sits further down the order.
+ */
+async function firstImages(supabase: Db, ids: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (!ids.length) return out;
+  const first = await supabase
+    .from("listing_images")
+    .select("listing_id, url")
+    .in("listing_id", ids)
+    .lte("sort_order", 1)
+    .order("sort_order");
+  if (first.error) throw new Error(`listing_images read failed: ${first.error.message}`);
+  for (const img of first.data ?? []) if (!out.has(img.listing_id)) out.set(img.listing_id, img.url);
+  const missing = ids.filter((id) => !out.has(id));
+  for (const id of missing) {
+    const one = await supabase
+      .from("listing_images")
+      .select("url")
+      .eq("listing_id", id)
+      .order("sort_order")
+      .limit(1)
+      .maybeSingle();
+    if (one.error) throw new Error(`listing_images read failed: ${one.error.message}`);
+    if (one.data) out.set(id, one.data.url);
+  }
+  return out;
+}
+
+/**
+ * Nightly prices for the stay, in batches of listings small enough that no batch passes MAX_ROWS.
+ * A cut-off read would leave a listing short of nights and wrongly show "Price on application".
+ */
+async function calendarFor(
+  supabase: Db,
+  ids: string[],
+  checkIn: string,
+  checkOut: string,
+  nights: number,
+): Promise<{ listing_id: string; price_cents: number | null }[]> {
+  const perBatch = Math.max(1, Math.floor(MAX_ROWS / Math.max(1, nights)));
+  const batches: string[][] = [];
+  for (let i = 0; i < ids.length; i += perBatch) batches.push(ids.slice(i, i + perBatch));
+  const results = await Promise.all(
+    batches.map((batch) =>
+      supabase
+        .from("calendar_days")
+        .select("listing_id, price_cents")
+        .in("listing_id", batch)
+        .gte("date", checkIn)
+        .lt("date", checkOut),
+    ),
+  );
+  for (const r of results) if (r.error) throw new Error(`calendar_days read failed: ${r.error.message}`);
+  return results.flatMap((r) => r.data ?? []);
+}
+
 export async function searchListings(q: SearchQuery, nights: number, hasDates: boolean): Promise<SearchResults> {
   const supabase = await createServerSupabase();
   const from = (q.page - 1) * SEARCH_PAGE_SIZE;
@@ -145,28 +208,15 @@ export async function searchListings(q: SearchQuery, nights: number, hasDates: b
   const ids = rows.map((r) => r.id);
   const total = count ?? rows.length;
 
-  const [images, calendar] = await Promise.all([
-    ids.length
-      ? supabase.from("listing_images").select("listing_id, url, sort_order").in("listing_id", ids).order("sort_order")
-      : Promise.resolve({ data: [], error: null }),
+  const [firstImage, calendar] = await Promise.all([
+    firstImages(supabase, ids),
     ids.length && hasDates && q.checkIn && q.checkOut
-      ? supabase
-          .from("calendar_days")
-          .select("listing_id, price_cents")
-          .in("listing_id", ids)
-          .gte("date", q.checkIn)
-          .lt("date", q.checkOut)
-          .range(0, 9999)
-      : Promise.resolve({ data: [], error: null }),
+      ? calendarFor(supabase, ids, q.checkIn, q.checkOut, nights)
+      : Promise.resolve([]),
   ]);
-  if (images.error) throw new Error(`listing_images read failed: ${images.error.message}`);
-  if (calendar.error) throw new Error(`calendar_days read failed: ${calendar.error.message}`);
-
-  const firstImage = new Map<string, string>();
-  for (const img of images.data ?? []) if (!firstImage.has(img.listing_id)) firstImage.set(img.listing_id, img.url);
 
   const pricesByListing = new Map<string, { priceCents: number | null }[]>();
-  for (const d of calendar.data ?? []) {
+  for (const d of calendar) {
     const arr = pricesByListing.get(d.listing_id) ?? [];
     arr.push({ priceCents: d.price_cents });
     pricesByListing.set(d.listing_id, arr);

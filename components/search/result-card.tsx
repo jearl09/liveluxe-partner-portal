@@ -1,27 +1,42 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Bath, BedDouble, PawPrint, Users } from "lucide-react";
 import { formatMoney } from "@/lib/domain/money";
+import { canOptimiseImage } from "@/lib/listings/images";
 import type { SearchResultItem } from "@/lib/listings/load";
 
 /**
  * One search result (brief §7.3). Pricing shows only when dates are set: the nightly
  * average and the accommodation for the stay. With no dates the price area says
- * "Add dates for pricing" — never a "from" price. The whole card is the link.
+ * "Add dates for pricing" — never a "from" price. The whole card is the link. `eager` marks the
+ * first row, whose photo is the page's largest paint, so it loads first instead of lazily.
  */
-export function ResultCard({ item, href, nights }: { item: SearchResultItem; href: string; nights: number }) {
+export function ResultCard({
+  item,
+  href,
+  nights,
+  eager = false,
+}: {
+  item: SearchResultItem;
+  href: string;
+  nights: number;
+  eager?: boolean;
+}) {
   const place = [item.suburb, item.state].filter(Boolean).join(", ");
   const money = (c: number) => formatMoney(c, item.currency);
   return (
     <li className="group border-subtle bg-surface rounded-card hover:border-strong-border focus-within:outline-focus relative flex flex-col overflow-hidden border transition-colors duration-150 focus-within:outline-2 focus-within:outline-offset-2">
       <div className="bg-inset relative aspect-[4/3] w-full overflow-hidden">
         {item.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- Hostaway CDN, arbitrary host
-          <img
+          <Image
             src={item.imageUrl}
             alt=""
-            loading="lazy"
-            decoding="async"
-            className="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.02]"
+            fill
+            sizes="(min-width: 1280px) 420px, (min-width: 640px) 50vw, 100vw"
+            unoptimized={!canOptimiseImage(item.imageUrl)}
+            loading={eager ? "eager" : "lazy"}
+            fetchPriority={eager ? "high" : "auto"}
+            className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.02]"
           />
         ) : (
           <div className="text-text-muted text-body-sm flex h-full items-center justify-center">No photo yet</div>

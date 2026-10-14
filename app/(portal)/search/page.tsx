@@ -111,8 +111,8 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
 
           {priced.length > 0 && (
             <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-              {priced.map((item) => (
-                <ResultCard key={item.id} item={item} href={linkFor(item.id)} nights={parsed.nights} />
+              {priced.map((item, i) => (
+                <ResultCard key={item.id} item={item} href={linkFor(item.id)} nights={parsed.nights} eager={i < 3} />
               ))}
             </ul>
           )}
@@ -128,8 +128,14 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
                 </p>
               </div>
               <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                {onApplication.map((item) => (
-                  <ResultCard key={item.id} item={item} href={linkFor(item.id)} nights={parsed.nights} />
+                {onApplication.map((item, i) => (
+                  <ResultCard
+                    key={item.id}
+                    item={item}
+                    href={linkFor(item.id)}
+                    nights={parsed.nights}
+                    eager={priced.length === 0 && i < 3}
+                  />
                 ))}
               </ul>
             </section>
