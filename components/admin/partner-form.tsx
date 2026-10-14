@@ -90,6 +90,29 @@ export function PartnerForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className={labelClass}>
+          Deposit % (deposit terms)
+          <input
+            name="depositPct"
+            inputMode="numeric"
+            placeholder="platform default"
+            defaultValue={values.depositPct}
+            className={field("depositPct")}
+          />
+        </label>
+        <label className={labelClass}>
+          Finance contact email
+          <input
+            name="financeContactEmail"
+            type="email"
+            placeholder="named when a booking hits the credit limit"
+            defaultValue={values.financeContactEmail}
+            className={field("financeContactEmail")}
+          />
+        </label>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className={labelClass}>
           Billing contact
           <input
             name="billingContactName"

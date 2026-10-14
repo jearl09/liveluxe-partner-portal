@@ -1,28 +1,61 @@
 /**
- * APPROVED → CONFIRMED — spec §10.1 side effects, §11.1, §6.7.
+ * APPROVED → CONFIRMED — spec §10.1 invariant 4, §10.2 steps 13–21, §11.1, §6.7, §17.2.
  *
- * Runs as the system actor from three places: right after ops approve, from
- * the Stripe webhook when a payment succeeds, and from the drain job on retry.
- * Every step is idempotent, so running it twice (or after a crash halfway) is
- * safe: capture is keyed on the PaymentIntent, the Hostaway write on the
- * booking, the invoice on the booking, and the transition checks status first.
+ * Runs as the system actor from four places: right after ops approve, from the
+ * Stripe webhook when an authorisation or payment lands, from the drain job on
+ * retry, and from the pay-return route. Every step is idempotent, so running it
+ * twice (or after a crash halfway) is safe: the Hostaway write is keyed on the
+ * booking, capture on the PaymentIntent, invoices on the booking, and the
+ * transition checks status first.
  *
- *   mode A (card)     capture the hold → Hostaway reservation → CONFIRMED → paid invoice (receipt) → email
- *   mode C (invoice)  net-terms invoice → Hostaway reservation → CONFIRMED → email
- *   capture failed    → AWAITING_PAYMENT, partner is asked to pay again (hold kept)
+ * Order, per the spec (money is never taken for a stay that is not in Hostaway):
+ *
+ *   A. money secured?   mode A/B: a live authorisation (or a capture already made);
+ *                       mode C: the credit check passed at approval.
+ *                       Not secured → AWAITING_PAYMENT, partner asked to pay.
+ *   B. Hostaway write   POST /reservations (outbox). Transient failure → stay
+ *                       APPROVED, retried by the drain job, ops alerted after
+ *                       5 minutes. Unrecoverable → FAILED, authorisation voided,
+ *                       ops paged (Appendix B).
+ *   C. capture          mode A: full amount; mode B: the deposit only.
+ *                       Failure here (§17.2 "capture fails after reservation
+ *                       created") → CRITICAL to finance, AWAITING_PAYMENT, the
+ *                       reservation is kept. Mode C: issue the net-terms invoice.
+ *   D. CONFIRMED        confirmed_at set, hold released (RPC).
+ *   E. paperwork        receipt / deposit receipt + balance invoice; emails; Slack.
  */
 import "server-only";
 import { adminDb } from "@/lib/db/admin";
 import type { BookingRequestRow, InvoiceRow, PaymentRow } from "@/lib/db/types";
 import { assertTransition, type BookingStatus } from "@/lib/domain/booking-state-machine";
-import { invoiceDaysFor, paymentModeFor } from "@/lib/domain/payments";
+import { todayIn } from "@/lib/domain/dates";
+import {
+  balanceDueDate,
+  depositPctFor,
+  depositSplit,
+  invoiceDaysFor,
+  paymentModeFor,
+  type PaymentMode,
+} from "@/lib/domain/payments";
 import type { QuoteLine } from "@/lib/domain/quote-engine";
 import { ensureHostawayReservation } from "@/lib/hostaway/reservations";
 import { alertCritical, slack } from "@/lib/notifications/slack";
 import { log } from "@/lib/observability/logger";
 import { loadOrgBilling } from "./customers";
-import { captureBookingPayment, latestPayment, loadBookingAdmin } from "./intents";
-import { invoiceForBooking, issueInvoice } from "./invoices";
+import {
+  captureBookingPayment,
+  latestPayment,
+  loadBookingAdmin,
+  paymentState,
+  voidBookingAuthorisations,
+} from "./intents";
+import {
+  invoiceForBooking,
+  issueBalanceInvoice,
+  issueDepositReceipt,
+  issueInvoice,
+  type InvoiceSource,
+} from "./invoices";
 import { sendBookingConfirmed, sendPaymentRequired } from "./notify";
 
 export type ConfirmTrigger = "approval" | "webhook" | "job";
@@ -31,7 +64,9 @@ export interface ConfirmOutcome {
   note: string;
 }
 
-async function systemTransition(
+const BOOKING_TZ = "Australia/Melbourne";
+
+export async function systemTransition(
   b: BookingRequestRow,
   to: BookingStatus,
   extra: { reason: string; metadata?: Record<string, unknown> },
@@ -51,14 +86,18 @@ async function systemTransition(
 
 async function loadContext(b: BookingRequestRow) {
   const db = adminDb();
-  const [listing, quote, setting] = await Promise.all([
+  const [listing, quote, settings] = await Promise.all([
     db.from("listings").select("public_name, hostaway_listing_id").eq("id", b.listing_id).single(),
     b.quote_id
       ? db.from("quotes").select("line_items, tax_cents, total_cents").eq("id", b.quote_id).maybeSingle()
       : Promise.resolve({ data: null }),
-    db.from("settings").select("value").eq("key", "checkin.release_offset_hours").maybeSingle(),
+    db
+      .from("settings")
+      .select("key, value")
+      .in("key", ["checkin.release_offset_hours", "deposit.default_pct", "deposit.balance_due_days_before_checkin"]),
   ]);
   if (!listing.data) throw new Error("listing missing for booking");
+  const setting = (k: string) => settings.data?.find((r) => r.key === k)?.value;
   return {
     listing: { name: listing.data.public_name, hostawayListingId: listing.data.hostaway_listing_id },
     quote: quote.data
@@ -68,8 +107,25 @@ async function loadContext(b: BookingRequestRow) {
           totalCents: quote.data.total_cents,
         }
       : null,
-    checkinOffsetHours: Number(setting.data?.value ?? 48) || 48,
+    checkinOffsetHours: Number(setting("checkin.release_offset_hours") ?? 48) || 48,
+    depositDefaultPct: setting("deposit.default_pct"),
+    balanceDueDaysBefore: Number(setting("deposit.balance_due_days_before_checkin") ?? 14) || 14,
   };
+}
+
+/** Mode A/B money check: is there an authorisation to capture, or a capture already made? */
+function moneySecured(payment: PaymentRow | null): boolean {
+  const s = paymentState(payment);
+  return s === "authorised" || s === "captured";
+}
+
+async function askForPayment(b: BookingRequestRow, propertyName: string, reason: string, requestId: string) {
+  const row =
+    b.status === "APPROVED"
+      ? await systemTransition(b, "AWAITING_PAYMENT", { reason, metadata: { step: "money" } })
+      : b;
+  await sendPaymentRequired(row, propertyName, reason, requestId);
+  return row;
 }
 
 export async function confirmBooking(
@@ -81,54 +137,94 @@ export async function confirmBooking(
   if (b.status !== "APPROVED" && b.status !== "AWAITING_PAYMENT") return { status: b.status, note: "nothing to do" };
 
   const org = await loadOrgBilling(b.org_id);
-  const mode = paymentModeFor(org.payment_terms);
+  const mode: PaymentMode = paymentModeFor(org.payment_terms);
   const ctx = await loadContext(b);
-  const src = { booking: b, org, propertyName: ctx.listing.name, quote: ctx.quote };
+  const src: InvoiceSource = { booking: b, org, propertyName: ctx.listing.name, quote: ctx.quote };
 
+  // A. Money secured before anything touches Hostaway.
   let payment: PaymentRow | null = null;
-  let invoice: InvoiceRow | null = await invoiceForBooking(b.id);
-
-  if (mode === "invoice") {
-    invoice ??= await issueInvoice(src, {
-      collection: "send_invoice",
-      daysUntilDue: invoiceDaysFor(org.payment_terms),
-    });
-  } else {
+  if (mode !== "invoice") {
     payment = await latestPayment(b.id);
-    if (payment?.status !== "succeeded") {
-      if (b.status !== "APPROVED") return { status: b.status, note: "awaiting partner payment" };
-      const cap = await captureBookingPayment(b.id);
-      if (!cap.ok) {
-        const reason =
-          cap.code === "no_authorisation"
-            ? "The card hold placed at request time has lapsed or was never completed."
-            : `The card could not be charged (${cap.message}).`;
-        b = await systemTransition(b, "AWAITING_PAYMENT", {
-          reason: `capture failed: ${cap.message}`,
-          metadata: { captureError: cap.code },
-        });
-        await sendPaymentRequired(b, ctx.listing.name, reason, requestId);
-        await slack(
-          "bookings",
-          `:warning: ${b.reference} approved but card capture failed (${cap.code}). Partner asked to pay.`,
-        );
-        return { status: "AWAITING_PAYMENT", note: cap.message };
-      }
-      payment = cap.row;
+    if (!moneySecured(payment)) {
+      if (b.status === "AWAITING_PAYMENT") return { status: b.status, note: "awaiting partner payment" };
+      b = await askForPayment(
+        b,
+        ctx.listing.name,
+        "The card hold placed at request time has lapsed or was never completed.",
+        requestId,
+      );
+      await slack("bookings", `:warning: ${b.reference} approved but no live card hold. Partner asked to pay.`);
+      return { status: "AWAITING_PAYMENT", note: "no live authorisation" };
     }
   }
 
-  // Money is secured. Now the inventory write.
+  // B. Inventory: the Hostaway reservation (outbox, idempotent, never retried blindly).
   const ha = await ensureHostawayReservation(b, ctx.listing, requestId);
   if (ha.status === "failed") {
-    await alertCritical("Confirmed payment but Hostaway reservation failed", {
+    if (ha.transient) {
+      // Stay APPROVED/AWAITING_PAYMENT; the drain job retries and alerts ops after the configured window.
+      log.warn("booking.confirm.hostaway_transient", { requestId, reference: b.reference, reason: ha.reason });
+      return { status: b.status, note: `hostaway: ${ha.reason} (will retry)` };
+    }
+    // Unrecoverable (Hostaway rejected the write): Appendix B APPROVED → FAILED, void, page ops.
+    b = await systemTransition(b, "FAILED", {
+      reason: `hostaway write failed: ${ha.reason}`,
+      metadata: { hostaway: ha.reason, step: "reservation" },
+    });
+    await voidBookingAuthorisations(b.id, "hostaway write failed");
+    await alertCritical("Hostaway reservation write failed — booking FAILED, authorisation voided", {
       reference: b.reference,
       reason: ha.reason,
       requestId,
     });
-    return { status: b.status, note: `hostaway: ${ha.reason}` };
+    return { status: "FAILED", note: `hostaway: ${ha.reason}` };
+  }
+  b = await loadBookingAdmin(b.id);
+
+  // C. Money moves only now that the inventory is committed.
+  let invoice: InvoiceRow | null = null;
+  let depositCents: number | null = null;
+  let depositPct: number | null = null;
+  if (mode === "invoice") {
+    invoice =
+      (await invoiceForBooking(b.id, "net_terms")) ??
+      (await issueInvoice(src, { collection: "send_invoice", daysUntilDue: invoiceDaysFor(org.payment_terms) }));
+  } else {
+    if (mode === "deposit") {
+      depositPct = depositPctFor(org.deposit_pct, ctx.depositDefaultPct);
+      depositCents = b.payment_deposit_cents ?? depositSplit(b.total_cents ?? 0, depositPct).depositCents;
+    }
+    if (payment?.status !== "succeeded") {
+      const cap = await captureBookingPayment(b.id, {
+        amountCents: depositCents ?? undefined,
+        kind: mode === "deposit" ? "deposit" : "full",
+      });
+      if (!cap.ok) {
+        // §17.2 "Capture fails after Hostaway reservation was created": CRITICAL, finance paged,
+        // booking AWAITING_PAYMENT, reservation retained so the inventory stays protected.
+        const reason =
+          cap.code === "no_authorisation"
+            ? "The card hold placed at request time has lapsed or was never completed."
+            : `The card could not be charged (${cap.message}).`;
+        b = await askForPayment(b, ctx.listing.name, reason, requestId);
+        await alertCritical("Capture failed after the Hostaway reservation was created", {
+          reference: b.reference,
+          reservationId: ha.status === "skipped" ? null : ha.reservationId,
+          captureError: cap.code,
+          message: cap.message,
+          action: "Finance to decide: retry capture, switch to invoice, or cancel. Do NOT auto-cancel the reservation.",
+          requestId,
+        });
+        return { status: "AWAITING_PAYMENT", note: `capture failed: ${cap.message}` };
+      }
+      payment = cap.row;
+      if (depositCents != null && depositCents !== cap.capturedCents) depositCents = cap.capturedCents;
+    } else if (mode === "deposit" && depositCents == null) {
+      depositCents = payment.amount_captured_cents;
+    }
   }
 
+  // D. CONFIRMED. Both sides are now true: inventory written, money captured or invoiced.
   b = await loadBookingAdmin(b.id);
   if (b.status !== "CONFIRMED") {
     b = await systemTransition(b, "CONFIRMED", {
@@ -138,24 +234,42 @@ export async function confirmBooking(
         ...(ha.status === "created" || ha.status === "existing" ? { reservationId: ha.reservationId } : {}),
         paymentIntentId: payment?.stripe_payment_intent_id ?? null,
         invoiceNumber: invoice?.number ?? null,
+        mode,
+        ...(depositCents != null ? { depositCents } : {}),
       },
     });
   }
 
-  if (mode === "card_authorise" && !invoice) {
-    try {
-      invoice = await issueInvoice({ ...src, booking: b }, { collection: "paid_out_of_band" });
-    } catch (e) {
-      // The booking is confirmed and paid; a missing receipt is a finance follow-up, not a failure.
-      log.error("stripe.invoice.receipt_failed", { requestId, reference: b.reference, error: String(e) });
+  // E. Paperwork: never fails the confirmation; a missing receipt is a finance follow-up.
+  const paperSrc: InvoiceSource = { ...src, booking: b };
+  try {
+    if (mode === "card_authorise" && !invoice) {
+      invoice = await issueInvoice(paperSrc, { collection: "paid_out_of_band" });
+    } else if (mode === "deposit" && depositCents != null) {
+      const receipt = await issueDepositReceipt(paperSrc, depositCents, depositPct ?? 0);
+      const dueDate = balanceDueDate(b.check_in, ctx.balanceDueDaysBefore, todayIn(BOOKING_TZ));
+      const balance =
+        (b.total_cents ?? 0) - depositCents > 0 ? await issueBalanceInvoice(paperSrc, { depositCents, dueDate }) : null;
+      await adminDb()
+        .from("booking_requests")
+        .update({
+          payment_deposit_cents: depositCents,
+          balance_due_at: balance?.due_at ?? null,
+          balance_paid_at: balance ? null : new Date().toISOString(),
+        })
+        .eq("id", b.id);
+      invoice = balance ?? receipt;
     }
+  } catch (e) {
+    log.error("stripe.invoice.paperwork_failed", { requestId, reference: b.reference, error: String(e) });
   }
 
   await sendBookingConfirmed(b, ctx.listing.name, payment, invoice, ctx.checkinOffsetHours, requestId);
   await slack(
     "bookings",
     `:white_check_mark: ${b.reference} confirmed · ${ctx.listing.name} · ${b.check_in} → ${b.check_out}` +
-      (ha.status === "skipped" ? " · Hostaway write skipped (non-production)" : ""),
+      (ha.status === "skipped" ? " · Hostaway write skipped (writes disabled here)" : "") +
+      (mode === "deposit" ? ` · deposit captured, balance invoiced` : ""),
   );
   return { status: "CONFIRMED", note: `hostaway=${ha.status} invoice=${invoice?.number ?? "none"}` };
 }

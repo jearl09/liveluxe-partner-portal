@@ -28,7 +28,8 @@
     "db:diff": "supabase db diff",
     "stripe:listen": "stripe listen --forward-to localhost:3000/api/webhooks/stripe",
     "guard:service-role": "node scripts/guard-service-role.mjs",
-    "email:preview": "email dev --dir lib/notifications/templates"
+    "email:preview": "email dev --dir lib/notifications/templates",
+    "verify:live": "vitest run --config vitest.live.config.mts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

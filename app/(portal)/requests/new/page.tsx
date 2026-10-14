@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -106,6 +107,8 @@ export default async function NewRequestPage({ searchParams }: PageProps<"/reque
           <input type="hidden" name="children" value={children} />
           <input type="hidden" name="pets" value={pets} />
           <input type="hidden" name="priceHash" value={quote?.priceHash ?? ""} />
+          {/* §17.2 duplicate submission: a double-click or browser retry returns the first result. */}
+          <input type="hidden" name="submissionKey" value={randomUUID()} />
 
           <Panel flush className="divide-border divide-y">
             <PanelSection className="py-5">

@@ -35,7 +35,7 @@ const cardLabel = (p: PaymentRow) =>
 /** One box that says where the money stands (§11), for the partner page and the ops page. */
 export function PaymentPanel(p: PaymentPanelProps) {
   const payable = (PAYABLE_STATUSES as readonly string[]).includes(p.status) && p.totalCents != null;
-  const needsCard = p.mode === "card_authorise" && p.state !== "authorised" && p.state !== "captured";
+  const needsCard = p.mode !== "invoice" && p.state !== "authorised" && p.state !== "captured";
   const gate = approvalPaymentGate(p.mode, p.state);
   const tone =
     p.state === "captured" || p.state === "authorised" || p.mode === "invoice"
@@ -55,6 +55,12 @@ export function PaymentPanel(p: PaymentPanelProps) {
         Payment
       </h2>
 
+      {p.mode === "deposit" && (
+        <p className="text-xs">
+          Deposit terms: the card is held now, the deposit is charged on approval and the balance is invoiced before
+          check-in.
+        </p>
+      )}
       {p.mode === "invoice" ? (
         <p>
           {p.audience === "partner" ? "Your organisation" : "This partner"} pays by invoice. No card is needed; the

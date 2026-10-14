@@ -1,16 +1,16 @@
 /**
- * Check-in pack: what to show, when to release, who looked — spec §8.4, §10.6.
+ * Check-in pack read models — spec §8.4 (exposure rules), §10.6 (release).
  *
- *   checkinView      tier + timing + the fields allowed at that tier (decrypted here, nowhere else)
- *   releaseCheckin   stamp the booking, notify the submitter, Slack, audit (cron or ops)
- *   recordAccess     one access-log row per view of a released pack (user, IP, UA)
- *
- * Reads go through the service role because listing_access_details is RLS-locked
- * to Live Luxe; the tier function is the gate, and it runs before any decrypt.
+ *   checkinView          tier (none | approx | address | full) + timing + the fields that tier allows;
+ *                        secrets are decrypted here (ACCESS_DETAILS_KEY) and nowhere else
+ *   recordCheckinAccess  one checkin_access_log row per partner view (user, IP, user agent)
+ *   loadCheckinPack      the checkin_pack() RPC (plaintext bytea; kept for the integration suite)
+ *   releaseCheckinNow    ops early release (capability checkin.release)
  */
 import "server-only";
-import { adminDb, appendAudit } from "@/lib/db/admin";
-import type { BookingRequestRow, ListingAccessDetailsRow } from "@/lib/db/types";
+import { adminDb } from "@/lib/db/admin";
+import { createServerSupabase } from "@/lib/db/server";
+import type { BookingRequestRow, Database, ListingAccessDetailsRow } from "@/lib/db/types";
 import {
   canReleaseManually,
   checkinTier,
@@ -20,11 +20,49 @@ import {
   type CheckinTiming,
 } from "@/lib/domain/checkin";
 import { DomainError } from "@/lib/domain/errors";
-import { can, type SessionClaims } from "@/lib/domain/permissions";
-import { slack } from "@/lib/notifications/slack";
+import type { SessionClaims } from "@/lib/domain/permissions";
+import { can } from "@/lib/domain/permissions";
+import { releaseCheckin } from "@/lib/jobs/release-checkin";
+import { loadBookingAdmin } from "@/lib/payments/intents";
 import { log } from "@/lib/observability/logger";
-import { sendCheckinPackReleased } from "@/lib/payments/notify";
 import { accessKeyConfigured, decryptSecret } from "@/lib/security/access-crypto";
+
+export type CheckinPack = Database["public"]["Functions"]["checkin_pack"]["Returns"][number];
+
+/** The pack for a released booking, or null when the RPC refuses (not released / purged / not entitled). */
+export async function loadCheckinPack(bookingId: string): Promise<CheckinPack | null> {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase.rpc("checkin_pack", { p_booking_id: bookingId });
+  if (error) return null;
+  return data?.[0] ?? null;
+}
+
+export async function checkinViewCount(bookingId: string): Promise<number> {
+  const { count } = await adminDb()
+    .from("checkin_access_log")
+    .select("id", { count: "exact", head: true })
+    .eq("booking_id", bookingId);
+  return count ?? 0;
+}
+
+/** Ops release the pack ahead of the schedule (§10.6 "Ops can release early manually"). */
+export async function releaseCheckinNow(claims: SessionClaims, bookingId: string, requestId: string): Promise<boolean> {
+  if (!can(claims.role, "checkin.release")) throw new DomainError("FORBIDDEN");
+  const b = await loadBookingAdmin(bookingId);
+  if (b.status !== "CONFIRMED" && b.status !== "CHECKED_IN")
+    throw new DomainError("INVALID_STATE_TRANSITION", {
+      from: b.status,
+      detail: "Only a confirmed booking has a check-in pack.",
+    });
+  const { data: listing } = await adminDb()
+    .from("listings")
+    .select("id, public_name, timezone, checkin_from, checkin_release_offset_hours")
+    .eq("id", b.listing_id)
+    .maybeSingle();
+  if (!listing) throw new DomainError("NOT_FOUND", { listingId: b.listing_id });
+  const { data: me } = await adminDb().from("partner_users").select("id").eq("auth_user_id", claims.sub).maybeSingle();
+  return releaseCheckin(b, listing, { actorType: "livluxe", actorId: me?.id ?? null }, requestId);
+}
 
 export interface AddressTier {
   addressLine: string | null;
@@ -121,7 +159,8 @@ function fullTier(a: ListingAccessDetailsRow | null): FullTier {
 export async function checkinView(b: BookingRequestRow, now: Date = new Date()): Promise<CheckinView> {
   const [l, defaultOffset] = await Promise.all([loadListingBits(b.listing_id), loadOffsetSetting()]);
   const timing = timingFor(b, l, defaultOffset);
-  const tier = checkinTier({ status: b.status, releasedAt: b.checkin_released_at, hiddenFrom: timing.hiddenFrom, now });
+  const released = b.credentials_purged_at ? null : b.checkin_released_at;
+  const tier = checkinTier({ status: b.status, releasedAt: released, hiddenFrom: timing.hiddenFrom, now });
   const address: AddressTier | null =
     tier === "address" || tier === "full"
       ? {
@@ -145,102 +184,11 @@ export async function checkinView(b: BookingRequestRow, now: Date = new Date()):
     tier,
     timing,
     timezone: l.timezone,
-    releasedAt: b.checkin_released_at,
+    releasedAt: released,
     canReleaseNow: canReleaseManually(b.status, b.checkin_released_at),
     address,
     pack,
   };
-}
-
-/** Ops view of the pack regardless of tier (they can see Hostaway anyway); still logged by the caller. */
-export async function opsPackPreview(b: BookingRequestRow): Promise<FullTier> {
-  const { data: a } = await adminDb()
-    .from("listing_access_details")
-    .select("*")
-    .eq("listing_id", b.listing_id)
-    .maybeSingle();
-  return fullTier(a ?? null);
-}
-
-/**
- * Release the pack. Idempotent: a second call returns the row unchanged. The
- * email goes to the submitter; codes are never in the email, only the link (§8.4
- * logs every view, which mail cannot do).
- */
-export async function releaseCheckin(
-  b: BookingRequestRow,
-  input: {
-    by: { type: "system" } | { type: "livluxe"; userId: string | null; name: string | null };
-    requestId: string;
-  },
-): Promise<BookingRequestRow> {
-  if (b.checkin_released_at) return b;
-  if (!canReleaseManually(b.status, b.checkin_released_at))
-    throw new DomainError("INVALID_STATE_TRANSITION", { from: b.status, to: "checkin_released" });
-  const db = adminDb();
-  const releasedAt = new Date().toISOString();
-  const { data, error } = await db
-    .from("booking_requests")
-    .update({
-      checkin_released_at: releasedAt,
-      checkin_released_by: input.by.type === "livluxe" ? input.by.userId : null,
-    })
-    .eq("id", b.id)
-    .is("checkin_released_at", null)
-    .select("*")
-    .maybeSingle();
-  if (error) throw new Error(`checkin release failed: ${error.message}`);
-  if (!data) {
-    const { data: fresh } = await db.from("booking_requests").select("*").eq("id", b.id).single();
-    return fresh ?? b;
-  }
-
-  const { data: listing } = await db.from("listings").select("public_name").eq("id", b.listing_id).maybeSingle();
-  const propertyName = listing?.public_name ?? "the property";
-  const how = input.by.type === "system" ? "on schedule" : `early by ${input.by.name ?? "Live Luxe"}`;
-
-  await appendAudit({
-    actorType: input.by.type,
-    actorId: input.by.type === "livluxe" ? input.by.userId : null,
-    action: "checkin.released",
-    entityType: "booking_request",
-    entityId: b.id,
-    after: { releasedAt, how },
-    requestId: input.requestId,
-  }).catch((e) => log.warn("checkin.audit_failed", { requestId: input.requestId, error: String(e) }));
-
-  await db
-    .from("notifications")
-    .insert({
-      user_id: b.created_by,
-      type: "checkin_released",
-      payload: { bookingId: b.id, reference: b.reference, propertyName, url: `/requests/${b.id}` } as never,
-    })
-    .then(({ error: nErr }) => {
-      if (nErr) log.warn("checkin.notification_insert_failed", { requestId: input.requestId, error: nErr.message });
-    });
-
-  await sendCheckinPackReleased(data, propertyName, input.requestId);
-  await slack(
-    "bookings",
-    `:key: Check-in pack released ${how} · ${data.reference} · ${propertyName} · ${data.check_in} → ${data.check_out}`,
-  );
-  log.info("checkin.released", { requestId: input.requestId, reference: data.reference, how });
-  return data;
-}
-
-/** Ops action from the booking page. */
-export async function releaseCheckinNow(claims: SessionClaims, b: BookingRequestRow, requestId: string) {
-  if (!can(claims.role, "checkin.release")) throw new DomainError("FORBIDDEN");
-  const { data: me } = await adminDb()
-    .from("partner_users")
-    .select("id, full_name")
-    .eq("auth_user_id", claims.sub)
-    .maybeSingle();
-  return releaseCheckin(b, {
-    by: { type: "livluxe", userId: me?.id ?? null, name: me?.full_name ?? null },
-    requestId,
-  });
 }
 
 /** One row per view of a released pack (§8.4 "access is logged with user, timestamp and IP"). */

@@ -30,6 +30,7 @@ const FIELDS = [
   "costCentre",
   "notes",
   "acceptTerms",
+  "submissionKey",
 ] as const;
 
 export async function POST(req: Request) {
@@ -77,10 +78,14 @@ export async function POST(req: Request) {
         },
         priceHash: f.priceHash || null,
         form: f,
+        submissionKey: f.submissionKey || null,
       },
       reqId,
     );
-    return redirectTo(req, `/requests/${result.id}`, { submitted: "1" });
+    return redirectTo(req, `/requests/${result.id}`, {
+      submitted: "1",
+      ...(result.financeApproval ? { finance: "1" } : {}),
+    });
   } catch (e) {
     if (isDomainError(e)) {
       const fields = e.details?.fields as Record<string, string> | undefined;

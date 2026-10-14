@@ -18,7 +18,6 @@ import { createServerSupabase } from "@/lib/db/server";
 import type { BookingRequestRow, InvoiceRow, PaymentRow, RefundRow } from "@/lib/db/types";
 import {
   cancellationQuote,
-  clampRefund,
   parseCancellationPolicy,
   type CancellationPolicy,
   type CancellationQuote,
@@ -28,6 +27,7 @@ import {
 import { todayIn } from "@/lib/domain/dates";
 import { DomainError } from "@/lib/domain/errors";
 import { formatMoney } from "@/lib/domain/money";
+import { assertRefundable } from "@/lib/domain/payments";
 import type { SessionClaims } from "@/lib/domain/permissions";
 import { can, isLivluxeRole } from "@/lib/domain/permissions";
 import { cancelHostawayReservation } from "@/lib/hostaway/reservations";
@@ -150,10 +150,23 @@ export async function cancelBooking(
 
   let refundCents = q.refundCents;
   let retainedCents = q.retainedCents;
+  const alreadyRefunded = view.refunds
+    .filter((x) => x.status !== "failed" && x.status !== "canceled")
+    .reduce((s, x) => s + x.amount_cents, 0);
+  const capturedTotal = view.payment?.status === "succeeded" ? view.payment.amount_captured_cents : 0;
   if (livluxe && input.overrideRefundCents != null && can(claims.role, "refunds.issue")) {
-    refundCents = clampRefund(input.overrideRefundCents, q.capturedCents);
+    // §17.2 "Refund exceeds captured amount": rejected here with the maximum, never clamped silently.
+    assertRefundable({
+      requestedCents: input.overrideRefundCents,
+      capturedCents: capturedTotal,
+      alreadyRefundedCents: alreadyRefunded,
+      refundsFrozen: !!d.request.refunds_frozen_at,
+    });
+    refundCents = Math.round(input.overrideRefundCents);
     retainedCents = Math.max(0, (d.request.total_cents ?? 0) - refundCents);
   }
+  // §17.2 "Chargeback raised": automated refunds are frozen while a dispute is open.
+  if (refundCents > 0 && d.request.refunds_frozen_at) throw new DomainError("REFUNDS_FROZEN");
   const reason = reasonText(input);
 
   // 1. State first: the booking is cancelled whatever happens to the money (§6.7 ordering).

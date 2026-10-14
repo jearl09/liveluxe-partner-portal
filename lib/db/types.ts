@@ -89,6 +89,11 @@ export type BookingRequestRow = {
   decline_notes: string | null;
   hostaway_reservation_id: number | null;
   hostaway_write_key: string | null;
+  hostaway_write_attempted_at: string | null;
+  hostaway_written_at: string | null;
+  hostaway_write_attempts: number;
+  hostaway_last_error: string | null;
+  confirm_alerted_at: string | null;
   checkin_released_at: string | null;
   checkin_released_by: string | null;
   submitted_at: string | null;
@@ -97,13 +102,97 @@ export type BookingRequestRow = {
   confirmed_at: string | null;
   declined_at: string | null;
   cancelled_at: string | null;
+  cancelled_upstream: boolean;
+  cancelled_upstream_at: string | null;
   cancellation_requested_at: string | null;
   cancellation_requested_by: string | null;
   cancellation_reason: string | null;
   cancel_refund_cents: number | null;
   cancel_retained_cents: number | null;
+  submission_key: string | null;
+  finance_approval_required: boolean;
+  finance_approval_reason: string | null;
+  refunds_frozen_at: string | null;
+  payment_deposit_cents: number | null;
+  balance_due_at: string | null;
+  balance_paid_at: string | null;
+  checked_in_at: string | null;
+  completed_at: string | null;
+  credentials_purge_at: string | null;
+  credentials_purged_at: string | null;
+  sla_extended_at: string | null;
+  linked_request_id: string | null;
   created_at: string;
   updated_at: string;
+};
+
+/** public.booking_modifications — the explicit modification record §6.7 requires before a stay changes length. */
+export type BookingModificationRow = {
+  id: string;
+  booking_id: string;
+  kind: "extension" | "early_departure" | "guest_change";
+  status: "requested" | "approved" | "declined" | "failed";
+  requested_by: string | null;
+  decided_by: string | null;
+  old_check_in: string;
+  old_check_out: string;
+  new_check_in: string;
+  new_check_out: string;
+  delta_cents: number;
+  quote_id: string | null;
+  reason: string | null;
+  decision_note: string | null;
+  invoice_id: string | null;
+  payment_id: string | null;
+  refund_id: string | null;
+  hostaway_status: string | null;
+  hostaway_error: string | null;
+  alternatives: Json | null;
+  requested_at: string;
+  decided_at: string | null;
+  updated_at: string;
+};
+
+/** public.disputes — mirror of a Stripe Dispute plus the evidence pack (§11.2, §17.2). */
+export type DisputeRow = {
+  id: string;
+  booking_id: string | null;
+  stripe_dispute_id: string;
+  status: string;
+  amount_cents: number;
+  reason: string | null;
+  charge_id: string | null;
+  payment_intent_id: string | null;
+  evidence: Json | null;
+  evidence_built_at: string | null;
+  opened_at: string | null;
+  closed_at: string | null;
+  updated_at: string;
+};
+
+export type ReconciliationRunRow = {
+  id: string;
+  system: "stripe" | "hostaway";
+  period_from: string | null;
+  period_to: string | null;
+  summary: Json;
+  exceptions: number;
+  csv: string | null;
+  created_at: string;
+};
+
+export type ReconciliationExceptionRow = {
+  id: string;
+  system: "stripe" | "hostaway";
+  kind: string;
+  entity_type: string;
+  entity_id: string;
+  external_id: string | null;
+  detail: Json | null;
+  first_seen_at: string;
+  last_seen_at: string;
+  alerted_at: string | null;
+  resolved_at: string | null;
 };
 
 /** public.payments — mirror of one Stripe PaymentIntent (§11.2). Written only by webhook/job code. */
@@ -124,6 +213,9 @@ export type PaymentRow = {
   canceled_at: string | null;
   failure_code: string | null;
   failure_message: string | null;
+  kind: "full" | "deposit" | "extension";
+  reminder_sent_at: string | null;
+  lapsed_notified_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -144,6 +236,10 @@ export type InvoiceRow = {
   pdf_url: string | null;
   sent_at: string | null;
   paid_at: string | null;
+  kind: "receipt" | "net_terms" | "balance" | "supplementary";
+  dunning_stage: number;
+  dunning_last_at: string | null;
+  attempt_count: number;
   created_at: string;
   updated_at: string;
 };
@@ -269,6 +365,8 @@ export interface Database {
         last_error: string | null;
         received_at: string;
         processed_at: string | null;
+        next_attempt_at: string | null;
+        parked_reason: string | null;
       }>;
       sync_runs: Row<{
         id: string;
@@ -318,6 +416,10 @@ export interface Database {
         deposit_pct: number | null;
         auto_approve_under_cents: number | null;
         hard_holds: boolean;
+        credit_standing: "good" | "watch" | "finance_approval" | "suspended";
+        credit_standing_changed_at: string | null;
+        credit_standing_reason: string | null;
+        finance_contact_email: string | null;
         created_at: string;
         updated_at: string;
       }>;
@@ -440,6 +542,10 @@ export interface Database {
       payments: Row<PaymentRow>;
       invoices: Row<InvoiceRow>;
       refunds: Row<RefundRow>;
+      disputes: Row<DisputeRow>;
+      booking_modifications: Row<BookingModificationRow>;
+      reconciliation_runs: Row<ReconciliationRunRow>;
+      reconciliation_exceptions: Row<ReconciliationExceptionRow>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -514,6 +620,28 @@ export interface Database {
         Returns: RateCardRow;
       };
       livluxe_ops_user_ids: { Args: Record<string, never>; Returns: string[] };
+      checkin_pack: {
+        Args: { p_booking_id: string };
+        Returns: {
+          property_name: string;
+          address_line: string | null;
+          suburb: string | null;
+          state: string | null;
+          postcode: string | null;
+          checkin_from: string | null;
+          checkin_to: string | null;
+          checkout_by: string | null;
+          door_code: string | null;
+          wifi_ssid: string | null;
+          wifi_password: string | null;
+          access_instructions: string | null;
+          checkin_instructions: string | null;
+          special_instructions: string | null;
+          parking_notes: string | null;
+          emergency_contact: string | null;
+          released_at: string;
+        }[];
+      };
       cancellation_policy: {
         Args: Record<string, never>;
         Returns: { cutoff_days: number; retention_schedule: unknown }[];

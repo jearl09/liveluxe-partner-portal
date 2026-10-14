@@ -11,6 +11,7 @@ import { PaymentPanel } from "@/components/payments/payment-panel";
 import { CancelPanel } from "@/components/requests/cancel-panel";
 import { CheckinPanel } from "@/components/requests/checkin-panel";
 import { Flash } from "@/components/requests/flash";
+import { ModificationPanel } from "@/components/requests/modification-panel";
 import { QuoteLines } from "@/components/requests/quote-lines";
 import { StatusTimeline } from "@/components/requests/status-timeline";
 import { StayCard } from "@/components/requests/stay-card";
@@ -25,6 +26,7 @@ import { orgPaymentTerms, paymentViewForBooking } from "@/lib/payments/load";
 import { cancellationView } from "@/lib/requests/cancel";
 import { checkinView, recordCheckinAccess } from "@/lib/requests/checkin";
 import { getRequest } from "@/lib/requests/load";
+import { modificationsForBooking } from "@/lib/requests/modifications";
 import { formatDate, formatTimestamp } from "@/lib/utils";
 
 export async function generateMetadata({ params }: PageProps<"/requests/[id]">) {
@@ -44,10 +46,11 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
   const d = await getRequest(id);
   if (!d) notFound();
   const r = d.request;
-  const [terms, pay, cancel, checkin] = await Promise.all([
+  const [terms, pay, cancel, modifications, checkin] = await Promise.all([
     orgPaymentTerms(r.org_id),
     paymentViewForBooking(id),
     cancellationView(d),
+    modificationsForBooking(id),
     checkinView(r),
   ]);
   if (checkin.tier === "full") {
@@ -99,7 +102,7 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
 
       <div className="print:hidden">
         <Flash
-          done={str(sp.submitted) ? "1" : str(sp.done) || undefined}
+          done={str(sp.submitted) ? (str(sp.finance) ? "finance_review" : "1") : str(sp.done) || undefined}
           error={str(sp.error) || undefined}
           detail={str(sp.detail) || undefined}
           refCode={str(sp.ref) || undefined}
@@ -223,18 +226,28 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
 
       {(r.status === "CONFIRMED" || r.status === "CHECKED_IN" || r.status === "COMPLETED") && (
         <Banner tone="success">
-          <p className="font-medium">Confirmed</p>
+          <p className="font-medium">{r.status === "COMPLETED" ? "Completed" : "Confirmed"}</p>
           <p>
-            The booking is locked in.{" "}
-            {checkin.tier === "full"
-              ? "The access pack is below."
-              : "Door code and Wi-Fi appear below once the access pack is released."}{" "}
-            Your tax invoice is under Invoices.
+            {r.status === "COMPLETED"
+              ? "The stay is complete. Your tax invoice is under Invoices."
+              : checkin.tier === "full"
+                ? "The booking is locked in. The access pack is below; your tax invoice is under Invoices."
+                : "The booking is locked in. Door code and Wi-Fi appear below once the access pack is released; your tax invoice is under Invoices."}
+            {r.balance_due_at &&
+              !r.balance_paid_at &&
+              ` The balance invoice is due ${formatDate(r.balance_due_at.slice(0, 10))}.`}
           </p>
         </Banner>
       )}
 
-      <CheckinPanel audience="partner" request={r} view={checkin} supportEmail={env().EMAIL_REPLY_TO} />
+      {r.status === "FAILED" && (
+        <Banner tone="error">
+          <p className="font-medium">We could not complete this booking</p>
+          <p>
+            The property could not be reserved after approval. Nothing has been charged; Live Luxe will be in touch.
+          </p>
+        </Banner>
+      )}
 
       {showPayment && (
         <div className="print:hidden">
@@ -252,6 +265,12 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
           />
         </div>
       )}
+
+      {can(claims.role, "checkin.view_released") && (
+        <CheckinPanel audience="partner" request={r} view={checkin} supportEmail={env().EMAIL_REPLY_TO} />
+      )}
+
+      <ModificationPanel audience="partner" request={r} modifications={modifications} canAct={canAct} />
 
       {canCancel && cancel.quote && (
         <CancelPanel audience="partner" request={r} quote={cancel.quote} cutoffDays={cancel.policy.cutoffDays} />

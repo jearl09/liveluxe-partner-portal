@@ -16,6 +16,8 @@ describe("parsePartnerOrgForm", () => {
       emailDomains: "nrma.com.au, @iag.com.au nrma.com.au",
       paymentTerms: "net30",
       creditLimit: "$250,000",
+      depositPct: "25%",
+      financeContactEmail: "Finance@LiveLuxe.test",
     });
     expect(r.ok).toBe(true);
     if (!r.ok) return;
@@ -31,8 +33,17 @@ describe("parsePartnerOrgForm", () => {
       slaHours: 2,
       paymentTerms: "net30",
       creditLimitCents: 25_000_000,
+      depositPct: 25,
+      financeContactEmail: "finance@liveluxe.test",
       emailDomains: ["nrma.com.au", "iag.com.au"],
     });
+  });
+
+  it("rejects a deposit outside 1–100 and a malformed finance contact", () => {
+    const r = parsePartnerOrgForm({ name: "Acme", type: "corporate", depositPct: "150", financeContactEmail: "nope" });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(Object.keys(r.errors).sort()).toEqual(["depositPct", "financeContactEmail"]);
   });
 
   it("defaults status to active and blanks to null", () => {

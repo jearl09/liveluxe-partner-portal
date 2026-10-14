@@ -8,8 +8,6 @@
  */
 import { z } from "zod";
 
-const isProd = process.env.VERCEL_ENV === "production";
-
 /** Variables that are required in every environment. */
 const serverSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -29,6 +27,14 @@ const serverSchema = z.object({
   HOSTAWAY_WEBHOOK_PASSWORD: z.string().min(32),
   HOSTAWAY_WEBHOOK_PATH_SECRET: z.string().min(32),
   HOSTAWAY_ALLOW_WRITES: z.enum(["true", "false"]).default("false"),
+  /**
+   * Which Hostaway account writes may reach (Phase 5 exit criterion: verified against the
+   * TEST account). "production" = the §5.1 guard (HOSTAWAY_ALLOW_WRITES + VERCEL_ENV=production).
+   * "test" = non-production only, and HOSTAWAY_ACCOUNT_ID must equal HOSTAWAY_TEST_ACCOUNT_ID,
+   * so the switch can never be flipped on while the live account is configured.
+   */
+  HOSTAWAY_WRITE_TARGET: z.enum(["production", "test"]).default("production"),
+  HOSTAWAY_TEST_ACCOUNT_ID: z.string().optional(),
   HOSTAWAY_DIRECT_CHANNEL_ID: z.coerce.number().int().optional(),
 
   // Stripe
@@ -80,20 +86,46 @@ export function env(): Env {
     throw new Error(`Invalid environment configuration:\n${issues}`);
   }
 
-  // Hard guard from spec §5.1: writes to Hostaway only ever in production.
-  if (parsed.data.HOSTAWAY_ALLOW_WRITES === "true" && !isProd) {
+  const d = parsed.data;
+  const isProd = d.VERCEL_ENV === "production";
+  // Hard guard from spec §5.1: writes to the live Hostaway account only ever in production.
+  if (d.HOSTAWAY_ALLOW_WRITES === "true" && !isProd && d.HOSTAWAY_WRITE_TARGET !== "test") {
     throw new Error(
-      "HOSTAWAY_ALLOW_WRITES=true is only permitted when VERCEL_ENV=production. " +
-        "A write against a non-production Hostaway account propagates to every OTA channel.",
+      "HOSTAWAY_ALLOW_WRITES=true is only permitted when VERCEL_ENV=production " +
+        "(or with HOSTAWAY_WRITE_TARGET=test against the declared test account). " +
+        "A write against the live Hostaway account propagates to every OTA channel.",
     );
   }
+  if (d.HOSTAWAY_WRITE_TARGET === "test") {
+    if (isProd) throw new Error("HOSTAWAY_WRITE_TARGET=test is not permitted when VERCEL_ENV=production.");
+    if (!d.HOSTAWAY_TEST_ACCOUNT_ID)
+      throw new Error("HOSTAWAY_WRITE_TARGET=test requires HOSTAWAY_TEST_ACCOUNT_ID (the test account's Account ID).");
+    if (d.HOSTAWAY_TEST_ACCOUNT_ID !== d.HOSTAWAY_ACCOUNT_ID)
+      throw new Error(
+        "HOSTAWAY_WRITE_TARGET=test but HOSTAWAY_ACCOUNT_ID is not the declared test account. " +
+          "Refusing to start: this would write to a Hostaway account that is not the test account.",
+      );
+  }
 
-  cached = parsed.data;
+  cached = d;
   return cached;
 }
 
-/** True only when both guards agree that Hostaway writes are allowed. */
-export function hostawayWritesEnabled(): boolean {
+/** Where a Hostaway write would land, or null when writes are off. */
+export function hostawayWriteTarget(): "production" | "test" | null {
   const e = env();
-  return e.HOSTAWAY_ALLOW_WRITES === "true" && e.VERCEL_ENV === "production";
+  if (e.HOSTAWAY_ALLOW_WRITES !== "true") return null;
+  if (e.HOSTAWAY_WRITE_TARGET === "test")
+    return e.VERCEL_ENV !== "production" && e.HOSTAWAY_TEST_ACCOUNT_ID === e.HOSTAWAY_ACCOUNT_ID ? "test" : null;
+  return e.VERCEL_ENV === "production" ? "production" : null;
+}
+
+/** True only when the guards agree that Hostaway writes are allowed (live in production, or the declared test account). */
+export function hostawayWritesEnabled(): boolean {
+  return hostawayWriteTarget() !== null;
+}
+
+/** Test-only: forget the cached environment so a test can change process.env. */
+export function resetEnvCacheForTests(): void {
+  cached = undefined;
 }
