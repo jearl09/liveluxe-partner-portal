@@ -130,6 +130,7 @@ export default async function RequestsPage({ searchParams }: PageProps<"/request
       header: "Total",
       numeric: true,
       sortable: true,
+      optional: "xl",
       cell: (r) => (
         <span className="text-text-primary font-semibold">
           {r.totalCents != null ? formatMoney(r.totalCents, r.currency) : "—"}
@@ -151,6 +152,7 @@ export default async function RequestsPage({ searchParams }: PageProps<"/request
           checkOut: r.checkOut,
           checkinReleasedAt: r.checkinReleasedAt,
           cardNeeded: r.cardNeeded,
+          approvedAt: r.approvedAt,
           when: (iso) => formatWhen(iso, now),
           date: formatDayMonth,
         });
@@ -168,7 +170,7 @@ export default async function RequestsPage({ searchParams }: PageProps<"/request
       header: "Updated",
       sortable: true,
       optional: "xl",
-      cell: (r) => <span className="text-text-muted whitespace-nowrap">{formatWhen(r.updatedAt, now)}</span>,
+      cell: (r) => <span className="text-text-muted block max-w-32">{formatWhen(r.updatedAt, now)}</span>,
     },
   ];
 

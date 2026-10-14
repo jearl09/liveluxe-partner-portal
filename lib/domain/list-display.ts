@@ -2,6 +2,7 @@
  * Display rules for request lists (brief §4.7, §5.4, §5.13). Pure.
  */
 import type { BookingStatus } from "./booking-state-machine";
+import { confirmationStalled } from "./next-step";
 
 /**
  * Guest names in lists and feeds are initial + surname ("J. Citizen"): the people behind
@@ -29,6 +30,8 @@ export interface RowNextInput {
   checkinReleasedAt: string | null;
   /** Card modes with no hold yet. */
   cardNeeded?: boolean;
+  /** When it was approved, to tell a stalled confirmation from one in progress. */
+  approvedAt?: string | null;
   when: (iso: string) => string;
   date: (isoDate: string) => string;
 }
@@ -60,6 +63,10 @@ export function rowNextStep(i: RowNextInput): { text: string; urgent: boolean } 
         urgent: !ops,
       };
     case "APPROVED":
+      if (confirmationStalled(i.approvedAt, i.now))
+        return ops
+          ? { text: "Confirmation stalled", urgent: true }
+          : { text: "Taking longer than usual", urgent: false };
       return { text: "Confirming", urgent: false };
     case "AWAITING_PAYMENT":
       return {

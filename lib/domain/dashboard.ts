@@ -24,6 +24,7 @@ export interface DashboardRequestRow {
   decisionDueAt: string | null; // ISO UTC
   holdExpiresAt: string | null;
   checkinReleasedAt: string | null;
+  approvedAt?: string | null;
   checkinReleasesAt: string | null; // check-in minus settings.checkin.release_offset_hours, ISO UTC
   unreadComments: number;
   paymentDue: boolean; // AWAITING_PAYMENT and the partner must act

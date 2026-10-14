@@ -40,7 +40,7 @@ export function RequestsTable({
       key: "property",
       header: "Property",
       cell: (r) => (
-        <span className="block max-w-44">
+        <span className="block max-w-40">
           <span className="text-text-primary block truncate">{r.propertyName}</span>
           {r.suburb && <span className="text-text-muted block truncate">{r.suburb}</span>}
         </span>
@@ -75,12 +75,13 @@ export function RequestsTable({
           checkOut: r.checkOut,
           checkinReleasedAt: r.checkinReleasedAt,
           cardNeeded: r.cardNeeded,
+          approvedAt: r.approvedAt,
           when: (iso) => formatWhen(iso, now),
           date: formatDayMonth,
         });
         return (
           <span
-            className={cn("block max-w-52 min-w-40", n.urgent ? "text-text-gold font-semibold" : "text-text-secondary")}
+            className={cn("block max-w-52 min-w-36", n.urgent ? "text-text-gold font-semibold" : "text-text-secondary")}
           >
             {n.text}
           </span>

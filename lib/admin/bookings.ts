@@ -42,6 +42,7 @@ export interface BookingListRow {
   slaPausedAt: string | null;
   holdExpiresAt: string | null;
   checkinReleasedAt: string | null;
+  approvedAt: string | null;
   /** Card-paying partner with no card hold on a request waiting for a decision. */
   cardNeeded: boolean;
   updatedAt: string;
@@ -149,6 +150,7 @@ export async function toBookingRows(
       slaPausedAt: r.sla_paused_at,
       holdExpiresAt: r.hold_expires_at,
       checkinReleasedAt: r.checkin_released_at,
+      approvedAt: r.approved_at,
       cardNeeded,
       updatedAt: r.updated_at,
     };

@@ -39,11 +39,24 @@ export interface NextStepInput {
   refundCents: number | null;
   /** Card modes: the request has no card hold yet, so Live Luxe cannot approve it. */
   cardNeeded?: boolean;
+  /** When it was approved; an APPROVED request this old has stalled (see CONFIRM_STALLED_AFTER_MS). */
+  approvedAt?: string | null;
   /** Formatters (injected). */
   when: (iso: string) => string;
   date: (isoDate: string) => string;
   money: (cents: number) => string;
   duration: (ms: number) => string;
+}
+
+/**
+ * Approval normally confirms within a minute (reservation written, payment settled); the
+ * drain-webhooks job retries every minute and alerts ops at `confirm.unresolved_alert_minutes`.
+ * After this long on screen we stop promising "under a minute" and say it is taking longer.
+ */
+export const CONFIRM_STALLED_AFTER_MS = 10 * 60_000;
+
+export function confirmationStalled(approvedAt: string | null | undefined, now: Date): boolean {
+  return !!approvedAt && now.getTime() - new Date(approvedAt).getTime() > CONFIRM_STALLED_AFTER_MS;
 }
 
 export function nextStep(i: NextStepInput): NextStep {
@@ -105,6 +118,18 @@ export function nextStep(i: NextStepInput): NextStep {
           };
 
     case "APPROVED":
+      if (confirmationStalled(i.approvedAt, i.now))
+        return ops
+          ? {
+              title: "Confirmation stalled",
+              body: `Approved ${i.when(i.approvedAt!)}, but the reservation or payment has not completed. It is retried every minute; check the Hostaway attempts in Key facts, or confirm it by hand.`,
+              tone: "danger",
+            }
+          : {
+              title: "Approved — confirmation is taking longer than usual",
+              body: "Your request is approved. Finalising it with the property is taking longer than usual; Live Luxe has been alerted and will email you once it is confirmed. Nothing is needed from you.",
+              tone: "attention",
+            };
       return ops
         ? {
             title: "Confirming",

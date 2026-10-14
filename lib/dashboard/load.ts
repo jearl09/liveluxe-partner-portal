@@ -84,7 +84,7 @@ export async function loadDashboard(claims: SessionClaims, opts: { demo?: boolea
     const { data, error } = await supabase
       .from("booking_requests")
       .select(
-        "id, reference, status, listing_id, check_in, check_out, nights, guest_name, claim_ref, po_number, total_cents, currency, hold_expires_at, decision_due_at, checkin_released_at, updated_at",
+        "id, reference, status, listing_id, check_in, check_out, nights, guest_name, claim_ref, po_number, total_cents, currency, hold_expires_at, decision_due_at, checkin_released_at, approved_at, updated_at",
       )
       .neq("status", "DRAFT")
       .order("updated_at", { ascending: false })
@@ -135,6 +135,7 @@ export async function loadDashboard(claims: SessionClaims, opts: { demo?: boolea
         decisionDueAt: r.decision_due_at,
         holdExpiresAt: r.hold_expires_at,
         checkinReleasedAt: r.checkin_released_at,
+        approvedAt: r.approved_at,
         checkinReleasesAt: ["APPROVED", "CONFIRMED"].includes(r.status) ? releasesAt.toISOString() : null,
         unreadComments: 0, // TODO(phase-3): booking_comments unread count per request
         paymentDue: r.status === "AWAITING_PAYMENT",

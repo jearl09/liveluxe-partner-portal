@@ -33,8 +33,11 @@ export interface DataTableColumn<T> {
   hideOnCard?: boolean;
   /** Mark the status column so cards place it top-right beside the identity. */
   status?: boolean;
-  /** Hide below the `lg` breakpoint on the table, or below `xl` with "xl" (cards still show it). */
-  optional?: boolean | "xl";
+  /**
+   * Leave out of the table below `xl` ("xl") or `2xl` ("2xl"); `true` is kept for older call sites and,
+   * now that the table starts at `lg`, always shows. Cards show every column.
+   */
+  optional?: boolean | "xl" | "2xl";
   /** Leave out of a printed page (row actions). */
   printHidden?: boolean;
 }
@@ -74,7 +77,9 @@ export function DataTable<T>(p: DataTableProps<T>) {
   return (
     <div className={p.className}>
       {/* Table from 768 px */}
-      <div className="hidden md:block">
+      {/* Table from 1024 px (brief §10.1: two-column cards below that). The scroll is a safety net:
+          a table wider than its card scrolls instead of being clipped by the card. */}
+      <div className="hidden overflow-x-auto lg:block">
         <table className={cn("w-full border-collapse text-left", text)}>
           <caption className="sr-only">{p.caption}</caption>
           <thead className="bg-surface sticky top-16 z-10">
@@ -103,7 +108,8 @@ export function DataTable<T>(p: DataTableProps<T>) {
                     className={cn(
                       "text-text-muted text-body-sm px-3 py-2.5 font-semibold whitespace-nowrap first:pl-5 last:pr-5",
                       (c.numeric || c.align === "right") && "text-right",
-                      c.optional && (c.optional === "xl" ? "hidden xl:table-cell" : "hidden lg:table-cell"),
+                      c.optional === "xl" && "hidden xl:table-cell",
+                      c.optional === "2xl" && "hidden 2xl:table-cell",
                       c.printHidden && "print:hidden",
                     )}
                   >
@@ -146,7 +152,8 @@ export function DataTable<T>(p: DataTableProps<T>) {
                         "px-3 py-2 align-middle first:pl-5 last:pr-5",
                         (c.numeric || c.align === "right") && "text-right whitespace-nowrap tabular-nums",
                         c.primary && "whitespace-nowrap",
-                        c.optional && (c.optional === "xl" ? "hidden xl:table-cell" : "hidden lg:table-cell"),
+                        c.optional === "xl" && "hidden xl:table-cell",
+                        c.optional === "2xl" && "hidden 2xl:table-cell",
                         c.printHidden && "print:hidden",
                       )}
                     >
@@ -183,7 +190,7 @@ export function DataTable<T>(p: DataTableProps<T>) {
       </div>
 
       {/* Card list below 768 px */}
-      <ul className="divide-subtle divide-y md:hidden" aria-label={p.caption}>
+      <ul className="divide-subtle divide-y lg:hidden" aria-label={p.caption}>
         {p.rows.map((row) => {
           const href = p.rowHref?.(row);
           return (

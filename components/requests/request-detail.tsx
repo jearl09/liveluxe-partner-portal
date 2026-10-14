@@ -122,6 +122,7 @@ export function RequestDetail({
     cancelledAt: r.cancelled_at,
     refundCents: r.cancel_refund_cents,
     cardNeeded: s.mode !== "invoice" && !s.gate.ok,
+    approvedAt: r.approved_at,
     when: (iso) => formatWhen(iso, now),
     date: formatDate,
     money,

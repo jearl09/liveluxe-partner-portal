@@ -164,6 +164,7 @@ export default async function BookingsPage({ searchParams }: PageProps<"/admin/b
           checkOut: r.checkOut,
           checkinReleasedAt: r.checkinReleasedAt,
           cardNeeded: r.cardNeeded,
+          approvedAt: r.approvedAt,
           when: (iso) => formatWhen(iso, now),
           date: formatDayMonth,
         });
@@ -180,12 +181,8 @@ export default async function BookingsPage({ searchParams }: PageProps<"/admin/b
       key: "updated",
       header: "Updated",
       sortable: true,
-      optional: "xl",
-      cell: (r) => (
-        <span className="text-text-muted whitespace-nowrap">
-          {formatWhen(r.updatedAt, now)}
-        </span>
-      ),
+      optional: "2xl",
+      cell: (r) => <span className="text-text-muted block max-w-32">{formatWhen(r.updatedAt, now)}</span>,
     },
   ];
 
