@@ -32,7 +32,7 @@ export default async function ResetPasswordPage({ searchParams }: PageProps<"/re
       {error === "missing" && <Notice tone="error">Please enter your email address.</Notice>}
       <label className="block text-sm">
         <span className="mb-1 block font-medium">Email</span>
-        <input name="email" type="email" required autoComplete="email" className={inputClass} />
+        <input name="email" type="email" required autoComplete="email" autoFocus className={inputClass} />
       </label>
       <SubmitButton className="w-full" pendingLabel="Sending…">
         Send reset link

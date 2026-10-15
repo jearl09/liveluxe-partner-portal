@@ -52,6 +52,9 @@
   --text-on-gold: var(--brand-navy);
   --text-gold: var(--brand-gold-ink);
   --focus-ring: var(--brand-gold-ink);
+  /* The monogram on the sign-in screens (DECISIONS #81): Gold Ink on cream, and the light that crosses it. */
+  --mark-ink: var(--brand-gold-ink);
+  --mark-sheen: var(--brand-gold-bright);
   --status-info-bg: #eef2f8;
   --status-info-fg: #2b3f63;
   --status-info-border: #c5cfe0;
@@ -155,6 +158,8 @@
     --text-on-gold: var(--brand-navy-deep);
     --text-gold: var(--brand-gold-bright);
     --focus-ring: var(--brand-gold);
+    --mark-ink: var(--brand-gold);
+    --mark-sheen: #fff3d4;
     --status-info-bg: #1b2a45;
     --status-info-fg: #b9c7e2;
     --status-info-border: #2f4468;
@@ -198,6 +203,8 @@
   --text-on-gold: var(--brand-navy-deep);
   --text-gold: var(--brand-gold-bright);
   --focus-ring: var(--brand-gold);
+  --mark-ink: var(--brand-gold);
+  --mark-sheen: #fff3d4;
   --status-info-bg: #1b2a45;
   --status-info-fg: #b9c7e2;
   --status-info-border: #2f4468;
@@ -578,6 +585,112 @@
 }
 
 /*
+ * The sign-in monogram (components/auth/brand-mark.tsx). The one place the brief's restraint is set aside, on
+ * purpose (DECISIONS #81): the mark is written on in gold, light crosses it once, and then nothing moves.
+ * Every rule here animates *from* a hidden state *to* the default, so with animation off (reduced motion, a
+ * second visit in the same tab, or no CSS animation support) the finished mark is simply there.
+ *   --d  when this piece starts      --t  how long it takes      --x / --y  where a shape slides in from
+ */
+.ll-mark {
+  --mark-ease: cubic-bezier(0.16, 1, 0.3, 1); /* slow out, no overshoot */
+  display: inline-block;
+  color: var(--mark-ink);
+  animation: ll-settle 2.4s var(--mark-ease) backwards;
+}
+@keyframes ll-settle {
+  from {
+    transform: translateY(6px) scale(1.035);
+  }
+}
+/* Variant A: each pen piece reveals its stretch of the shape, end to end, in writing order. */
+.ll-mark-pen path {
+  stroke-dasharray: 1 2;
+  animation: ll-pen var(--t) linear var(--d) backwards;
+}
+@keyframes ll-pen {
+  0% {
+    stroke-dashoffset: 1;
+    stroke-opacity: 0; /* a round cap would otherwise show a dot before the pen arrives */
+  }
+  0.1% {
+    stroke-opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+/* When a shape is written, its whole outline is let through, so no pixel the nib missed stays hidden. */
+.ll-mark-done {
+  animation: ll-fade 0.2s linear var(--d) backwards;
+}
+/* Variant B: one turn of a coin. The far side is in shadow. */
+.ll-mark[data-variant="coin"] svg {
+  animation: ll-coin 1.8s var(--mark-ease) backwards;
+}
+@keyframes ll-coin {
+  0% {
+    transform: perspective(36em) rotateY(-360deg);
+    opacity: 0;
+    filter: brightness(0.8);
+  }
+  12% {
+    opacity: 1;
+  }
+  35% {
+    filter: brightness(0.55);
+  }
+  100% {
+    transform: perspective(36em) rotateY(0deg);
+    filter: brightness(1);
+  }
+}
+/* Variant C: the strokes slide together from just outside their places. */
+.ll-mark[data-variant="assemble"] .ll-mark-shape {
+  transform-box: fill-box;
+  animation: ll-assemble 1s var(--mark-ease) var(--d) backwards;
+}
+@keyframes ll-assemble {
+  from {
+    transform: translate(var(--x), var(--y));
+    opacity: 0;
+  }
+  45% {
+    opacity: 1;
+  }
+}
+/* The light catch: one soft band across the finished mark, like light over brushed brass. Hidden at rest. */
+.ll-mark-sheen {
+  opacity: 0;
+  animation: ll-sheen 0.8s cubic-bezier(0.45, 0, 0.25, 1) var(--d);
+}
+@keyframes ll-sheen {
+  from {
+    opacity: 1;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(var(--to));
+  }
+}
+/* The headline, then the card, rise in under the mark while it is still being written. */
+.ll-enter {
+  animation: ll-enter 0.7s var(--ease-out) var(--enter-at, 0s) backwards;
+}
+@keyframes ll-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+/* Once per visit: the inline script in AuthShell marks a repeat within the same tab. */
+html[data-ll-mark="seen"] .ll-mark[data-once],
+html[data-ll-mark="seen"] .ll-mark[data-once] *,
+html[data-ll-mark="seen"] .ll-enter {
+  animation: none !important;
+}
+
+/*
  * Reduced motion (brief §4.3): movement is removed, state changes stay visible.
  * Transforms and entrance animations stop; colour and opacity changes become instant.
  */
@@ -588,6 +701,10 @@
     transition-duration: 0ms !important;
     transform: none !important;
     scroll-behavior: auto !important;
+  }
+  /* The finished monogram, with a plain fade: no writing, no light. */
+  .ll-mark {
+    animation: ll-fade 0.4s var(--ease-out) !important;
   }
 }
 

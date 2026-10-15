@@ -35,5 +35,14 @@ export async function settle(page: Page) {
   // The Next dev-tools badge is fixed to the viewport and would land mid-page in a full-page capture.
   await page.addStyleTag({ content: "nextjs-portal{display:none!important}" });
   await page.evaluate(() => document.fonts.ready);
+  // Entrance animations (the sign-in mark and card, DECISIONS #81) end at full opacity; measure contrast after them.
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getComputedTiming().endTime !== Infinity)
+        .map((a) => a.finished.catch(() => undefined)),
+    ),
+  );
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 }
