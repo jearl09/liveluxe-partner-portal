@@ -52,9 +52,17 @@
   --text-on-gold: var(--brand-navy);
   --text-gold: var(--brand-gold-ink);
   --focus-ring: var(--brand-gold-ink);
-  /* The monogram on the sign-in screens (DECISIONS #81): Gold Ink on cream, and the light that crosses it. */
-  --mark-ink: var(--brand-gold-ink);
-  --mark-sheen: var(--brand-gold-bright);
+  /* The sign-in page (DECISIONS #82): its ground, and the monogram as polished gold. Deeper metal on cream. */
+  --auth-bg: var(--bg-canvas);
+  --auth-grid: rgb(22 36 59 / 0.55);
+  --auth-glow: rgb(211 172 96 / 0.2);
+  --mark-metal-1: #6e5320;
+  --mark-metal-2: #a8823a;
+  --mark-metal-3: #e8cf8c;
+  --mark-metal-4: #8c6828;
+  --mark-edge: rgb(255 247 222 / 0.7);
+  --mark-shadow: rgb(92 62 18 / 0.28);
+  --mark-sheen: #fff6dc;
   --status-info-bg: #eef2f8;
   --status-info-fg: #2b3f63;
   --status-info-border: #c5cfe0;
@@ -158,8 +166,16 @@
     --text-on-gold: var(--brand-navy-deep);
     --text-gold: var(--brand-gold-bright);
     --focus-ring: var(--brand-gold);
-    --mark-ink: var(--brand-gold);
-    --mark-sheen: #fff3d4;
+    --auth-bg: var(--brand-navy);
+    --auth-grid: var(--on-navy-grid);
+    --auth-glow: rgb(211 172 96 / 0.16);
+    --mark-metal-1: #8a6a2a;
+    --mark-metal-2: #d3ac60;
+    --mark-metal-3: #f6e3a8;
+    --mark-metal-4: #b88a3e;
+    --mark-edge: rgb(255 244 210 / 0.6);
+    --mark-shadow: rgb(18 10 2 / 0.55);
+    --mark-sheen: #fff6dc;
     --status-info-bg: #1b2a45;
     --status-info-fg: #b9c7e2;
     --status-info-border: #2f4468;
@@ -203,8 +219,16 @@
   --text-on-gold: var(--brand-navy-deep);
   --text-gold: var(--brand-gold-bright);
   --focus-ring: var(--brand-gold);
-  --mark-ink: var(--brand-gold);
-  --mark-sheen: #fff3d4;
+  --auth-bg: var(--brand-navy);
+  --auth-grid: var(--on-navy-grid);
+  --auth-glow: rgb(211 172 96 / 0.16);
+  --mark-metal-1: #8a6a2a;
+  --mark-metal-2: #d3ac60;
+  --mark-metal-3: #f6e3a8;
+  --mark-metal-4: #b88a3e;
+  --mark-edge: rgb(255 244 210 / 0.6);
+  --mark-shadow: rgb(18 10 2 / 0.55);
+  --mark-sheen: #fff6dc;
   --status-info-bg: #1b2a45;
   --status-info-fg: #b9c7e2;
   --status-info-border: #2f4468;
@@ -585,16 +609,33 @@
 }
 
 /*
- * The sign-in monogram (components/auth/brand-mark.tsx). The one place the brief's restraint is set aside, on
- * purpose (DECISIONS #81): the mark is written on in gold, light crosses it once, and then nothing moves.
- * Every rule here animates *from* a hidden state *to* the default, so with animation off (reduced motion, a
- * second visit in the same tab, or no CSS animation support) the finished mark is simply there.
- *   --d  when this piece starts      --t  how long it takes      --x / --y  where a shape slides in from
+ * The sign-in page (components/auth/auth-shell.tsx, DECISIONS #81–82). One centred column on a navy (cream in
+ * light) ground with the faint grid, and a warm glow behind the monogram as if it were lit from behind.
+ */
+.auth-page {
+  background: var(--auth-bg);
+}
+.auth-grid {
+  opacity: 0.07;
+  background-image:
+    linear-gradient(transparent 31px, var(--auth-grid) 32px),
+    linear-gradient(90deg, transparent 31px, var(--auth-grid) 32px);
+  background-size: 32px 32px;
+}
+.auth-glow {
+  background: radial-gradient(closest-side, var(--auth-glow), transparent);
+}
+
+/*
+ * The monogram (components/auth/brand-mark.tsx): polished gold, written on once per visit, one sheen, then still.
+ * Every rule animates *from* a hidden state *to* the default, so with animation off (reduced motion, a second
+ * visit in the same tab, or no CSS animation support) the finished mark is simply there.
+ *   --d  when this piece starts      --t  how long it takes
+ * The hover tilt (components/auth/mark-tilt.tsx) sets --rx, --ry, --lift, --gx, --gy and --glint.
  */
 .ll-mark {
   --mark-ease: cubic-bezier(0.16, 1, 0.3, 1); /* slow out, no overshoot */
   display: inline-block;
-  color: var(--mark-ink);
   animation: ll-settle 2.4s var(--mark-ease) backwards;
 }
 @keyframes ll-settle {
@@ -602,7 +643,11 @@
     transform: translateY(6px) scale(1.035);
   }
 }
-/* Variant A: each pen piece reveals its stretch of the shape, end to end, in writing order. */
+/* Raised like foil on a card: a warm shadow that deepens and spreads as the mark lifts toward the cursor. */
+.ll-mark svg {
+  filter: drop-shadow(0 calc(3px + var(--lift, 0) * 7px) calc(4px + var(--lift, 0) * 10px) var(--mark-shadow));
+}
+/* Each pen piece reveals its stretch of the shape, end to end, in writing order. */
 .ll-mark-pen path {
   stroke-dasharray: 1 2;
   animation: ll-pen var(--t) linear var(--d) backwards;
@@ -623,45 +668,10 @@
 .ll-mark-done {
   animation: ll-fade 0.2s linear var(--d) backwards;
 }
-/* Variant B: one turn of a coin. The far side is in shadow. */
-.ll-mark[data-variant="coin"] svg {
-  animation: ll-coin 1.8s var(--mark-ease) backwards;
-}
-@keyframes ll-coin {
-  0% {
-    transform: perspective(36em) rotateY(-360deg);
-    opacity: 0;
-    filter: brightness(0.8);
-  }
-  12% {
-    opacity: 1;
-  }
-  35% {
-    filter: brightness(0.55);
-  }
-  100% {
-    transform: perspective(36em) rotateY(0deg);
-    filter: brightness(1);
-  }
-}
-/* Variant C: the strokes slide together from just outside their places. */
-.ll-mark[data-variant="assemble"] .ll-mark-shape {
-  transform-box: fill-box;
-  animation: ll-assemble 1s var(--mark-ease) var(--d) backwards;
-}
-@keyframes ll-assemble {
-  from {
-    transform: translate(var(--x), var(--y));
-    opacity: 0;
-  }
-  45% {
-    opacity: 1;
-  }
-}
-/* The light catch: one soft band across the finished mark, like light over brushed brass. Hidden at rest. */
+/* The sheen: one bright band across the finished mark. Hidden at rest; a tap replays it (Web Animations). */
 .ll-mark-sheen {
   opacity: 0;
-  animation: ll-sheen 0.8s cubic-bezier(0.45, 0, 0.25, 1) var(--d);
+  animation: ll-sheen 0.9s cubic-bezier(0.45, 0, 0.25, 1) var(--d);
 }
 @keyframes ll-sheen {
   from {
@@ -673,7 +683,47 @@
     transform: translateX(var(--to));
   }
 }
-/* The headline, then the card, rise in under the mark while it is still being written. */
+/* The glint that follows the cursor across the metal. */
+.ll-mark-glint {
+  opacity: var(--glint, 0);
+  transform: translate(var(--gx, 120px), var(--gy, 40px));
+  transition: opacity 0.6s var(--ease-out);
+}
+
+/* Once written, the pen masks are spent: dropping them keeps each hover frame cheap. MarkTilt sets data-drawn. */
+.ll-tilt[data-drawn] .ll-mark-shape {
+  mask: none;
+}
+
+/*
+ * The tilt: a coin turned gently toward the cursor. Quick to follow, slow (600 ms) to settle back. --lift is
+ * registered so the shadow eases with the tilt instead of jumping.
+ */
+@property --lift {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+.ll-tilt {
+  perspective: 700px;
+  transition: --lift 600ms var(--ease-out);
+}
+.ll-tilt[data-tracking] {
+  transition-duration: 220ms;
+}
+.ll-tilt[data-tracking] .ll-tilt-body {
+  will-change: transform;
+}
+.ll-tilt-body {
+  display: inline-block;
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(calc(var(--lift, 0) * -3px));
+  transition: transform 600ms var(--ease-out);
+}
+.ll-tilt[data-tracking] .ll-tilt-body {
+  transition-duration: 220ms;
+}
+
+/* The wordmark, then the card, rise in under the mark while it is still being written. */
 .ll-enter {
   animation: ll-enter 0.7s var(--ease-out) var(--enter-at, 0s) backwards;
 }
@@ -702,9 +752,9 @@ html[data-ll-mark="seen"] .ll-enter {
     transform: none !important;
     scroll-behavior: auto !important;
   }
-  /* The finished monogram, with a plain fade: no writing, no light. */
-  .ll-mark {
-    animation: ll-fade 0.4s var(--ease-out) !important;
+  /* The monogram is simply there, finished and still: no writing, no sheen, no tilt, no glint. */
+  .ll-mark-glint {
+    opacity: 0 !important;
   }
 }
 

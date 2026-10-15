@@ -28,7 +28,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        {/* suppressHydrationWarning: browser extensions inject their own <script> at the top of <head> before React
+            loads, and React then compares that tag with this one ("1 Issue" in the dev overlay). Only this tag. */}
+        <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="bg-background text-foreground flex min-h-full flex-col">{children}</body>
     </html>

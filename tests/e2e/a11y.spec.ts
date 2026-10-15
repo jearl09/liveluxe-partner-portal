@@ -54,7 +54,10 @@ test.describe("accessibility", () => {
     await page.goto("/dev/kit?throw=1");
     await expect(page.getByRole("heading", { name: "This page couldn't load" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
-    await expect(page.getByText(/Deliberate preview error|at .*\.tsx|node_modules/)).toHaveCount(0);
+    // Visible text only: the dev overlay's collapsed badge holds the thrown message, which a visitor never sees.
+    await expect(
+      page.getByText(/Deliberate preview error|at .*\.tsx|node_modules/).filter({ visible: true }),
+    ).toHaveCount(0);
     await settle(page);
     const results = await audit(page);
     expect(describeViolations(results)).toBe("");
