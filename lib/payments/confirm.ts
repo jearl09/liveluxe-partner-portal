@@ -33,7 +33,7 @@ import {
   balanceDueDate,
   depositPctFor,
   depositSplit,
-  invoiceDaysFor,
+  invoiceDaysUntilDue,
   paymentModeFor,
   type PaymentMode,
 } from "@/lib/domain/payments";
@@ -94,7 +94,12 @@ async function loadContext(b: BookingRequestRow) {
     db
       .from("settings")
       .select("key, value")
-      .in("key", ["checkin.release_offset_hours", "deposit.default_pct", "deposit.balance_due_days_before_checkin"]),
+      .in("key", [
+        "checkin.release_offset_hours",
+        "deposit.default_pct",
+        "deposit.balance_due_days_before_checkin",
+        "invoice.due_days_before_checkin",
+      ]),
   ]);
   if (!listing.data) throw new Error("listing missing for booking");
   const setting = (k: string) => settings.data?.find((r) => r.key === k)?.value;
@@ -110,7 +115,15 @@ async function loadContext(b: BookingRequestRow) {
     checkinOffsetHours: Number(setting("checkin.release_offset_hours") ?? 48) || 48,
     depositDefaultPct: setting("deposit.default_pct"),
     balanceDueDaysBefore: Number(setting("deposit.balance_due_days_before_checkin") ?? 14) || 14,
+    invoiceDueDaysBefore: invoiceDueSetting(setting("invoice.due_days_before_checkin")),
   };
+}
+
+/** `invoice.due_days_before_checkin`: a missing row means 7 (DECISIONS-REQUIRED #3); JSON null means terms only. */
+function invoiceDueSetting(value: unknown): number | null {
+  if (value === undefined) return 7;
+  const n = Number(value);
+  return value === null || !Number.isFinite(n) || n < 0 ? null : Math.floor(n);
 }
 
 /** Mode A/B money check: is there an authorisation to capture, or a capture already made? */
@@ -188,7 +201,10 @@ export async function confirmBooking(
   if (mode === "invoice") {
     invoice =
       (await invoiceForBooking(b.id, "net_terms")) ??
-      (await issueInvoice(src, { collection: "send_invoice", daysUntilDue: invoiceDaysFor(org.payment_terms) }));
+      (await issueInvoice(src, {
+        collection: "send_invoice",
+        daysUntilDue: invoiceDaysUntilDue(org.payment_terms, b.check_in, ctx.invoiceDueDaysBefore, todayIn(BOOKING_TZ)),
+      }));
   } else {
     if (mode === "deposit") {
       depositPct = depositPctFor(org.deposit_pct, ctx.depositDefaultPct);

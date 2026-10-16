@@ -30,7 +30,8 @@ That is not acceptable for a live pilot.
    `20261006000000_initial_schema.sql`, `20261006120000_phase0_auth.sql`, `20261006130000_dashboard.sql`,
    `20261008100000_job_leases.sql`, `20261009100000_booking_requests.sql`,
    `20261012100000_rate_cards_partners_sla.sql`, `20261013100000_payments.sql`,
-   `20261013150000_cancellations.sql`, `20261013200000_phase4_phase5.sql`, `20261014090000_checkin_pack.sql`.
+   `20261013150000_cancellations.sql`, `20261013200000_phase4_phase5.sql`, `20261014090000_checkin_pack.sql`,
+   `20261016100000_invoice_due_before_checkin.sql`.
    Do **not** run `supabase/seed/seed.sql` on the client project (demo partners and listings).
 2. Authentication → Hooks → Customize Access Token (JWT) Claims → Postgres → `public.custom_access_token_hook` → Save.
 3. Authentication → Multi-Factor → TOTP enabled. Authentication → URL configuration: Site URL = the production
@@ -44,6 +45,9 @@ That is not acceptable for a live pilot.
    `hostaway.reference_custom_field_id` once Hostaway support confirms them (DECISIONS #7).
 
 ## 3. Stripe live mode (Owner: engineer, Angel approves) — 30 min
+
+Account: **Direct Bookings** (Angel, 16 Oct 2026), not "Live Luxe – Enso Connect" or "North Port". If it already takes
+payments for the direct booking site, steps 3–4 change settings that site also uses: check with Angel first.
 
 1. Developers → API keys (live): put `STRIPE_SECRET_KEY` (sk_live) and `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (pk_live)
    in Proton Pass and `.env.local`. Comment out the test keys above them.

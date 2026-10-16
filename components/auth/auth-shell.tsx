@@ -43,7 +43,7 @@ export function AuthShell({ children, once = true }: { children: ReactNode; once
         </div>
         <div className="ll-enter mt-5 flex flex-col items-center gap-1.5 text-center" style={at("0.08s")}>
           <p className="text-foreground font-serif text-3xl leading-none md:text-4xl">Live Luxe</p>
-          <p className="eyebrow">Melbourne · Sydney · Brisbane</p>
+          <p className="eyebrow">Melbourne · Australia</p>
         </div>
         <div
           className="ll-enter border-subtle bg-surface-raised rounded-card relative mt-8 w-full max-w-[420px] border p-6 shadow-md sm:p-8"

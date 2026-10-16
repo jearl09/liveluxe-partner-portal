@@ -10,6 +10,7 @@ import {
   declineReasonText,
   depositPctFor,
   depositSplit,
+  invoiceDaysUntilDue,
   dunningRung,
   earlyDepartureRefund,
   needsResumeReminder,
@@ -37,6 +38,12 @@ describe("mode B — deposit now, balance on invoice (§11.1 B)", () => {
     expect(balanceDueDate("2027-03-20", 14, "2026-10-13")).toBe("2027-03-06");
     expect(balanceDueDate("2026-10-20", 14, "2026-10-13")).toBe("2026-10-14");
     expect(balanceDueDate("2026-10-14", 14, "2026-10-13")).toBe("2026-10-14");
+  });
+  it("invoice due: terms, but no later than N days before check-in", () => {
+    expect(invoiceDaysUntilDue("net14", "2027-03-20", 7, "2026-10-13")).toBe(14);
+    expect(invoiceDaysUntilDue("net30", "2026-11-01", 7, "2026-10-13")).toBe(12);
+    expect(invoiceDaysUntilDue("net14", "2026-10-18", 7, "2026-10-13")).toBe(1);
+    expect(invoiceDaysUntilDue("net14", "2026-11-01", null, "2026-10-13")).toBe(14);
   });
   it("balance items are the stay less the deposit", () => {
     expect(balanceInvoiceItems([{ description: "Stay", amountCents: 1000 }], 200)).toEqual([

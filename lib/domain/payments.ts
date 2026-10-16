@@ -246,6 +246,23 @@ export function balanceDueDate(checkIn: string, daysBefore: number, today: strin
   return daysBetween(earliest, target) >= 0 ? target : earliest;
 }
 
+/**
+ * Mode C: days until a net-terms invoice falls due. The partner's terms (net 14 / net 30), but never later than
+ * `daysBefore` days ahead of check-in (settings `invoice.due_days_before_checkin`); a stay starting soon is due
+ * tomorrow. Null `daysBefore` means terms only.
+ */
+export function invoiceDaysUntilDue(
+  terms: PaymentTerms | null | undefined,
+  checkIn: string,
+  daysBefore: number | null,
+  today: string,
+): number {
+  const termDays = invoiceDaysFor(terms);
+  if (daysBefore == null) return termDays;
+  const byCheckIn = daysBetween(today, balanceDueDate(checkIn, daysBefore, today));
+  return termDays > 0 ? Math.min(termDays, byCheckIn) : byCheckIn;
+}
+
 /** Invoice line items for the balance: the stay less the deposit already taken. */
 export function balanceInvoiceItems(stayItems: InvoiceItem[], depositCents: number): InvoiceItem[] {
   return [...stayItems, { description: "Less deposit received", amountCents: -depositCents }];
