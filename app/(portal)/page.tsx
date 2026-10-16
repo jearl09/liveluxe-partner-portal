@@ -37,11 +37,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
 
   return (
     <div className="space-y-8">
-      <header className="relative isolate flex flex-wrap items-end justify-between gap-4">
-        <div
-          aria-hidden
-          className="page-glow pointer-events-none absolute -top-8 left-1/2 -z-10 h-64 w-screen -translate-x-1/2 print:hidden"
-        />
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-h1 text-text-primary font-serif tracking-tight">
             {d.greeting}, {d.firstName}.

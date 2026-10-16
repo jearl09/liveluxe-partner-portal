@@ -3,7 +3,7 @@
  * Runs on the RLS client: partners only ever see active, partner-visible listings
  * because the listings_select policy says so, not because this file filters.
  */
-import { displayPropertyName } from "@/lib/domain/property-name";
+import { partnerPropertyName } from "@/lib/domain/property-name";
 import "server-only";
 import { createServerSupabase } from "@/lib/db/server";
 import type { ListingRow } from "@/lib/db/types";
@@ -219,7 +219,10 @@ export async function searchListings(q: SearchQuery, nights: number, hasDates: b
           .gte("max_guests", q.guests)
           .gte("max_pets", q.pets);
 
-  if (term) query = query.or(`suburb.ilike.%${term}%,postcode.ilike.%${term}%,public_name.ilike.%${term}%`);
+  if (term)
+    query = query.or(
+      `suburb.ilike.%${term}%,postcode.ilike.%${term}%,public_name.ilike.%${term}%,internal_name.ilike.%${term}%`,
+    );
   if (q.bedrooms) query = query.gte("bedrooms", q.bedrooms);
   // Price order needs every available listing's price, so it pages in memory; the
   // available set for one stay is the portfolio at most (a few hundred rows).
@@ -250,7 +253,7 @@ export async function searchListings(q: SearchQuery, nights: number, hasDates: b
 
   const items: SearchResultItem[] = rows.map((r) => ({
     id: r.id,
-    name: displayPropertyName(r.public_name),
+    name: partnerPropertyName(r.public_name, (r as { internal_name?: string | null }).internal_name),
     suburb: r.suburb,
     state: r.state,
     bedrooms: r.bedrooms,
@@ -290,7 +293,10 @@ export async function nearbyAvailability(
       { p_check_in: w.checkIn, p_check_out: w.checkOut, p_guests: q.guests, p_pets: q.pets },
       { count: "exact", head: true },
     );
-    if (term) query = query.or(`suburb.ilike.%${term}%,postcode.ilike.%${term}%,public_name.ilike.%${term}%`);
+    if (term)
+      query = query.or(
+        `suburb.ilike.%${term}%,postcode.ilike.%${term}%,public_name.ilike.%${term}%,internal_name.ilike.%${term}%`,
+      );
     if (q.bedrooms) query = query.gte("bedrooms", q.bedrooms);
     const { count } = await query;
     if (count && count > 0) out.push({ ...w, count });

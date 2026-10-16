@@ -8,6 +8,7 @@ import {
   firstName,
   greetingForHour,
   humanizeDuration,
+  roughlyIn,
   statusTone,
   type DashboardRequestRow,
 } from "@/lib/domain/dashboard";
@@ -51,6 +52,9 @@ describe("dashboard view-model", () => {
     expect(humanizeDuration(40 * 60_000)).toBe("40 m");
     expect(humanizeDuration(3 * 86_400_000 + 4 * 3_600_000)).toBe("3 d 4 h");
     expect(humanizeDuration(-30 * 60_000)).toBe("overdue by 30 m");
+    expect(roughlyIn(16 * 3_600_000 + 10 * 60_000)).toBe("in 16 h");
+    expect(roughlyIn(20 * 60_000)).toBe("within the hour");
+    expect(roughlyIn(50 * 3_600_000)).toBe("in 2 days");
   });
 
   it("maps every status to the shared pill tones", () => {
@@ -155,7 +159,7 @@ describe("dashboard view-model", () => {
     const agenda = buildAgenda(rows, now);
     expect(agenda.map((e) => [e.direction, e.guestSurname, e.dayLabel, e.accessNote])).toEqual([
       ["out", "Barker-Lee", "Wed 7 Oct", null],
-      ["in", "Natarajan", "Thu 8 Oct", "Access details released"],
+      ["in", "Natarajan", "Thu 8 Oct", "Check-in details released"],
     ]);
   });
 

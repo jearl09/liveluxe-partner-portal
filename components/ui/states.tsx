@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { AlertTriangle, type LucideIcon } from "lucide-react";
-import { formatTimestamp } from "@/lib/utils";
+import { formatTimestamp, formatWhen } from "@/lib/utils";
 import { ageLabel, type SyncModel } from "@/lib/domain/progress";
 import { cn } from "@/lib/utils";
 
@@ -98,13 +98,15 @@ export function SyncState({
 }) {
   const at = model.lastConfirmedAt ? formatTimestamp(model.lastConfirmedAt) : null;
   const time = at ? at.replace(/^.*?, /, "") : null;
+  // "6:13 am today AEDT" / "Tue 14 Oct, 6:13 am AEDT": a stale time without its day would mislead.
+  const when = model.lastConfirmedAt ? formatWhen(model.lastConfirmedAt) : null;
   const text =
     model.level === "live"
       ? `Availability confirmed ${ageLabel(model.ageMinutes ?? 0)}`
       : model.level === "delayed"
         ? audience === "ops"
           ? `Sync delayed — last confirmed ${time}`
-          : `Availability last confirmed ${time}. We re-check before you submit.`
+          : `Availability last confirmed ${when} — may be out of date. We re-check before you submit.`
         : model.level === "degraded"
           ? audience === "ops"
             ? "Hostaway connection lost — showing cached data"
@@ -127,7 +129,9 @@ export function SyncState({
   return (
     <p
       className={cn(
-        "text-text-secondary text-body-sm inline-flex items-center gap-2",
+        "text-body-sm inline-flex items-center gap-2",
+        // Stale or paused availability is a warning, never the normal grey line.
+        model.level === "live" || model.level === "unknown" ? "text-text-secondary" : "text-attention-fg font-semibold",
         compact && "whitespace-nowrap",
         className,
       )}

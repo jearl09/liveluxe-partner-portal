@@ -22,17 +22,19 @@ const row = (approvedAt: string | null, audience: "partner" | "ops" = "partner")
 describe("stalled confirmation", () => {
   it("is in progress for the first minutes after approval", () => {
     expect(confirmationStalled(ago(60_000), now)).toBe(false);
-    expect(row(ago(60_000)).text).toBe("Confirming");
+    expect(row(ago(60_000)).text).toBe("Confirming your booking");
+    expect(row(ago(60_000), "ops").text).toBe("Confirming");
   });
 
-  it("says so once it has taken longer than the window", () => {
+  it("tells ops once it has taken longer than the window, never the partner", () => {
     expect(confirmationStalled(ago(CONFIRM_STALLED_AFTER_MS + 1), now)).toBe(true);
-    expect(row(ago(CONFIRM_STALLED_AFTER_MS + 1))).toEqual({ text: "Taking longer than usual", urgent: false });
+    expect(row(ago(CONFIRM_STALLED_AFTER_MS + 1))).toEqual({ text: "Confirming your booking", urgent: false });
     expect(row(ago(CONFIRM_STALLED_AFTER_MS + 1), "ops")).toEqual({ text: "Confirmation stalled", urgent: true });
   });
 
   it("does not guess without an approval time", () => {
     expect(confirmationStalled(null, now)).toBe(false);
-    expect(row(null).text).toBe("Confirming");
+    expect(row(null).text).toBe("Confirming your booking");
+    expect(row(null, "ops").text).toBe("Confirming");
   });
 });

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
  * when it applies.
  */
 export function FlowSteps({ current, withCard }: { current: 0 | 1 | 2; withCard: boolean }) {
-  const steps = ["Guest and references", "Review and send", ...(withCard ? ["Hold your card"] : [])];
+  const steps = ["Guest and references", "Review and send", ...(withCard ? ["Authorise your card"] : [])];
   return (
     <ol className="flex flex-wrap items-center gap-x-2 gap-y-2" aria-label="Request steps">
       {steps.map((s, i) => {

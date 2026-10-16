@@ -12,7 +12,7 @@ import { getSessionClaims } from "@/lib/db/server";
 import { todayIn } from "@/lib/domain/dates";
 import { PAY_MODE_SENTENCE, paymentModeFor } from "@/lib/domain/payments";
 import { can } from "@/lib/domain/permissions";
-import { displayPropertyName } from "@/lib/domain/property-name";
+import { partnerPropertyName } from "@/lib/domain/property-name";
 import { parseSearchParams, searchQueryString } from "@/lib/domain/search";
 import { env } from "@/lib/env";
 import { priceStay } from "@/lib/listings/price";
@@ -64,7 +64,7 @@ export default async function NewRequestPage({ searchParams }: PageProps<"/reque
   ]);
   if (!priced) notFound();
   const l = priced.detail.listing;
-  const name = displayPropertyName(l.public_name);
+  const name = partnerPropertyName(l.public_name, l.internal_name);
   const mode = paymentModeFor(terms);
   const propertyHref = `/listings/${listingId}${searchQueryString({ checkIn: stay.checkIn, checkOut: stay.checkOut, pets })}&adults=${adults}&children=${children}#price`;
   const searchHref = `/search${searchQueryString({ q: l.suburb ?? "", checkIn: stay.checkIn, checkOut: stay.checkOut, guests: adults + children, pets, page: 1 })}`;

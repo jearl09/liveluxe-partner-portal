@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 export const fieldClass = "w-full";
 
 /** The small label above a field. Wrap the control in it so the label is its accessible name. */
-export const labelClass = "text-foreground block text-xs font-medium";
+export const labelClass = "text-text-primary text-body-sm block font-semibold";
 
 /** Added to a field the server sent back as invalid; pair it with `aria-invalid`. */
 export const invalidFieldClass = "border-bad-border ring-bad-border ring-1";
@@ -21,4 +21,4 @@ export const fieldClasses = (invalid = false, extra?: string) =>
   cn(fieldClass, "mt-1", invalid && invalidFieldClass, extra);
 
 /** Inline message under an invalid field. */
-export const fieldErrorClass = "text-bad mt-1 block text-xs font-normal";
+export const fieldErrorClass = "text-danger-fg text-body-sm mt-1 block font-normal";

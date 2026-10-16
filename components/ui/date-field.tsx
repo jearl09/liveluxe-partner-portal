@@ -57,7 +57,8 @@ export const CAL_CLASSES = {
 const COMPACT_CLASSES = {
   ...CAL_CLASSES,
   weekday: "h-8 w-9 text-center text-body-sm font-semibold text-text-muted",
-  day_button: CAL_CLASSES.day_button.replace("h-10 w-10", "h-9 w-9"),
+  // On a touch screen the cells grow back to 44 px; the popover then spans the phone width.
+  day_button: CAL_CLASSES.day_button.replace("h-10 w-10", "h-9 w-9 coarse:h-11 coarse:w-11"),
 } as const;
 
 function Chevron({ orientation }: { orientation?: "left" | "right" | "up" | "down" }) {
@@ -81,7 +82,7 @@ function useTwoMonths() {
 }
 
 const triggerClass =
-  "flex min-h-10 w-full items-center gap-2 rounded-control border border-strong-border bg-inset px-3 text-left text-body text-text-primary transition-colors hover:border-text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus coarse:min-h-11";
+  "flex min-h-10 w-full items-center gap-2 rounded-control border border-field-border bg-field px-3 text-left text-body text-text-primary transition-colors hover:border-text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus coarse:min-h-11";
 
 export interface DateRangeFieldProps {
   label: string;
@@ -233,6 +234,7 @@ export function DateRangeField(p: DateRangeFieldProps) {
         </Popover.Trigger>
         <Popover.Portal>
           <Popover.Content
+            aria-label={`${p.label}: choose check-in and check-out`}
             align="start"
             sideOffset={6}
             collisionPadding={12}
@@ -388,6 +390,7 @@ export function DateField(p: DateFieldProps) {
           </Popover.Trigger>
           <Popover.Portal>
             <Popover.Content
+              aria-label={`${p.label}: choose a date`}
               align="start"
               sideOffset={6}
               collisionPadding={12}

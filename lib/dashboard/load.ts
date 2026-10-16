@@ -10,7 +10,7 @@
 import { approvalPaymentGate, paymentModeFor, paymentStateFromStripe } from "@/lib/domain/payments";
 import { syncState } from "@/lib/domain/progress";
 import { circuitState } from "@/lib/hostaway/client";
-import { displayPropertyName } from "@/lib/domain/property-name";
+import { partnerPropertyName } from "@/lib/domain/property-name";
 import "server-only";
 import { createServerSupabase } from "@/lib/db/server";
 import type { SessionClaims } from "@/lib/domain/permissions";
@@ -71,11 +71,11 @@ export async function loadDashboard(claims: SessionClaims, opts: { demo?: boolea
   const fresh = freshnessRes.data?.[0];
   const freshness = demo
     ? evaluateFreshness(new Date(now.getTime() - 3 * 60_000).toISOString(), now, 30)
-    : evaluateFreshness(fresh?.last_synced_at ?? null, now, fresh?.stale_after_minutes ?? 30);
+    : evaluateFreshness(fresh?.last_synced_at ?? null, now, fresh?.stale_after_minutes ?? 45);
   const sync = syncState({
     lastSyncIso: demo ? new Date(now.getTime() - 3 * 60_000).toISOString() : (fresh?.last_synced_at ?? null),
     now,
-    staleAfterMinutes: fresh?.stale_after_minutes ?? 30,
+    staleAfterMinutes: fresh?.stale_after_minutes ?? 45,
     degraded: !demo && circuitState().open,
   });
 
@@ -93,7 +93,7 @@ export async function loadDashboard(claims: SessionClaims, opts: { demo?: boolea
     const listingIds = [...new Set((data ?? []).map((r) => r.listing_id))];
     const [{ data: listings }, { data: images }] = listingIds.length
       ? await Promise.all([
-          supabase.from("listings").select("id, public_name, suburb").in("id", listingIds),
+          supabase.from("listings").select("id, public_name, internal_name, suburb").in("id", listingIds),
           supabase
             .from("listing_images")
             .select("listing_id, url")
@@ -101,7 +101,7 @@ export async function loadDashboard(claims: SessionClaims, opts: { demo?: boolea
             .order("sort_order", { ascending: true }),
         ])
       : [
-          { data: [] as { id: string; public_name: string; suburb: string | null }[] },
+          { data: [] as { id: string; public_name: string; internal_name: string | null; suburb: string | null }[] },
           { data: [] as { listing_id: string; url: string }[] },
         ];
     const byId = new Map((listings ?? []).map((l) => [l.id, l]));
@@ -136,7 +136,7 @@ export async function loadDashboard(claims: SessionClaims, opts: { demo?: boolea
         id: r.id,
         reference: r.reference,
         status: r.status as BookingStatus,
-        propertyName: displayPropertyName(l?.public_name),
+        propertyName: partnerPropertyName(l?.public_name, l?.internal_name),
         suburb: l?.suburb ?? null,
         photoUrl: photoBy.get(r.listing_id) ?? null,
         checkIn: r.check_in,

@@ -14,7 +14,7 @@ import { addDays, todayIn } from "@/lib/domain/dates";
 import { formatMoney } from "@/lib/domain/money";
 import { PAY_MODE_SENTENCE, paymentModeFor } from "@/lib/domain/payments";
 import { can } from "@/lib/domain/permissions";
-import { displayPropertyName } from "@/lib/domain/property-name";
+import { partnerPropertyName } from "@/lib/domain/property-name";
 import { parseSearchParams, searchQueryString } from "@/lib/domain/search";
 import { buildStayCalendar, nearestOpenStays } from "@/lib/domain/stay-picker";
 import { env } from "@/lib/env";
@@ -33,7 +33,9 @@ const VISIBLE_AMENITIES = 12;
 export async function generateMetadata({ params }: PageProps<"/listings/[id]">) {
   const { id } = await params;
   const detail = await getListing(id);
-  return { title: detail ? displayPropertyName(detail.listing.public_name) : "Property" };
+  return {
+    title: detail ? partnerPropertyName(detail.listing.public_name, detail.listing.internal_name) : "Property",
+  };
 }
 
 const int = (v: string | string[] | undefined, fallback: number, min: number, max: number) => {
@@ -58,7 +60,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
   if (!detail) notFound();
   const canSubmit = !!claims && can(claims.role, "requests.submit");
   const { listing: l, images, amenities } = detail;
-  const name = displayPropertyName(l.public_name);
+  const name = partnerPropertyName(l.public_name, l.internal_name);
 
   const parsed = parseSearchParams(sp, today);
   const adults = int(sp.adults, parsed.query.guests, 1, 20);
@@ -189,7 +191,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
           />
         </div>
 
-        <div className="min-w-0 space-y-10">
+        <div className="min-w-0 space-y-8">
           <AvailabilityStrip
             cal={cal}
             count={STRIP_DAYS}

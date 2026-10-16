@@ -7,12 +7,12 @@ import { StatusPill } from "@/components/ui/status-pill";
 import type { RequestTableRow } from "@/lib/domain/dashboard";
 import { rowNextStep } from "@/lib/domain/list-display";
 import { PropertyThumb } from "./property-thumb";
-import { cn, formatDayMonth, formatWhen } from "@/lib/utils";
+import { cn, formatDayMonth, formatDayName, formatWhen } from "@/lib/utils";
 
 /**
  * Requests in progress (brief §7.2): live requests and stays starting within 14 days,
- * at most six, on the same DataTable as Requests. The Next step cell uses the same
- * words as the Requests list and the request page.
+ * at most six, on the same DataTable as Requests. The status column carries the next step under the pill,
+ * in the same words as the Requests list and the request page.
  */
 export function RequestsTable({
   rows,
@@ -43,8 +43,8 @@ export function RequestsTable({
       cell: (r) => (
         <span className="flex items-center gap-3">
           <PropertyThumb url={r.photoUrl} />
-          <span className="block max-w-40 min-w-0">
-            <span className="text-text-primary block truncate">{r.propertyName}</span>
+          <span className="block max-w-44 min-w-0">
+            <span className="text-text-primary line-clamp-2">{r.propertyName}</span>
             {r.suburb && <span className="text-text-muted block truncate">{r.suburb}</span>}
           </span>
         </span>
@@ -64,10 +64,11 @@ export function RequestsTable({
         </span>
       ),
     },
-    { key: "status", header: "Status", status: true, cell: (r) => <StatusPill status={r.status} /> },
     {
-      key: "next",
-      header: "Next step",
+      key: "status",
+      header: "Status",
+      status: true,
+      // Status and what happens next in one column, so the table fits its card at every width from 1024 px.
       cell: (r) => {
         const n = rowNextStep({
           status: r.status,
@@ -80,14 +81,17 @@ export function RequestsTable({
           checkinReleasedAt: r.checkinReleasedAt,
           cardNeeded: r.cardNeeded,
           approvedAt: r.approvedAt,
+          checkinReleasesAt: r.checkinReleasesAt,
           when: (iso) => formatWhen(iso, now),
           date: formatDayMonth,
+          day: (iso) => formatDayName(iso),
         });
         return (
-          <span
-            className={cn("block max-w-52 min-w-36", n.urgent ? "text-text-gold font-semibold" : "text-text-secondary")}
-          >
-            {n.text}
+          <span className="flex max-w-48 flex-col items-start gap-1">
+            <StatusPill status={r.status} />
+            <span className={cn("text-body-sm", n.urgent ? "text-text-gold font-semibold" : "text-text-secondary")}>
+              {n.text}
+            </span>
           </span>
         );
       },

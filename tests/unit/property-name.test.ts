@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { displayPropertyName } from "@/lib/domain/property-name";
+import { displayPropertyName, partnerPropertyName, streetName } from "@/lib/domain/property-name";
 
 describe("displayPropertyName (brief §7.3)", () => {
   it("drops the unit list in brackets", () => {
@@ -17,5 +17,38 @@ describe("displayPropertyName (brief §7.3)", () => {
     expect(displayPropertyName("Penthouse (river view)")).toBe("Penthouse (river view)");
     expect(displayPropertyName("(1403)")).toBe("(1403)");
     expect(displayPropertyName(null)).toBe("Property");
+  });
+});
+
+describe("partner property names: the street, never a unit or a marketing title", () => {
+  it("takes the street from the internal name", () => {
+    expect(streetName("[BLUEMO] 2913/350 William Street - [Airbnb + BDC]")).toBe("350 William Street");
+    expect(streetName("[BLUEMO] [BDC] 1605/442 Elizabeth Street Melbourne - [MEGA - Only]")).toBe(
+      "442 Elizabeth Street",
+    );
+    expect(streetName("[DISCARDED] 6507/462 Elizabeth St")).toBe("462 Elizabeth Street");
+    expect(streetName("1213/43 Therry Street - [Airbnb + BDC]")).toBe("43 Therry Street");
+    expect(streetName("1A Tarver Street Port Melbourne - [Airbnb + BDC]")).toBe("1A Tarver Street");
+    expect(streetName("[DISCARDED] 8701/7 Riverside Quay")).toBe("7 Riverside Quay");
+    expect(streetName("4602/45 Clarke Street Southbank")).toBe("45 Clarke Street");
+    expect(streetName("6201/135 A'Beckett Street Melbourne")).toBe("135 A'Beckett Street");
+    expect(streetName("232-242 Rouse St, Port Melbourne")).toBe("232-242 Rouse Street");
+    expect(streetName("North Port Hotel, 146 Evans St")).toBe("146 Evans Street");
+  });
+  it("returns null when the internal name has no street", () => {
+    expect(streetName("Studio at QV")).toBeNull();
+    expect(streetName(null)).toBeNull();
+  });
+  it("prefers the street, else cleans the public name, dropping a leading unit", () => {
+    expect(
+      partnerPropertyName(
+        "Breathtaking Views | Spacious Apartment at Flagstaff Gardens",
+        "[BLUEMO] 2913/350 William Street",
+      ),
+    ).toBe("350 William Street");
+    expect(partnerPropertyName("Cozy & Central 1B Studio at QV Market", null)).toBe(
+      "Cozy & Central 1B Studio at QV Market",
+    );
+    expect(partnerPropertyName("1311/677 La Trobe Street Docklands", null)).toBe("677 La Trobe Street Docklands");
   });
 });

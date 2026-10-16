@@ -38,7 +38,7 @@ const sub = "text-text-muted block truncate";
 
 const GROUP_HINT: Record<PartnerGroup, string> = {
   all: "Everything your organisation has sent",
-  action: "Answer, pay or hold a card",
+  action: "Answer, pay or authorise a card",
   progress: "With Live Luxe or being confirmed",
   confirmed: "Booked, upcoming or in the stay",
   closed: "Checked out, declined, expired, cancelled",

@@ -80,6 +80,17 @@ export const LIVE: readonly BookingStatus[] = [
 // Durations
 // ---------------------------------------------------------------------------
 /** "2 h 15 m", "1 h 40 m", "35 m", "3 d 4 h". Negative → "overdue by …". */
+/**
+ * A wait in the coarsest unit that still helps: "in 16 h", "in 2 days", "within the hour". For lines a partner glances
+ * at, where "16 h 10 m" is false precision.
+ */
+export function roughlyIn(ms: number): string {
+  const h = ms / 3_600_000;
+  if (h < 1) return "within the hour";
+  if (h < 36) return `in ${Math.round(h)} h`;
+  return `in ${Math.round(h / 24)} days`;
+}
+
 export function humanizeDuration(ms: number): string {
   const abs = Math.abs(ms);
   const m = Math.floor(abs / 60_000);
@@ -154,9 +165,9 @@ export function deriveAttention(
         kind: "card_needed",
         requestId: r.id,
         reference: r.reference,
-        title: "Hold your card so Live Luxe can decide",
+        title: "Authorise your card to send this request",
         context: `${r.reference} · ${r.propertyName}`,
-        cta: "Hold card",
+        cta: "Authorise card",
         href: `${href}/pay`,
         urgencyMs: 0,
       });
@@ -348,7 +359,7 @@ export interface AgendaEntry {
   propertyName: string;
   suburb: string | null;
   photoUrl: string | null;
-  /** Check-ins only: "Access details released" | "Releases in 1 d 4 h" | null */
+  /** Check-ins only: "Check-in details released" | "Check-in details in 16 h" | null */
   accessNote: string | null;
 }
 
@@ -369,10 +380,10 @@ export function buildAgenda(
     if (!["CONFIRMED", "CHECKED_IN", "APPROVED"].includes(r.status)) continue;
     if (withinNextDays(r.checkIn, today, days)) {
       let accessNote: string | null = null;
-      if (r.checkinReleasedAt) accessNote = "Access details released";
+      if (r.checkinReleasedAt) accessNote = "Check-in details released";
       else if (r.checkinReleasesAt) {
         const left = new Date(r.checkinReleasesAt).getTime() - now.getTime();
-        accessNote = left <= 0 ? "Releasing shortly" : `Releases in ${humanizeDuration(left)}`;
+        accessNote = left <= 0 ? "Check-in details due now" : `Check-in details ${roughlyIn(left)}`;
       }
       entries.push({
         requestId: r.id,

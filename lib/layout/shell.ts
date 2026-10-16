@@ -58,7 +58,7 @@ export async function loadShell(claims: SessionClaims, side: "partner" | "ops"):
     sync: syncState({
       lastSyncIso: f?.last_synced_at ?? null,
       now,
-      staleAfterMinutes: f?.stale_after_minutes ?? 30,
+      staleAfterMinutes: f?.stale_after_minutes ?? 45,
       degraded: circuitState().open,
     }),
     queue: side === "ops" ? { live: live.count ?? 0, breached: breached.count ?? 0 } : null,

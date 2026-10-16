@@ -8,14 +8,14 @@ export function ActivityFeed({ events }: { events: ActivityEvent[] }) {
     <Panel flush aria-labelledby="activity-heading">
       <PanelHeading id="activity-heading" title="Recent activity" flush />
       {events.length === 0 ? (
-        <p className="text-muted-foreground px-5 py-8 text-center text-sm">
+        <p className="text-text-muted text-body px-5 py-8 text-center">
           Decisions, comments and invoices will show here.
         </p>
       ) : (
-        <ol className="divide-border divide-y">
+        <ol className="divide-subtle divide-y">
           {events.slice(0, 5).map((e) => (
-            <li key={e.id} className="px-5 py-3 text-sm">
-              <p className="text-strong">
+            <li key={e.id} className="text-body px-5 py-3">
+              <p className="text-text-primary">
                 {e.verb}
                 {e.reference && (
                   <>
@@ -24,17 +24,17 @@ export function ActivityFeed({ events }: { events: ActivityEvent[] }) {
                     {e.requestId ? (
                       <Link
                         href={`/requests/${e.requestId}`}
-                        className="font-mono text-xs underline underline-offset-2"
+                        className="text-body-sm font-mono underline underline-offset-2"
                       >
                         {e.reference}
                       </Link>
                     ) : (
-                      <span className="font-mono text-xs">{e.reference}</span>
+                      <span className="text-body-sm font-mono">{e.reference}</span>
                     )}
                   </>
                 )}
               </p>
-              <p className="text-muted-foreground text-xs">
+              <p className="text-text-muted text-body-sm">
                 <time dateTime={e.atIso} title={`${e.atUtc} (UTC)`}>
                   {e.atLabel}
                 </time>

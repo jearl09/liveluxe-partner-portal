@@ -11,7 +11,7 @@ export async function loadSyncState(now = new Date()): Promise<SyncModel> {
   return syncState({
     lastSyncIso: f?.last_synced_at ?? null,
     now,
-    staleAfterMinutes: f?.stale_after_minutes ?? 30,
+    staleAfterMinutes: f?.stale_after_minutes ?? 45,
     degraded: circuitState().open,
   });
 }

@@ -31,7 +31,7 @@ That is not acceptable for a live pilot.
    `20261008100000_job_leases.sql`, `20261009100000_booking_requests.sql`,
    `20261012100000_rate_cards_partners_sla.sql`, `20261013100000_payments.sql`,
    `20261013150000_cancellations.sql`, `20261013200000_phase4_phase5.sql`, `20261014090000_checkin_pack.sql`,
-   `20261016100000_invoice_due_before_checkin.sql`, `20261016120000_tenant_hardening.sql`, `20261016130000_listing_taken_ranges.sql`.
+   `20261016100000_invoice_due_before_checkin.sql`, `20261016120000_tenant_hardening.sql`, `20261016130000_listing_taken_ranges.sql`, `20261016140000_sync_stale_45.sql`.
    Do **not** run `supabase/seed/seed.sql` on the client project (demo partners and listings).
 2. Authentication → Hooks → Customize Access Token (JWT) Claims → Postgres → `public.custom_access_token_hook` → Save.
 3. Authentication → Multi-Factor → TOTP enabled. Authentication → URL configuration: Site URL = the production

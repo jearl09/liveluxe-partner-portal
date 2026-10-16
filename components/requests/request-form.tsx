@@ -293,7 +293,7 @@ export function RequestForm({
               </span>
             </label>
             <SubmitButton variant="primary" className="w-full sm:w-auto" disabled={!canSend} pendingLabel="Sending…">
-              {withCard ? "Send request and hold card" : "Send request"}
+              {withCard ? "Send request and authorise card" : "Send request"}
             </SubmitButton>
             {!canSend && (
               <p className="text-danger-fg">

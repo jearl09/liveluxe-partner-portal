@@ -44,7 +44,7 @@ describe("nextStep (brief §2.3, §13)", () => {
   });
 
   it("card modes: an unheld request asks for the card first, on both sides", () => {
-    expect(nextStep({ ...base, cardNeeded: true }).title).toBe("One more step: hold your card");
+    expect(nextStep({ ...base, cardNeeded: true }).title).toBe("One more step: authorise your card");
     expect(nextStep({ ...base, audience: "ops", cardNeeded: true }).tone).toBe("attention");
   });
 

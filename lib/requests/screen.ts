@@ -8,7 +8,7 @@ import { headers } from "next/headers";
 import type { BookingModificationRow, BookingStatusDb } from "@/lib/db/types";
 import type { BookingStatus } from "@/lib/domain/booking-state-machine";
 import { todayIn } from "@/lib/domain/dates";
-import { displayPropertyName } from "@/lib/domain/property-name";
+import { partnerPropertyName } from "@/lib/domain/property-name";
 import { approvalPaymentGate, paymentModeFor, type PaymentMode } from "@/lib/domain/payments";
 import { can, type SessionClaims } from "@/lib/domain/permissions";
 import { orgPaymentTerms, paymentViewForBooking } from "@/lib/payments/load";
@@ -81,7 +81,11 @@ export async function loadRequestScreen(
   }
 
   // Partners see the street-style name; ops keep the unit numbers they work from.
-  if (audience === "partner") d.listing.name = displayPropertyName(d.listing.name);
+  if (audience === "partner") {
+    d.listing.name = partnerPropertyName(d.listing.name, d.listing.internalName);
+    // The internal name carries owner and channel codes; it never reaches a partner's page.
+    d.listing.internalName = null;
+  }
   const mode = paymentModeFor(terms);
   let reachedBeforeEnd: BookingStatus | null = null;
   if (ENDED.includes(r.status)) {

@@ -81,7 +81,7 @@ export function nextStep(i: NextStepInput): NextStep {
               tone: "attention",
             }
           : {
-              title: "One more step: hold your card",
+              title: "One more step: authorise your card",
               body: "Live Luxe can only approve once your card is held. Nothing is charged now; you pay only if the request is approved.",
               tone: "attention",
             };

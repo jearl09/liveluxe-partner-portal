@@ -122,7 +122,7 @@ function MoneyField({
   return (
     <label className={label}>
       {labelText}
-      <span className="border-strong-border bg-inset rounded-control focus-within:outline-focus mt-1 flex items-center border focus-within:outline-2 focus-within:outline-offset-2">
+      <span className="border-field-border bg-field rounded-control focus-within:outline-focus mt-1 flex items-center border focus-within:outline-2 focus-within:outline-offset-2">
         <span className="text-text-muted text-body pl-3">AUD</span>
         <input
           name={name}

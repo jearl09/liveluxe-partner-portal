@@ -15,7 +15,7 @@ const at = (delay: string) => ({ "--enter-at": delay }) as CSSProperties;
  * staff, so it names neither. Branded, minimal, no inventory.
  *
  * One centred column (DECISIONS #82): the gold monogram, the wordmark, the card, one line on what Live Luxe does,
- * and a footer. Navy with the faint grid at night, cream by day, with a warm glow behind the mark. The form never
+ * and a footer. Navy with gold contour lines at night, cream silk by day (the canvas pattern), a warm glow behind the mark. The form never
  * waits for the mark: the card rises in while it is still being written, and the first field has focus at once.
  */
 export function AuthShell({ children, once = true }: { children: ReactNode; once?: boolean }) {
@@ -23,7 +23,7 @@ export function AuthShell({ children, once = true }: { children: ReactNode; once
     <div className="auth-page relative flex min-h-screen flex-col overflow-hidden">
       {/* Runs before the mark is parsed, so a repeat visit never shows the first frame of the animation. */}
       {once && <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: MARK_ONCE_SCRIPT }} />}
-      <div aria-hidden className="auth-grid pointer-events-none absolute inset-0" />
+      <div aria-hidden className="canvas-pattern pointer-events-none absolute inset-0" />
       {/* These screens have no app chrome, so the theme control sits on the page itself. */}
       <header className="absolute top-4 right-4 z-10 lg:top-6 lg:right-6">
         <ThemeToggle />

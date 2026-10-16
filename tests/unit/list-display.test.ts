@@ -44,16 +44,28 @@ describe("rowNextStep (brief §5.4)", () => {
   it("card needed comes first", () => {
     expect(rowNextStep({ ...base, cardNeeded: true }).text).toBe("Partner to hold a card");
     expect(rowNextStep({ ...base, audience: "partner", cardNeeded: true })).toEqual({
-      text: "Hold your card",
+      text: "Authorise your card",
       urgent: true,
     });
+  });
+  it("a partner hears 'taking longer' only when Live Luxe has missed its reply-by time", () => {
+    const partner = { ...base, audience: "partner" as const, status: "SUBMITTED" as const };
+    expect(rowNextStep({ ...partner, decisionDueAt: "2099-01-01T00:00:00Z" }).text).toMatch(/^Reply by /);
+    expect(rowNextStep({ ...partner, decisionDueAt: "2000-01-01T00:00:00Z" }).text).toBe("Taking longer than usual");
   });
   it("partner-side waits are urgent for the partner", () => {
     expect(rowNextStep({ ...base, audience: "partner", status: "COUNTER_OFFERED" }).urgent).toBe(true);
     expect(rowNextStep({ ...base, audience: "partner", status: "AWAITING_PAYMENT" }).text).toBe("Pay by W03:00");
   });
   it("confirmed and checked in", () => {
-    expect(rowNextStep({ ...base, status: "CONFIRMED" }).text).toBe("Check-in D2026-11-25 · details 48 h before");
+    expect(rowNextStep({ ...base, status: "CONFIRMED" }).text).toBe("Check-in D2026-11-25");
+    expect(
+      rowNextStep({ ...base, status: "CONFIRMED", checkinReleasesAt: "2026-11-23T03:00:00Z", day: (iso) => `Day${iso}` })
+        .text,
+    ).toBe("Check-in details on Day2026-11-23T03:00:00Z");
+    expect(rowNextStep({ ...base, status: "CONFIRMED", checkinReleasedAt: "2026-11-23T03:00:00Z" }).text).toBe(
+      "Check-in D2026-11-25",
+    );
     expect(rowNextStep({ ...base, status: "CHECKED_IN" }).text).toBe("Check-out D2026-11-30");
     expect(rowNextStep({ ...base, status: "DECLINED" }).text).toBe("—");
   });

@@ -57,6 +57,13 @@ export function formatDate(isoDate: string, locale = "en-AU"): string {
     .replace(/^(\w+),/, "$1");
 }
 
+/** A UTC instant → "Mon 28 Oct" in the property's timezone, for "Check-in details on Mon 28 Oct". */
+export function formatDayName(iso: string, timeZone = "Australia/Melbourne", locale = "en-AU"): string {
+  return new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short", timeZone })
+    .format(new Date(iso))
+    .replace(/^(\w+),/, "$1");
+}
+
 /**
  * A deadline or event in plain words (brief §13 rule 2): "3:00 pm today", "3:00 pm tomorrow",
  * "Tue 14 Oct, 3:00 pm", always followed by the zone ("AEDT"). Compared in the property's

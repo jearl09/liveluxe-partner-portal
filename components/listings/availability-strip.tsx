@@ -213,7 +213,6 @@ export function AvailabilityStrip({
                     return (
                       <td
                         key={d.date}
-                        aria-selected={isStart || isEnd || undefined}
                         className={cn(
                           "text-body-sm h-8 rounded-[4px] border text-center tabular-nums",
                           NIGHT_CELL[n.state],
@@ -232,12 +231,13 @@ export function AvailabilityStrip({
                           aria-disabled={reason || pending ? true : undefined}
                           title={reason ?? label(d.date)}
                           className={cn(
-                            "focus-visible:outline-focus coarse:min-h-10 h-full w-full rounded-[4px] focus-visible:outline-2",
+                            "focus-visible:outline-focus coarse:min-h-11 h-full w-full rounded-[4px] focus-visible:outline-2",
                             reason ? "cursor-not-allowed" : "hover:ring-strong-border hover:ring-1",
                           )}
                         >
                           <span aria-hidden>{Number(d.date.slice(8, 10))}</span>
                           <span className="sr-only">
+                            {isStart ? "Your check-in, " : isEnd ? "Your check-out, " : ""}
                             {!reason && start && d.date > start ? "Check out " : !reason ? "Check in " : ""}
                             {label(d.date)}
                             {d.date === today ? ", today" : ""}

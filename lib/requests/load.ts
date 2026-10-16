@@ -2,7 +2,7 @@
  * Read models for booking requests (partner pages and the ops console).
  * RLS scopes everything: a partner sees their org's rows, Live Luxe sees all.
  */
-import { displayPropertyName } from "@/lib/domain/property-name";
+import { partnerPropertyName } from "@/lib/domain/property-name";
 import "server-only";
 import { createServerSupabase } from "@/lib/db/server";
 import type { BookingRequestRow } from "@/lib/db/types";
@@ -73,6 +73,8 @@ export interface RequestDetail {
   listing: {
     id: string;
     name: string;
+    /** Live Luxe's internal Hostaway name; carries the street the partner-facing name is taken from. */
+    internalName: string | null;
     suburb: string | null;
     state: string | null;
     postcode: string | null;
@@ -92,7 +94,7 @@ export interface RequestDetail {
 
 function toItem(
   r: BookingRequestRow,
-  listing: { public_name: string; suburb: string | null } | undefined,
+  listing: { public_name: string; internal_name?: string | null; suburb: string | null } | undefined,
   orgName: string | null,
   now: Date,
 ): RequestListItem {
@@ -102,7 +104,7 @@ function toItem(
     status: r.status,
     orgId: r.org_id,
     orgName,
-    propertyName: displayPropertyName(listing?.public_name),
+    propertyName: partnerPropertyName(listing?.public_name, listing?.internal_name),
     suburb: listing?.suburb ?? null,
     checkIn: r.check_in,
     checkOut: r.check_out,
@@ -126,7 +128,9 @@ async function decorate(rows: BookingRequestRow[], now: Date): Promise<RequestLi
   const listingIds = [...new Set(rows.map((r) => r.listing_id))];
   const orgIds = [...new Set(rows.map((r) => r.org_id))];
   const [listings, orgs] = await Promise.all([
-    listingIds.length ? supabase.from("listings").select("id, public_name, suburb").in("id", listingIds) : { data: [] },
+    listingIds.length
+      ? supabase.from("listings").select("id, public_name, internal_name, suburb").in("id", listingIds)
+      : { data: [] },
     orgIds.length ? supabase.from("partner_orgs").select("id, name").in("id", orgIds) : { data: [] },
   ]);
   const byListing = new Map((listings.data ?? []).map((l) => [l.id, l]));
@@ -183,7 +187,7 @@ export async function getRequest(id: string): Promise<RequestDetail | null> {
     supabase
       .from("listings")
       .select(
-        "id, public_name, suburb, state, postcode, hostaway_listing_id, min_nights, max_nights, max_guests, max_pets",
+        "id, public_name, internal_name, suburb, state, postcode, hostaway_listing_id, min_nights, max_nights, max_guests, max_pets",
       )
       .eq("id", r.listing_id)
       .maybeSingle(),
@@ -216,6 +220,7 @@ export async function getRequest(id: string): Promise<RequestDetail | null> {
     listing: {
       id: listing.data.id,
       name: listing.data.public_name,
+      internalName: listing.data.internal_name,
       suburb: listing.data.suburb,
       state: listing.data.state,
       postcode: listing.data.postcode,

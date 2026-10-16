@@ -32,8 +32,12 @@ export interface RowNextInput {
   cardNeeded?: boolean;
   /** When it was approved, to tell a stalled confirmation from one in progress. */
   approvedAt?: string | null;
+  /** When the check-in details will be released (UTC), for confirmed stays. */
+  checkinReleasesAt?: string | null;
   when: (iso: string) => string;
   date: (isoDate: string) => string;
+  /** "Mon 28 Oct" for a UTC instant, in the property's timezone. Falls back to `when`. */
+  day?: (iso: string) => string;
 }
 
 /**
@@ -48,38 +52,39 @@ export function rowNextStep(i: RowNextInput): { text: string; urgent: boolean } 
       return { text: "Not sent", urgent: false };
     case "SUBMITTED":
     case "UNDER_REVIEW":
-      if (i.cardNeeded) return { text: ops ? "Partner to hold a card" : "Hold your card", urgent: !ops };
-      return i.decisionDueAt
-        ? {
-            text: ops
-              ? `${overdue(i.decisionDueAt) ? "Was due" : "Decide by"} ${i.when(i.decisionDueAt)}`
-              : `Reply by ${i.when(i.decisionDueAt)}`,
-            urgent: ops && overdue(i.decisionDueAt),
-          }
-        : { text: ops ? "Decide" : "With Live Luxe", urgent: false };
+      if (i.cardNeeded) return { text: ops ? "Partner to hold a card" : "Authorise your card", urgent: !ops };
+      if (!i.decisionDueAt) return { text: ops ? "Decide" : "With Live Luxe", urgent: false };
+      if (ops)
+        return {
+          text: `${overdue(i.decisionDueAt) ? "Was due" : "Decide by"} ${i.when(i.decisionDueAt)}`,
+          urgent: overdue(i.decisionDueAt),
+        };
+      // The only "taking longer" a partner sees: Live Luxe has missed its own reply-by time.
+      return overdue(i.decisionDueAt)
+        ? { text: "Taking longer than usual", urgent: false }
+        : { text: `Reply by ${i.when(i.decisionDueAt)}`, urgent: false };
     case "COUNTER_OFFERED":
       return {
         text: ops ? "Partner to answer" : `Answer${i.holdExpiresAt ? ` by ${i.when(i.holdExpiresAt)}` : ""}`,
         urgent: !ops,
       };
     case "APPROVED":
-      if (confirmationStalled(i.approvedAt, i.now))
-        return ops
-          ? { text: "Confirmation stalled", urgent: true }
-          : { text: "Taking longer than usual", urgent: false };
-      return { text: "Confirming", urgent: false };
+      // Approved means the reservation and the charge are going through. A slow confirmation is Live Luxe's to
+      // chase (ops sees it stalled); the partner is told what is happening, not that it is late.
+      if (ops) return confirmationStalled(i.approvedAt, i.now)
+        ? { text: "Confirmation stalled", urgent: true }
+        : { text: "Confirming", urgent: false };
+      return { text: "Confirming your booking", urgent: false };
     case "AWAITING_PAYMENT":
       return {
         text: ops ? "Partner to pay" : `Pay${i.holdExpiresAt ? ` by ${i.when(i.holdExpiresAt)}` : ""}`,
         urgent: !ops,
       };
     case "CONFIRMED":
-      return {
-        text: i.checkinReleasedAt
-          ? `Check-in ${i.date(i.checkIn)}`
-          : `Check-in ${i.date(i.checkIn)} · details 48 h before`,
-        urgent: false,
-      };
+      if (i.checkinReleasedAt) return { text: `Check-in ${i.date(i.checkIn)}`, urgent: false };
+      if (i.checkinReleasesAt)
+        return { text: `Check-in details on ${(i.day ?? i.when)(i.checkinReleasesAt)}`, urgent: false };
+      return { text: `Check-in ${i.date(i.checkIn)}`, urgent: false };
     case "CHECKED_IN":
       return { text: `Check-out ${i.date(i.checkOut)}`, urgent: false };
     case "FAILED":

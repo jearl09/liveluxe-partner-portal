@@ -15,7 +15,7 @@ import { orgPaymentTerms, paymentViewForBooking } from "@/lib/payments/load";
 import { getRequest } from "@/lib/requests/load";
 import { formatDate } from "@/lib/utils";
 
-export const metadata = { title: "Hold your card" };
+export const metadata = { title: "Authorise your card" };
 const str = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
 
 /**
@@ -62,7 +62,7 @@ export default async function PayPage({ params, searchParams }: PageProps<"/requ
           </p>
         )}
         <h1 className="text-h1 text-text-primary font-serif tracking-tight">
-          {charging ? "Pay for your approved booking" : "Hold your card"}
+          {charging ? "Pay for your approved booking" : "Authorise your card"}
         </h1>
         <p className="text-text-secondary max-w-2xl">
           {charging

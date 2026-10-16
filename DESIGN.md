@@ -2,12 +2,14 @@
 name: Live Luxe Partner Portal
 description: A concierge desk for insurers and corporates placing guests in Live Luxe apartments — cream paper, navy ink, one gold action.
 colors:
-  bg-canvas: "#faf7f1"
-  bg-surface: "#ffffff"
+  bg-canvas: "#f4efe6"
+  bg-surface: "#fcfaf6"
   bg-surface-raised: "#ffffff"
-  bg-inset: "#f4efe6"
+  bg-inset: "#efe9dd"
+  bg-field: "#ffffff"
   border-subtle: "#e9e1d2"
   border-strong: "#8f8a7d"
+  border-field: "#7d776a"
   text-primary: "#16243B"
   text-secondary: "#3a4454"
   text-muted: "#5a6373"
@@ -38,6 +40,8 @@ colors:
   night-surface: "#16233a"
   night-raised: "#1d2d47"
   night-inset: "#101a2c"
+  night-field: "#0c1626"
+  night-field-border: "#7486a4"
   night-strong: "#f0ece3"
   night-body: "#c6cbd4"
   night-muted: "#9aa5b6"
@@ -155,7 +159,7 @@ components:
     backgroundColor: "{colors.status-danger-fg}"
     textColor: "{colors.bg-surface}"
   input:
-    backgroundColor: "{colors.bg-inset}"
+    backgroundColor: "{colors.bg-field}"
     textColor: "{colors.text-primary}"
     typography: "{typography.body}"
     rounded: "{rounded.control}"
@@ -229,6 +233,10 @@ at a glance: what needs my attention, what is the state of things, what can I do
 - Cream paper, navy ink, one gold action per view.
 - Serif (Newsreader) for display, h1 and h2; sans (DM Sans) for everything else; mono (Geist Mono) for references
   only.
+- Three layers you can tell apart: the page (cream by day, harbour navy by night) carrying a faint signature pattern
+  at its top (silk by day, gold contour lines by night, `scripts/brand/waves.mjs`); solid cards on it; fields with
+  their own fill (white by day, darker than the card by night) and a firm edge. Text never sits on the pattern inside
+  a card, table, form or picker.
 - Flat surfaces with hairlines; shadow only on raised surfaces in light, a 1 px border in dark.
 - 4 px grid; 40 px controls (44 px tap targets on touch); tabular figures on every number.
 - One status vocabulary of thirteen labels, five tones, rendered by one component.

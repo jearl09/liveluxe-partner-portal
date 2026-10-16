@@ -21,7 +21,7 @@ export function AttentionStrip({ items }: { items: AttentionItem[] }) {
   return (
     <section
       aria-labelledby="attention-heading"
-      className="border-attention-border bg-attention-bg rounded-card border-l-attention-fg border border-l-4"
+      className="border-attention-border bg-attention-bg rounded-card border"
     >
       <h2 id="attention-heading" className="text-text-primary text-h3 px-5 pt-4 font-semibold">
         Needs your action{" "}

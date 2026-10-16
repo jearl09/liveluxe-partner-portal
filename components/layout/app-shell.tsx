@@ -41,7 +41,7 @@ export function AppShell({
   return (
     // overflow-x-clip: full-bleed decoration (the greeting glow) is cut at the window edge without becoming a
     // scroll container, so sticky elements inside keep working.
-    <div className="flex min-h-screen flex-col overflow-x-clip">
+    <div className="relative flex min-h-screen flex-col overflow-x-clip">
       <a
         href="#main"
         className="bg-gold text-on-gold rounded-control sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-3 focus:py-2"
@@ -69,12 +69,18 @@ export function AppShell({
             <NavLinks items={nav} tone={tone} />
           </div>
           <div className="flex shrink-0 items-center gap-1 md:gap-2">
-            <span className={cn("hidden items-center 2xl:flex", navy && "[&_p]:text-on-navy-muted")}>
-              <SyncState model={sync} audience={navy ? "ops" : "partner"} compact />
-            </span>
-            <span className="2xl:hidden" title="Availability">
-              <SyncDot model={sync} navy={navy} />
-            </span>
+            {/* Ops keep the sync state in the header on every screen. Partners see availability freshness once, on
+                the page where it matters (dashboard search, search results, a property), not twice. */}
+            {navy && (
+              <>
+                <span className="[&_p]:text-on-navy-muted hidden items-center 2xl:flex">
+                  <SyncState model={sync} audience="ops" compact />
+                </span>
+                <span className="2xl:hidden" title="Availability">
+                  <SyncDot model={sync} navy />
+                </span>
+              </>
+            )}
             <ThemeToggle tone={navy ? "admin" : "partner"} />
             <AccountMenu
               name={user.name}
@@ -87,6 +93,13 @@ export function AppShell({
           </div>
         </div>
       </header>
+      {/* The partner canvas's signature pattern: under the header, fading into the content (globals.css). */}
+      {!navy && (
+        <div
+          aria-hidden
+          className="canvas-pattern pointer-events-none absolute inset-x-0 top-16 -z-10 h-[720px] print:hidden"
+        />
+      )}
 
       <main
         id="main"

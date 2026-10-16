@@ -37,7 +37,7 @@ export function HouseRules({ html }: { html: string | null }) {
             <ol className="border-border divide-border divide-y border-y">
               {view.rules.map((rule, i) => (
                 <li key={i} className="grid grid-cols-[1.75rem_1fr] gap-x-2 py-2.5 text-sm leading-relaxed">
-                  <span className="text-muted-foreground pt-px text-xs tabular-nums" aria-hidden>
+                  <span className="text-text-muted text-body-sm pt-px tabular-nums" aria-hidden>
                     {i + 1}
                   </span>
                   <p className="text-foreground">
