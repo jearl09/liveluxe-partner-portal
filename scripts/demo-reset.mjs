@@ -8,10 +8,10 @@
  *                                        # also removes a named test request Live Luxe staff made for the internal
  *                                        # organisation (never another partner's, never the organisation itself)
  *
- * Then run scripts/demo-setup.mjs to recreate the organisation and send the invite (docs/demo/DEMO_SCRIPT.md).
+ * The demo then creates the organisation and its people live, from the ops console (docs/demo/DEMO_SCRIPT.md).
  *
- * Scope: every partner organisation named "Demo Insurance Co" (never the internal Live Luxe organisation) and what
- * hangs off it: requests, quotes, holds, payments, invoices, refunds, disputes, modifications, comments, documents,
+ * Scope: the partner organisations named in DEMO_ORG_NAMES (scripts/demo/env.mjs: "Demo Insurance Co" and the
+ * throwaway "iinsurance de"; never the internal Live Luxe organisation or its staff) and what hangs off them: requests, quotes, holds, payments, invoices, refunds, disputes, modifications, comments, documents,
  * check-in access log, notifications, invitations, rate cards, saved searches, its users (portal and sign-in
  * accounts), the audit rows about any of those, and its Stripe test-mode objects (open card holds cancelled, open
  * invoices voided, drafts and the customer deleted). Nothing that belongs to another organisation is touched, and
@@ -21,7 +21,7 @@
  * Refuses to run unless .env.local points at the TEST Supabase project with a Stripe test key and Hostaway writes
  * off (scripts/demo/env.mjs). Re-runnable: a second run finds nothing and says so.
  */
-import { DEMO_ORG_NAME, loadTestEnv, must } from "./demo/env.mjs";
+import { DEMO_ORG_NAMES, loadTestEnv, must } from "./demo/env.mjs";
 
 const apply = process.argv.includes("--yes");
 const extraRefs = process.argv.flatMap((a, i, all) => (a === "--include-request" && all[i + 1] ? [all[i + 1]] : []));
@@ -36,11 +36,11 @@ const orgs = must(
   await db
     .from("partner_orgs")
     .select("id, name, stripe_customer_id, is_internal")
-    .eq("name", DEMO_ORG_NAME)
+    .in("name", DEMO_ORG_NAMES)
     .eq("is_internal", false),
 );
 if (!orgs.length && !extraRefs.length) {
-  console.log(`No "${DEMO_ORG_NAME}" organisation found: nothing to remove.`);
+  console.log(`No demo organisation (${DEMO_ORG_NAMES.join(", ")}) found: nothing to remove.`);
   await reportNumbering();
   process.exit(0);
 }
@@ -240,11 +240,17 @@ for (const u of users) {
 if (authRemoved) console.log(`  sign-in accounts: ${authRemoved}`);
 await step("organisation", del("partner_orgs").in("id", inList(orgIds)));
 
-console.log(`\nDone. "${DEMO_ORG_NAME}" and its data are gone. Next: node scripts/demo-setup.mjs`);
+console.log(`\nDone. ${orgs.map((o) => `"${o.name}"`).join(" and ")} and their data are gone.`);
 await reportNumbering();
 
 /** Request references come from one database sequence; say what the next one will be and how to restart it. */
 async function reportNumbering() {
+  const { data: others } = await db.from("partner_orgs").select("name").eq("is_internal", false);
+  console.log(
+    others?.length
+      ? `\nPartner organisations still here (not demo data, left alone): ${others.map((o) => o.name).join(", ")}`
+      : "\nNo partner organisations remain.",
+  );
   const { data: last } = await db
     .from("booking_requests")
     .select("reference")

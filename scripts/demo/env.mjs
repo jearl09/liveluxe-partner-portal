@@ -1,6 +1,6 @@
 /**
- * Shared by scripts/demo-reset.mjs and scripts/demo-setup.mjs: load .env.local and refuse anything that is not the
- * TEST environment. Every check must pass before either script reads or writes a row.
+ * Used by scripts/demo-reset.mjs: load .env.local and refuse anything that is not the
+ * TEST environment. Every check must pass before the script reads or writes a row.
  *
  *   - The Supabase project is the test project (an explicit allow-list, not "anything but production").
  *   - Stripe is in test mode (sk_test_ key; a live or restricted-live key stops the script).
@@ -15,7 +15,8 @@ import Stripe from "stripe";
 /** The only Supabase projects these scripts may touch. Add a project here deliberately, never by default. */
 const TEST_PROJECT_REFS = ["adgvnmbkvydkonnpskzx"];
 
-export const DEMO_ORG_NAME = "Demo Insurance Co";
+/** Partner organisations that are demo or throwaway test data on the test environment, removed by demo-reset. */
+export const DEMO_ORG_NAMES = ["Demo Insurance Co", "iinsurance de"];
 
 export function loadTestEnv() {
   config({ path: ".env.local", quiet: true });
