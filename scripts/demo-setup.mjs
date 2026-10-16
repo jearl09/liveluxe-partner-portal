@@ -13,7 +13,7 @@
  * and no password is set or printed: people join through the emailed link.
  *
  * The Live Luxe admin (--ops-email, already an account) keeps their account; abandoned, never-verified two-factor
- * set-ups on it are cleared so the first sign-in asks for a fresh QR scan. Their password is set by them through
+ * set-ups on it are cleared so turning two-factor on starts with a fresh QR code. Their password is set by them through
  * "Forgotten your password?" on the site, never here.
  *
  * Finally prints the three demo properties and their free date ranges, read live from the synced calendar.
@@ -87,7 +87,7 @@ for (const f of unverified) {
 }
 const verified = (authUser.user.factors ?? []).filter((f) => f.status === "verified").length;
 console.log(
-  `Live Luxe admin ${opsEmail}: ${verified ? "two-factor already active (sign-in asks for a code)" : "no two-factor yet: first sign-in asks to scan a QR code"}` +
+  `Live Luxe admin ${opsEmail}: ${verified ? "two-factor already active (sign-in asks for a code)" : "no two-factor yet (optional for staff: Settings → Two-factor authentication → Turn on)"}` +
     (unverified.length ? `; cleared ${unverified.length} abandoned set-up(s)` : ""),
 );
 

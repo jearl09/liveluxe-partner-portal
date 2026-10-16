@@ -13,12 +13,12 @@ Site: **https://liveluxe-partner-portal.vercel.app**
 
 Use a separate browser window for each person, so nobody is signed in as someone else by accident.
 
-| Window                                      | Person                     | Email                       | Role                                  | How the account is made                                              |
-| ------------------------------------------- | -------------------------- | --------------------------- | ------------------------------------- | -------------------------------------------------------------------- |
-| **A** (your normal browser)                 | Live Luxe admin            | claudia@liveluxeau.com      | Live Luxe administrator (ops console) | Already exists. You set the password with "Forgotten your password?" |
-| **B** (a private/incognito window)          | Partner admin, then Booker | johnearlmandawe17@gmail.com | Demo Insurance Co, Administrator      | Invite email, sent by `demo-setup`                                   |
-| **B** (sign out, sign back in)              | Booker                     | your personal email 1       | Demo Insurance Co, Booker             | You invite them in step 1                                            |
-| **C** (a second browser or another profile) | Finance                    | your personal email 2       | Demo Insurance Co, Finance            | You invite them in step 1                                            |
+| Window                                      | Person                     | Email                       | Role                                  | How the account is made                                                                       |
+| ------------------------------------------- | -------------------------- | --------------------------- | ------------------------------------- | --------------------------------------------------------------------------------------------- |
+| **A** (your normal browser)                 | Live Luxe admin            | claudia@liveluxeau.com      | Live Luxe administrator (ops console) | Already exists. You set the password with "Forgotten your password?", then turn on two-factor |
+| **B** (a private/incognito window)          | Partner admin, then Booker | johnearlmandawe17@gmail.com | Demo Insurance Co, Administrator      | Invite email, sent by `demo-setup`                                                            |
+| **B** (sign out, sign back in)              | Booker                     | your personal email 1       | Demo Insurance Co, Booker             | You invite them in step 1                                                                     |
+| **C** (a second browser or another profile) | Finance                    | your personal email 2       | Demo Insurance Co, Finance            | You invite them in step 1                                                                     |
 
 Demo Insurance Co only accepts invites to **@gmail.com** and **@liveluxeau.com** addresses.
 
@@ -56,9 +56,12 @@ None of the three has door codes or Wi-Fi stored, so the check-in details in ste
    `https://liveluxe-partner-portal.vercel.app/api/webhooks/stripe`, and its signing secret must be the
    `STRIPE_WEBHOOK_SECRET` in Vercel. Without it, card holds can be slow to register and approvals can stall.
 5. **Your admin password and two-factor.** Window A: open the site → **Forgotten your password?** → enter
-   claudia@liveluxeau.com → the email comes from Supabase (check Spam) → set a new password. Sign in: the portal asks
-   you to **scan a QR code** with an authenticator app (Google Authenticator, 1Password, Microsoft Authenticator),
-   then enter the 6-digit code. You land on the **Queue**: it should be empty.
+   claudia@liveluxeau.com → the email comes from Supabase (check Spam) → set a new password → sign in from the
+   **login page**. Staff land on the ops console (**/admin/queue**: navy header, "Live Luxe · Operations", Queue /
+   Bookings / Settings); it should be empty. If you land on the cream partner side instead (staff can open both),
+   go to `/admin/queue`. Two-factor is optional for staff: turn it on now so the demo shows it. **Settings** →
+   **Two-factor authentication** → **Turn on** → scan the QR code with an authenticator app (Google Authenticator,
+   1Password, Microsoft Authenticator) → enter the 6-digit code. From then on every sign-in asks for the code.
 6. **The invite reached the partner admin.** johnearlmandawe17@gmail.com has an email from
    **bookings@booking.liveluxe.au**, subject "You're invited to the Livluxe partner portal — Demo Insurance Co"
    (check Spam). The link works for 7 days. Do not open it yet.
