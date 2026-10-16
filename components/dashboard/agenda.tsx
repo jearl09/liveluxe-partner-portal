@@ -3,6 +3,7 @@ import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import type { AgendaEntry } from "@/lib/domain/dashboard";
 import { Panel, PanelHeading } from "@/components/ui/panel";
 import { cn } from "@/lib/utils";
+import { PropertyThumb } from "./property-thumb";
 
 /** This week: 7-day vertical agenda of arrivals (navy) and departures (muted). */
 export function Agenda({ entries }: { entries: AgendaEntry[] }) {
@@ -30,18 +31,23 @@ export function Agenda({ entries }: { entries: AgendaEntry[] }) {
                   >
                     {e.dayLabel}
                   </span>
-                  <span
-                    className={cn(
-                      "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
-                      In ? "bg-primary text-primary-foreground" : "bg-sunken text-muted-foreground",
-                    )}
-                    aria-label={In ? "Check-in" : "Check-out"}
-                  >
-                    {In ? (
-                      <ArrowDownRight className="h-3 w-3" aria-hidden />
-                    ) : (
-                      <ArrowUpRight className="h-3 w-3" aria-hidden />
-                    )}
+                  {/* The photo, with the arrival or departure badge on its corner. */}
+                  <span className="relative shrink-0">
+                    <PropertyThumb url={e.photoUrl} size={36} />
+                    <span
+                      className={cn(
+                        "ring-surface absolute -right-1.5 -bottom-1.5 flex h-5 w-5 items-center justify-center rounded-full ring-2",
+                        In ? "bg-primary text-primary-foreground" : "bg-sunken text-muted-foreground",
+                      )}
+                      role="img"
+                      aria-label={In ? "Check-in" : "Check-out"}
+                    >
+                      {In ? (
+                        <ArrowDownRight className="h-3 w-3" aria-hidden />
+                      ) : (
+                        <ArrowUpRight className="h-3 w-3" aria-hidden />
+                      )}
+                    </span>
                   </span>
                   <span className="min-w-0 text-sm">
                     <span className="text-strong font-medium">{e.guestSurname}</span>

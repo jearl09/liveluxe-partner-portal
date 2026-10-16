@@ -91,10 +91,23 @@ export async function loadDashboard(claims: SessionClaims, opts: { demo?: boolea
       .limit(200);
     if (error) throw new Error(error.message);
     const listingIds = [...new Set((data ?? []).map((r) => r.listing_id))];
-    const { data: listings } = listingIds.length
-      ? await supabase.from("listings").select("id, public_name, suburb").in("id", listingIds)
-      : { data: [] as { id: string; public_name: string; suburb: string | null }[] };
+    const [{ data: listings }, { data: images }] = listingIds.length
+      ? await Promise.all([
+          supabase.from("listings").select("id, public_name, suburb").in("id", listingIds),
+          supabase
+            .from("listing_images")
+            .select("listing_id, url")
+            .in("listing_id", listingIds)
+            .order("sort_order", { ascending: true }),
+        ])
+      : [
+          { data: [] as { id: string; public_name: string; suburb: string | null }[] },
+          { data: [] as { listing_id: string; url: string }[] },
+        ];
     const byId = new Map((listings ?? []).map((l) => [l.id, l]));
+    // The first photo of each listing, for the thumbnails on the dashboard.
+    const photoBy = new Map<string, string>();
+    for (const img of images ?? []) if (!photoBy.has(img.listing_id)) photoBy.set(img.listing_id, img.url);
     // Card-paying partners: which waiting requests still have no card hold (brief §13 rule 1).
     const waitingIds = (data ?? []).filter((r) => PENDING_WITH_LIVLUXE.includes(r.status)).map((r) => r.id);
     const [{ data: orgRow }, { data: pays }] = await Promise.all([
@@ -125,6 +138,7 @@ export async function loadDashboard(claims: SessionClaims, opts: { demo?: boolea
         status: r.status as BookingStatus,
         propertyName: displayPropertyName(l?.public_name),
         suburb: l?.suburb ?? null,
+        photoUrl: photoBy.get(r.listing_id) ?? null,
         checkIn: r.check_in,
         checkOut: r.check_out,
         nights: r.nights,
@@ -153,7 +167,7 @@ export async function loadDashboard(claims: SessionClaims, opts: { demo?: boolea
       .from("notifications")
       .select("id, type, payload, created_at")
       .order("created_at", { ascending: false })
-      .limit(8);
+      .limit(5);
     if (error) throw new Error(error.message);
     return (data ?? []).map((n) => {
       const p = (n.payload ?? {}) as Record<string, unknown>;

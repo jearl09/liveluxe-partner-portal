@@ -39,7 +39,9 @@ export function AppShell({
 }) {
   const navy = tone === "ops";
   return (
-    <div className="flex min-h-screen flex-col">
+    // overflow-x-clip: full-bleed decoration (the greeting glow) is cut at the window edge without becoming a
+    // scroll container, so sticky elements inside keep working.
+    <div className="flex min-h-screen flex-col overflow-x-clip">
       <a
         href="#main"
         className="bg-gold text-on-gold rounded-control sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-3 focus:py-2"

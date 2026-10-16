@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Panel, PanelHeading } from "@/components/ui/panel";
 import type { ActivityEvent } from "@/lib/dashboard/types";
 
-/** Recent activity: last six events. Every timestamp carries its timezone; UTC on hover. */
+/** Recent activity: the five latest events, so the column ends near the requests beside it. Every timestamp carries its timezone; UTC on hover. */
 export function ActivityFeed({ events }: { events: ActivityEvent[] }) {
   return (
     <Panel flush aria-labelledby="activity-heading">
@@ -13,7 +13,7 @@ export function ActivityFeed({ events }: { events: ActivityEvent[] }) {
         </p>
       ) : (
         <ol className="divide-border divide-y">
-          {events.map((e) => (
+          {events.slice(0, 5).map((e) => (
             <li key={e.id} className="px-5 py-3 text-sm">
               <p className="text-strong">
                 {e.verb}

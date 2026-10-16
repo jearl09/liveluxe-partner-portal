@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/ui/states";
 import { StatusPill } from "@/components/ui/status-pill";
 import type { RequestTableRow } from "@/lib/domain/dashboard";
 import { rowNextStep } from "@/lib/domain/list-display";
+import { PropertyThumb } from "./property-thumb";
 import { cn, formatDayMonth, formatWhen } from "@/lib/utils";
 
 /**
@@ -40,9 +41,12 @@ export function RequestsTable({
       key: "property",
       header: "Property",
       cell: (r) => (
-        <span className="block max-w-40">
-          <span className="text-text-primary block truncate">{r.propertyName}</span>
-          {r.suburb && <span className="text-text-muted block truncate">{r.suburb}</span>}
+        <span className="flex items-center gap-3">
+          <PropertyThumb url={r.photoUrl} />
+          <span className="block max-w-40 min-w-0">
+            <span className="text-text-primary block truncate">{r.propertyName}</span>
+            {r.suburb && <span className="text-text-muted block truncate">{r.suburb}</span>}
+          </span>
         </span>
       ),
     },

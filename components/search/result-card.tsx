@@ -1,7 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Bath, BedDouble, PawPrint, Users } from "lucide-react";
 import { formatMoney } from "@/lib/domain/money";
+import { Photo } from "@/components/ui/photo";
 import { canOptimiseImage } from "@/lib/listings/images";
 import type { SearchResultItem } from "@/lib/listings/load";
 
@@ -28,7 +28,7 @@ export function ResultCard({
     <li className="group border-subtle bg-surface rounded-card hover:border-strong-border focus-within:outline-focus relative flex flex-col overflow-hidden border transition-colors duration-150 focus-within:outline-2 focus-within:outline-offset-2">
       <div className="bg-inset relative aspect-[4/3] w-full overflow-hidden">
         {item.imageUrl ? (
-          <Image
+          <Photo
             src={item.imageUrl}
             alt=""
             fill
@@ -37,6 +37,9 @@ export function ResultCard({
             loading={eager ? "eager" : "lazy"}
             fetchPriority={eager ? "high" : "auto"}
             className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.02]"
+            fallback={
+              <div className="text-text-muted text-body-sm flex h-full items-center justify-center">No photo yet</div>
+            }
           />
         ) : (
           <div className="text-text-muted text-body-sm flex h-full items-center justify-center">No photo yet</div>

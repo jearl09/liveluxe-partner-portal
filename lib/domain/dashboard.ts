@@ -14,6 +14,8 @@ export interface DashboardRequestRow {
   status: BookingStatus;
   propertyName: string;
   suburb: string | null;
+  /** The listing's first photo, when it has one. */
+  photoUrl?: string | null;
   checkIn: string; // YYYY-MM-DD, property-local
   checkOut: string;
   nights: number;
@@ -345,6 +347,7 @@ export interface AgendaEntry {
   guestSurname: string;
   propertyName: string;
   suburb: string | null;
+  photoUrl: string | null;
   /** Check-ins only: "Access details released" | "Releases in 1 d 4 h" | null */
   accessNote: string | null;
 }
@@ -379,6 +382,7 @@ export function buildAgenda(
         guestSurname: surname(r.guestName),
         propertyName: r.propertyName,
         suburb: r.suburb,
+        photoUrl: r.photoUrl ?? null,
         accessNote,
       });
     }
@@ -391,6 +395,7 @@ export function buildAgenda(
         guestSurname: surname(r.guestName),
         propertyName: r.propertyName,
         suburb: r.suburb,
+        photoUrl: r.photoUrl ?? null,
         accessNote: null,
       });
     }
