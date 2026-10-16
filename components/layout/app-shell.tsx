@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { SyncState } from "@/components/ui/states";
 import type { SyncModel } from "@/lib/domain/progress";
+import { CanvasWaves } from "@/components/brand/canvas-waves";
 import { cn } from "@/lib/utils";
 import { AccountMenu } from "./account-menu";
 import { Wordmark } from "./brand";
@@ -93,13 +94,8 @@ export function AppShell({
           </div>
         </div>
       </header>
-      {/* The partner canvas's signature pattern: under the header, fading into the content (globals.css). */}
-      {!navy && (
-        <div
-          aria-hidden
-          className="canvas-pattern pointer-events-none absolute inset-x-0 top-16 -z-10 h-[720px] print:hidden"
-        />
-      )}
+      {/* The canvas's signature pattern under the header, fading into the content; its light stays in the title band. */}
+      <CanvasWaves variant="app" className="absolute inset-x-0 top-16 -z-10 h-[720px]" />
 
       <main
         id="main"

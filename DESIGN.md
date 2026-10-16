@@ -236,7 +236,8 @@ at a glance: what needs my attention, what is the state of things, what can I do
 - Three layers you can tell apart: the page (cream by day, harbour navy by night) carrying a faint signature pattern
   at its top (silk by day, gold contour lines by night, `scripts/brand/waves.mjs`); solid cards on it; fields with
   their own fill (white by day, darker than the card by night) and a firm edge. Text never sits on the pattern inside
-  a card, table, form or picker.
+  a card, table, form or picker. The waves are metal: still, with light crossing them once on arrival and a soft lamp
+  following a mouse (DECISIONS #89).
 - Flat surfaces with hairlines; shadow only on raised surfaces in light, a 1 px border in dark.
 - 4 px grid; 40 px controls (44 px tap targets on touch); tabular figures on every number.
 - One status vocabulary of thirteen labels, five tones, rendered by one component.

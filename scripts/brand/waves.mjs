@@ -6,8 +6,12 @@
  *
  *   node scripts/brand/waves.mjs
  *
- * Light: cream page, white sheen strokes and Antique Gold (#D3AC60) strokes at low opacity.
- * Dark: fine gold contour lines on Harbour Navy, fainter still.
+ * Light: cream page, white sheen strokes and metallic gold strokes. Dark: fine metallic contour lines on Harbour
+ * Navy. The gold is a gradient across the whole drawing (deep bronze → Antique Gold → champagne → warm gold), so it
+ * reads as metal rather than a flat colour.
+ *
+ * Strokes are drawn at near-full opacity here; the page sets the layer's opacity (`--canvas-pattern-opacity`), so the
+ * same image also serves as the mask the moving light shines through (components/brand/canvas-waves.tsx).
  */
 
 const W = 1600;
@@ -22,7 +26,7 @@ function line(i, n, { base, spread, amp }) {
     const u = x / W;
     const y =
       y0 +
-      amp * (0.9 - 0.5 * t) * Math.sin(2 * Math.PI * (u * 1.15 + 0.12 * i / n + 0.08)) +
+      amp * (0.9 - 0.5 * t) * Math.sin(2 * Math.PI * (u * 1.15 + (0.12 * i) / n + 0.08)) +
       amp * 0.45 * Math.sin(2 * Math.PI * (u * 2.3 - 0.21 * t) + 1.3) +
       amp * 0.18 * Math.sin(2 * Math.PI * (u * 4.1 + 0.33 * t));
     pts.push([x, y]);
@@ -41,8 +45,13 @@ function line(i, n, { base, spread, amp }) {
   return d;
 }
 
+const METAL =
+  `<defs><linearGradient id='m' gradientUnits='userSpaceOnUse' x1='0' y1='0' x2='${W}' y2='${H}'>` +
+  `<stop offset='0' stop-color='%238A6A2A'/><stop offset='0.38' stop-color='%23D3AC60'/>` +
+  `<stop offset='0.62' stop-color='%23F6E3A8'/><stop offset='1' stop-color='%23B88A3E'/></linearGradient></defs>`;
+
 function svg(paths) {
-  return `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ${W} ${H}' preserveAspectRatio='xMidYMin slice' fill='none'>${paths.join("")}</svg>`;
+  return `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ${W} ${H}' preserveAspectRatio='xMidYMin slice' fill='none'>${METAL}${paths.join("")}</svg>`;
 }
 
 /** Silk: 18 lines; every third a white sheen, the rest gold, opacity rising toward the fold. */
@@ -52,10 +61,10 @@ function light() {
   for (let i = 0; i < n; i++) {
     const d = line(i, n, { base: 40, spread: 470, amp: 120 });
     if (i % 3 === 1) {
-      out.push(`<path d='${d}' stroke='%23ffffff' stroke-opacity='0.6' stroke-width='1.8'/>`);
+      out.push(`<path d='${d}' stroke='%23ffffff' stroke-width='1.8'/>`);
     } else {
-      const o = (0.1 + 0.12 * Math.sin((Math.PI * i) / (n - 1))).toFixed(3);
-      out.push(`<path d='${d}' stroke='%23D3AC60' stroke-opacity='${o}' stroke-width='1.1'/>`);
+      const o = (0.45 + 0.55 * Math.sin((Math.PI * i) / (n - 1))).toFixed(2);
+      out.push(`<path d='${d}' stroke='url(%23m)' stroke-opacity='${o}' stroke-width='1.1'/>`);
     }
   }
   return svg(out);
@@ -67,8 +76,8 @@ function dark() {
   const out = [];
   for (let i = 0; i < n; i++) {
     const d = line(i, n, { base: 30, spread: 520, amp: 105 });
-    const o = (0.06 + 0.06 * Math.sin((Math.PI * i) / (n - 1))).toFixed(3);
-    out.push(`<path d='${d}' stroke='%23D3AC60' stroke-opacity='${o}' stroke-width='0.8'/>`);
+    const o = (0.5 + 0.5 * Math.sin((Math.PI * i) / (n - 1))).toFixed(2);
+    out.push(`<path d='${d}' stroke='url(%23m)' stroke-opacity='${o}' stroke-width='0.8'/>`);
   }
   return svg(out);
 }

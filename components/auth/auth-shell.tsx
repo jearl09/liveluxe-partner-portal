@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { AUTH_FLASH_KEYS, ScrubParams } from "@/components/ui/scrub-params";
+import { CanvasWaves } from "@/components/brand/canvas-waves";
 import { BrandMark } from "./brand-mark";
 import { MarkTilt } from "./mark-tilt";
 
@@ -23,7 +24,7 @@ export function AuthShell({ children, once = true }: { children: ReactNode; once
     <div className="auth-page relative flex min-h-screen flex-col overflow-hidden">
       {/* Runs before the mark is parsed, so a repeat visit never shows the first frame of the animation. */}
       {once && <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: MARK_ONCE_SCRIPT }} />}
-      <div aria-hidden className="canvas-pattern pointer-events-none absolute inset-0" />
+      <CanvasWaves variant="signin" replay={!once} className="absolute inset-0" />
       {/* These screens have no app chrome, so the theme control sits on the page itself. */}
       <header className="absolute top-4 right-4 z-10 lg:top-6 lg:right-6">
         <ThemeToggle />
