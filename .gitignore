@@ -60,3 +60,10 @@ next-env.d.ts
 
 # Claude Code: machine-local settings (hooks, permissions)
 /.claude/settings.local.json
+
+# Graphify knowledge graph: rebuilt locally by git hooks after every commit/checkout (`graphify update .`); not shared
+/graphify-out/
+# Claude Code project settings written by `graphify claude install` (contains this machine's graphify path)
+/.claude/settings.json
+# Local backups
+*.bak

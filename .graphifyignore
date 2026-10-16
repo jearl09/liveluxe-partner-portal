@@ -1,0 +1,49 @@
+# Graphify scope: source code only (gitignore syntax; read by every build, `graphify update` and the git hooks).
+#
+# Documents, PDFs and images are sent to an LLM for extraction, and this repo's architecture spec, design brief and
+# audit screenshots are confidential. So everything is ignored except the six source folders, and anything that is
+# not code is ignored even inside them.
+
+# 1. Ignore everything at the top level...
+/*
+# ...except the source folders.
+!/app/
+!/lib/
+!/components/
+!/supabase/
+!/tests/
+!/scripts/
+
+# 2. Never, wherever it sits: documents, specs, papers, images, media, office files, secrets, backups.
+*.md
+*.mdx
+*.txt
+*.rst
+*.html
+*.yaml
+*.yml
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.svg
+*.ico
+*.mp4
+*.mov
+*.webm
+*.mp3
+*.wav
+*.docx
+*.xlsx
+*.pptx
+*.csv
+.env*
+*.pem
+*.bak
+
+# 3. Generated or local-only folders inside the source tree.
+supabase/.temp/
+**/__snapshots__/
+**/*-snapshots/
