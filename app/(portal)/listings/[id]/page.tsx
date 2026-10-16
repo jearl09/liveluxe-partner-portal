@@ -15,9 +15,10 @@ import { formatMoney } from "@/lib/domain/money";
 import { PAY_MODE_SENTENCE, paymentModeFor } from "@/lib/domain/payments";
 import { can } from "@/lib/domain/permissions";
 import { displayPropertyName } from "@/lib/domain/property-name";
-import { buildAvailabilityStrip, parseSearchParams, searchQueryString } from "@/lib/domain/search";
+import { parseSearchParams, searchQueryString } from "@/lib/domain/search";
+import { buildStayCalendar, nearestOpenStays } from "@/lib/domain/stay-picker";
 import { env } from "@/lib/env";
-import { getCalendarDays, getListing } from "@/lib/listings/load";
+import { getCalendarDays, getListing, getTakenRanges } from "@/lib/listings/load";
 import { priceStay } from "@/lib/listings/price";
 import { orgPaymentTerms } from "@/lib/payments/load";
 import { loadOffsetSetting } from "@/lib/requests/checkin";
@@ -25,6 +26,8 @@ import { formatClock, formatDate } from "@/lib/utils";
 
 const TZ = "Australia/Melbourne";
 const STRIP_DAYS = 90;
+/** The picker reaches as far as the calendar sync does (spec §6.4: 400 days). */
+const PICKER_DAYS = 400;
 const VISIBLE_AMENITIES = 12;
 
 export async function generateMetadata({ params }: PageProps<"/listings/[id]">) {
@@ -63,8 +66,9 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
   const pets = parsed.query.pets;
   const form = { checkIn: parsed.query.checkIn, checkOut: parsed.query.checkOut, adults, children, pets };
 
-  const [strip, priced, terms, offsetDefault, sync] = await Promise.all([
-    getCalendarDays(id, today, addDays(today, STRIP_DAYS - 1)),
+  const [calendarDays, taken, priced, terms, offsetDefault, sync] = await Promise.all([
+    getCalendarDays(id, today, addDays(today, PICKER_DAYS)),
+    getTakenRanges(id, today, addDays(today, PICKER_DAYS)),
     parsed.hasDates
       ? priceStay(
           id,
@@ -77,6 +81,17 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
     loadSyncState(now),
   ]);
   const offset = l.checkin_release_offset_hours ?? offsetDefault;
+  // One source for the picker, the calendar and the hints: synced nights plus holds and approved bookings.
+  const cal = buildStayCalendar(calendarDays, taken, today, PICKER_DAYS, {
+    minNights: l.min_nights,
+    maxNights: l.max_nights,
+  });
+  const refused = priced && !priced.availability.available ? priced.availability : null;
+  const conflicts = refused ? [...refused.unavailableDates, ...refused.missingDates] : [];
+  const nearest =
+    refused && form.checkIn && refused.reason !== "capacity"
+      ? nearestOpenStays(cal, form.checkIn, Math.max(refused.nights, refused.requiredMinStay))
+      : [];
 
   const curated = curateAmenities(amenities.map((a) => a.label));
   const groups = groupAmenities(curated);
@@ -156,7 +171,8 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
         <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
           <QuotePanel
             form={form}
-            today={today}
+            cal={cal}
+            nearest={nearest}
             currency={l.currency}
             errors={parsed.errors}
             result={priced ? { availability: priced.availability, quote: priced.quote } : null}
@@ -175,9 +191,12 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
 
         <div className="min-w-0 space-y-10">
           <AvailabilityStrip
-            days={buildAvailabilityStrip(strip, today, STRIP_DAYS)}
+            cal={cal}
+            count={STRIP_DAYS}
             currency={l.currency}
             today={today}
+            selected={form.checkIn && form.checkOut ? { checkIn: form.checkIn, checkOut: form.checkOut } : null}
+            conflicts={conflicts}
           />
 
           <section aria-labelledby="stay-heading" className="space-y-3">

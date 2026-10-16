@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useId, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
-import { DayPicker, type DateRange } from "react-day-picker";
+import { DayPicker, type DateRange, type DayButtonProps } from "react-day-picker";
 import { addDays, differenceInCalendarDays, format, isValid, parseISO, startOfToday } from "date-fns";
 import { CalendarDays, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,8 @@ const toDate = (iso?: string | null) => {
   return isValid(d) ? d : undefined;
 };
 const toIso = (d?: Date) => (d ? format(d, ISO) : "");
+/** "Mon 18 Nov", with the year only when it is not this year: short enough to never truncate in a panel. */
+const stayDay = (d: Date) => format(d, d.getFullYear() === new Date().getFullYear() ? "EEE d MMM" : "EEE d MMM yyyy");
 
 export const CAL_CLASSES = {
   root: "text-body-sm",
@@ -49,6 +51,13 @@ export const CAL_CLASSES = {
   outside: "text-text-muted opacity-50",
   disabled: "[&>button]:text-text-muted [&>button]:line-through [&>button]:opacity-50 [&>button]:hover:bg-transparent",
   hidden: "invisible",
+} as const;
+
+/** One month in a narrow panel: 36 px cells, so 7 columns and the popover padding fit in 280 px. */
+const COMPACT_CLASSES = {
+  ...CAL_CLASSES,
+  weekday: "h-8 w-9 text-center text-body-sm font-semibold text-text-muted",
+  day_button: CAL_CLASSES.day_button.replace("h-10 w-10", "h-9 w-9"),
 } as const;
 
 function Chevron({ orientation }: { orientation?: "left" | "right" | "up" | "down" }) {
@@ -89,6 +98,42 @@ export interface DateRangeFieldProps {
   error?: string;
   className?: string;
   onChange?: (from: string, to: string) => void;
+  /**
+   * Stay rules (property page): the reason a day cannot be chosen right now, or null. `checkIn` is the check-in
+   * picked so far while a check-out is being chosen. Refused days stay focusable and say why (tooltip, screen
+   * reader); they are aria-disabled rather than disabled so the reason can be read.
+   */
+  blockFor?: (iso: string, checkIn: string | null) => string | null;
+  /** Last day the calendar can reach (ISO); months after it are not shown. */
+  until?: string;
+  /** One month with tighter cells, to fit inside a narrow panel. */
+  compact?: boolean;
+}
+
+type Rules = { blockFor: NonNullable<DateRangeFieldProps["blockFor"]>; from: string | null };
+/** The stay rules and the check-in picked so far, for the day buttons. */
+const RulesContext = createContext<Rules | null>(null);
+
+/** A day that says why it cannot be chosen, instead of being silently dead. */
+function RuleDayButton({ day, modifiers, ...props }: DayButtonProps) {
+  const rules = useContext(RulesContext);
+  const ref = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (modifiers.focused) ref.current?.focus();
+  }, [modifiers.focused]);
+  const reason = rules ? rules.blockFor(toIso(day.date), rules.from) : null;
+  return (
+    <button
+      ref={ref}
+      {...props}
+      aria-disabled={reason ? true : undefined}
+      title={reason ?? undefined}
+      onClick={reason ? (e) => e.preventDefault() : props.onClick}
+    >
+      {props.children}
+      {reason && <span className="sr-only">, {reason}</span>}
+    </button>
+  );
 }
 
 /** Stay dates: check-in → check-out with the night count shown as soon as both are picked. */
@@ -102,20 +147,55 @@ export function DateRangeField(p: DateRangeFieldProps) {
     return from ? { from, to } : undefined;
   });
   const min = useMemo(() => toDate(p.min) ?? startOfToday(), [p.min]);
+  const until = useMemo(() => toDate(p.until), [p.until]);
   const nights = range?.from && range?.to ? differenceInCalendarDays(range.to, range.from) : 0;
+  const [hovered, setHovered] = useState<Date | undefined>();
+  const blockFor = p.blockFor;
+  // The check-in picked so far, while a check-out is still to come.
+  const pendingFrom = range?.from && !range.to ? toIso(range.from) : null;
+  const rules = useMemo<Rules | null>(
+    () => (blockFor ? { blockFor, from: pendingFrom } : null),
+    [blockFor, pendingFrom],
+  );
+  const hoveredIso = hovered ? toIso(hovered) : null;
+  const hoverAfter = !!(rules && pendingFrom && hoveredIso && hoveredIso > pendingFrom);
+  const hoverReason = hoverAfter ? rules!.blockFor(hoveredIso!, pendingFrom) : null;
+  const preview =
+    hoverAfter && !hoverReason && range?.from ? { from: addDays(range.from, 1), to: hovered! } : undefined;
+  const previewNights = preview && range?.from ? differenceInCalendarDays(hovered!, range.from) : 0;
+
+  /** Stay rules: pick a check-in, then a check-out after it; a refused day does nothing. */
+  const pick = (day: Date) => {
+    if (!rules) return;
+    const iso = toIso(day);
+    if (rules.blockFor(iso, pendingFrom)) return;
+    if (pendingFrom && range?.from && iso > pendingFrom) {
+      setRange({ from: range.from, to: day });
+      p.onChange?.(pendingFrom, iso);
+    } else {
+      setRange({ from: day, to: undefined });
+    }
+  };
 
   const summary =
     range?.from && range?.to ? (
-      <>
-        <span className="truncate">
-          {format(range.from, LONG)} → {format(range.to, LONG)}
-        </span>
-      </>
+      <span>
+        {stayDay(range.from)} → {stayDay(range.to)}
+      </span>
     ) : range?.from ? (
-      <span className="truncate">{format(range.from, LONG)} → choose check-out</span>
+      <span>{stayDay(range.from)} → choose check-out</span>
     ) : (
-      <span className="text-text-muted truncate">Choose check-in and check-out</span>
+      <span className="text-text-muted">Choose check-in and check-out</span>
     );
+  const status =
+    hoverReason ??
+    (previewNights > 0
+      ? `${previewNights} ${previewNights === 1 ? "night" : "nights"} · ${stayDay(range!.from!)} → ${stayDay(hovered!)}`
+      : nights > 0
+        ? `${nights} ${nights === 1 ? "night" : "nights"}`
+        : range?.from
+          ? "Now choose check-out"
+          : "Choose check-in");
 
   return (
     <div className={p.className}>
@@ -139,10 +219,10 @@ export function DateRangeField(p: DateRangeFieldProps) {
           aria-labelledby={`${id}-label ${id}-value`}
           aria-describedby={p.error ? `${id}-err` : p.hint ? `${id}-hint` : undefined}
           aria-invalid={p.invalid || undefined}
-          className={cn(triggerClass, "mt-1", p.invalid && "border-danger-fg")}
+          className={cn(triggerClass, "mt-1 py-2", p.invalid && "border-danger-fg")}
         >
           <CalendarDays className="text-text-muted h-4 w-4 shrink-0" aria-hidden />
-          <span id={`${id}-value`} className="flex min-w-0 flex-1 items-center">
+          <span id={`${id}-value`} className="min-w-0 flex-1">
             {summary}
           </span>
           {nights > 0 && (
@@ -156,33 +236,64 @@ export function DateRangeField(p: DateRangeFieldProps) {
             align="start"
             sideOffset={6}
             collisionPadding={12}
-            className="bg-surface-raised border-subtle rounded-card relative z-50 max-h-(--radix-popover-content-available-height) overflow-y-auto border p-3 shadow-md"
+            className={cn(
+              "bg-surface-raised border-subtle rounded-card relative z-50 max-h-(--radix-popover-content-available-height) max-w-(--radix-popover-content-available-width) overflow-y-auto border shadow-md",
+              p.compact ? "p-2" : "p-3",
+            )}
           >
-            <DayPicker
-              mode="range"
-              selected={range}
-              onSelect={(r) => {
-                setRange(r);
-                if (r?.from && r?.to && r.to > r.from) {
-                  p.onChange?.(toIso(r.from), toIso(r.to));
-                }
-              }}
-              min={1}
-              numberOfMonths={two ? 2 : 1}
-              defaultMonth={range?.from ?? min}
-              disabled={{ before: min }}
-              weekStartsOn={1}
-              showOutsideDays={false}
-              classNames={CAL_CLASSES}
-              components={{ Chevron }}
-            />
+            {rules ? (
+              <RulesContext.Provider value={rules}>
+                <DayPicker
+                  mode="range"
+                  selected={range}
+                  onSelect={(_, day) => pick(day)}
+                  onDayMouseEnter={(d) => setHovered(d)}
+                  onDayFocus={(d) => setHovered(d)}
+                  onDayMouseLeave={() => setHovered(undefined)}
+                  numberOfMonths={p.compact ? 1 : two ? 2 : 1}
+                  defaultMonth={range?.from ?? min}
+                  startMonth={min}
+                  endMonth={until}
+                  weekStartsOn={1}
+                  showOutsideDays={false}
+                  modifiers={{
+                    blocked: (d) => !!rules.blockFor(toIso(d), pendingFrom),
+                    ...(preview ? { preview } : {}),
+                  }}
+                  modifiersClassNames={{
+                    blocked: CAL_CLASSES.disabled,
+                    preview: "bg-inset [&>button]:rounded-none",
+                  }}
+                  classNames={p.compact ? COMPACT_CLASSES : CAL_CLASSES}
+                  components={{ Chevron, DayButton: RuleDayButton }}
+                />
+              </RulesContext.Provider>
+            ) : (
+              <DayPicker
+                mode="range"
+                selected={range}
+                onSelect={(r) => {
+                  setRange(r);
+                  if (r?.from && r?.to && r.to > r.from) {
+                    p.onChange?.(toIso(r.from), toIso(r.to));
+                  }
+                }}
+                min={1}
+                numberOfMonths={p.compact ? 1 : two ? 2 : 1}
+                defaultMonth={range?.from ?? min}
+                disabled={{ before: min }}
+                weekStartsOn={1}
+                showOutsideDays={false}
+                classNames={p.compact ? COMPACT_CLASSES : CAL_CLASSES}
+                components={{ Chevron }}
+              />
+            )}
             <div className="border-subtle mt-3 flex items-center justify-between gap-3 border-t pt-3">
-              <p className="text-text-secondary text-body-sm" aria-live="polite">
-                {nights > 0
-                  ? `${nights} ${nights === 1 ? "night" : "nights"}`
-                  : range?.from
-                    ? "Now choose check-out"
-                    : "Choose check-in"}
+              <p
+                className={cn("text-body-sm max-w-56", hoverReason ? "text-attention-fg" : "text-text-secondary")}
+                aria-live="polite"
+              >
+                {status}
               </p>
               <div className="flex gap-2">
                 {range?.from && (

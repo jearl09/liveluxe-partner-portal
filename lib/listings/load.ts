@@ -8,6 +8,8 @@ import "server-only";
 import { createServerSupabase } from "@/lib/db/server";
 import type { ListingRow } from "@/lib/db/types";
 import type { CalendarDay } from "@/lib/domain/availability";
+import type { TakenRange } from "@/lib/domain/stay-picker";
+import { log } from "@/lib/observability/logger";
 import { isUuid } from "@/lib/domain/ids";
 import {
   SEARCH_PAGE_SIZE,
@@ -79,6 +81,30 @@ export async function getCalendarDays(listingId: string, from: string, to: strin
     closedOnArrival: d.closed_on_arrival,
     closedOnDeparture: d.closed_on_departure,
   }));
+}
+
+/**
+ * Holds and approved bookings on a listing that the synced calendar may not show yet (migration
+ * …_listing_taken_ranges). Fails open to "none" with a warning: the quote and the submission re-check holds anyway.
+ */
+export async function getTakenRanges(
+  listingId: string,
+  from: string,
+  to: string,
+  exceptBookingId: string | null = null,
+): Promise<TakenRange[]> {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase.rpc("listing_taken_ranges", {
+    p_listing_id: listingId,
+    p_from: from,
+    p_to: to,
+    p_except_booking: exceptBookingId,
+  });
+  if (error) {
+    log.warn("listing.taken_ranges_failed", { listingId, message: error.message });
+    return [];
+  }
+  return (data ?? []).map((r) => ({ start: r.start_date, end: r.end_date }));
 }
 
 export interface SearchResultItem {

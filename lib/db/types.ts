@@ -666,6 +666,10 @@ export interface Database {
         Args: { p_token_hash: string };
         Returns: { email: string; role: string; org_name: string; expires_at: string; accepted_at: string | null }[];
       };
+      listing_taken_ranges: {
+        Args: { p_listing_id: string; p_from: string; p_to: string; p_except_booking?: string | null };
+        Returns: { start_date: string; end_date: string }[];
+      };
       availability_freshness: {
         Args: Record<string, never>;
         Returns: { last_synced_at: string | null; stale_after_minutes: number }[];

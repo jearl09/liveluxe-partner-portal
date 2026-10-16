@@ -132,7 +132,7 @@ export async function quoteExtension(d: RequestDetail, newCheckOut: string): Pro
       children: r.guests_children,
       pets: r.guests_pets,
     },
-    { orgId: r.org_id },
+    { orgId: r.org_id, exceptBookingId: r.id },
   );
   const nights = daysBetween(r.check_out, newCheckOut);
   if (!priced || !priced.availability.available || !priced.quote) {

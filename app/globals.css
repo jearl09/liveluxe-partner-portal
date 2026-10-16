@@ -747,14 +747,14 @@ html[data-ll-mark="seen"] .ll-enter {
 
 /*
  * Reduced motion (brief §4.3): movement is removed, state changes stay visible.
- * Transforms and entrance animations stop; colour and opacity changes become instant.
+ * Animations and transitions stop; colour and opacity changes become instant. Static transforms stay: pop-overs,
+ * menus and the date picker are placed by a transform, and removing it threw every one of them to the top-left.
  */
 @media (prefers-reduced-motion: reduce) {
   *,
   .theme-switching * {
     animation: none !important;
     transition-duration: 0ms !important;
-    transform: none !important;
     scroll-behavior: auto !important;
   }
   /* The monogram is simply there, finished and still: no writing, no sheen, no tilt, no glint. */

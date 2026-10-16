@@ -665,6 +665,27 @@ export class FakeDb {
           },
         ];
       }
+      case "listing_taken_ranges": {
+        // Mirrors …_listing_taken_ranges.sql: live holds and inventory-consuming requests, minus one booking.
+        const from = String(a.p_from);
+        const to = String(a.p_to);
+        const except = (a.p_except_booking as string | null | undefined) ?? null;
+        const nowIso = new Date().toISOString();
+        const ranges = [
+          ...this.table("inventory_holds")
+            .filter((h) => h.listing_id === a.p_listing_id && String(h.expires_at) > nowIso && h.booking_id !== except)
+            .map((h) => {
+              const b = this.table("booking_requests").find((r) => r.id === h.booking_id);
+              return b ? { start_date: String(b.check_in), end_date: String(b.check_out) } : null;
+            }),
+          ...this.table("booking_requests")
+            .filter((b) => b.listing_id === a.p_listing_id && LIVE.has(String(b.status)) && b.id !== except)
+            .map((b) => ({ start_date: String(b.check_in), end_date: String(b.check_out) })),
+        ];
+        return ranges.filter(
+          (r): r is { start_date: string; end_date: string } => !!r && r.start_date < to && r.end_date > from,
+        );
+      }
       case "apply_booking_transition":
         return this.applyTransition(a);
       case "submit_booking_request":

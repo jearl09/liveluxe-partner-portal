@@ -21,6 +21,7 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { BOOKING_STATUSES, type BookingStatus } from "@/lib/domain/booking-state-machine";
 import { formatMoney } from "@/lib/domain/money";
+import { buildStayCalendar } from "@/lib/domain/stay-picker";
 import { previewsAllowed } from "@/lib/preview";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -607,7 +608,7 @@ export default function SystemPage() {
                 children: 0,
                 pets: 0,
               }}
-              today="2026-10-14"
+              cal={buildStayCalendar([], [], "2026-10-14", 60, { minNights: 1, maxNights: null })}
               currency="AUD"
               errors={[]}
               result={{

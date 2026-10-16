@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
-import { DateRangeField } from "@/components/ui/date-field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { QuoteLines } from "@/components/requests/quote-lines";
 import type { AvailabilityResult } from "@/lib/domain/availability";
 import type { Quote } from "@/lib/domain/quote-engine";
+import type { StayCalendar } from "@/lib/domain/stay-picker";
+import { StayDatesField } from "./stay-dates-field";
 import { addDays } from "@/lib/domain/dates";
 import { guestsSummary } from "@/lib/domain/requests";
 import { cn, formatDate, formatDayMonth } from "@/lib/utils";
@@ -49,7 +50,8 @@ function reasonText(a: AvailabilityResult, form: QuoteFormState, limits: { maxGu
  */
 export function QuotePanel({
   form,
-  today,
+  cal,
+  nearest = [],
   currency,
   result,
   errors,
@@ -61,7 +63,10 @@ export function QuotePanel({
   maxGuests = null,
 }: {
   form: QuoteFormState;
-  today: string;
+  /** This property's nights and stay rules, shared with the availability calendar. */
+  cal: StayCalendar;
+  /** The closest open stays of the same length, offered when the server refuses the dates. */
+  nearest?: { checkIn: string; checkOut: string }[];
   currency: string;
   result: { availability: AvailabilityResult; quote: Quote | null } | null;
   errors: string[];
@@ -97,7 +102,7 @@ export function QuotePanel({
         </div>
 
         <form method="get" action="#price" className="space-y-3">
-          <DateRangeField label="Dates" defaultFrom={form.checkIn} defaultTo={form.checkOut} min={today} required />
+          <StayDatesField cal={cal} checkIn={form.checkIn} checkOut={form.checkOut} />
           <fieldset className="grid grid-cols-3 gap-3">
             <legend className="sr-only">Who is staying</legend>
             <label className={labelClass}>
@@ -180,6 +185,22 @@ export function QuotePanel({
                 </p>
               )}
               <div className="mt-3 flex flex-col gap-2">
+                {basePath &&
+                  nearest.map((n) => (
+                    <Link
+                      key={n.checkIn}
+                      href={`${basePath}?${new URLSearchParams({
+                        checkIn: n.checkIn,
+                        checkOut: n.checkOut,
+                        adults: String(form.adults),
+                        children: String(form.children),
+                        pets: String(form.pets),
+                      }).toString()}#price`}
+                      className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "w-full")}
+                    >
+                      Try {formatDayMonth(n.checkIn)} → {formatDayMonth(n.checkOut)}
+                    </Link>
+                  ))}
                 {a.reason === "min_stay" && basePath && stay && a.requiredMinStay > a.nights && (
                   <Link
                     href={`${basePath}?${new URLSearchParams({
