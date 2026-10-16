@@ -61,8 +61,8 @@ Never render a status yourself. Always use `<StatusPill status={…} />`, so eve
 
 ## 3. How to add a table
 
-Use `DataTable` (`components/ui/data-table.tsx`). It is a real `<table>` from 768 px up and a list of cards below,
-from the same column definitions. It handles the sticky header, sort links, row links, hover and focus actions, and
+Use `DataTable` (`components/ui/data-table.tsx`). It is a real `<table>` from 1024 px up and a list of cards below,
+from the same column definitions. It handles the header, sort links, row links, hover and focus actions, and
 the empty state.
 
 ```tsx

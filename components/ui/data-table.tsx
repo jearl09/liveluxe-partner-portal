@@ -76,13 +76,14 @@ export function DataTable<T>(p: DataTableProps<T>) {
 
   return (
     <div className={p.className}>
-      {/* Table from 768 px */}
       {/* Table from 1024 px (brief §10.1: two-column cards below that). The scroll is a safety net:
-          a table wider than its card scrolls instead of being clipped by the card. */}
+          a table wider than its card scrolls instead of being clipped by the card. That scroll box is
+          also what a sticky header would stick to, so the header is not sticky: an offset of the app
+          bar's height would push it down over the first row. Lists are paginated. */}
       <div className="hidden overflow-x-auto lg:block">
         <table className={cn("w-full border-collapse text-left", text)}>
           <caption className="sr-only">{p.caption}</caption>
-          <thead className="bg-surface sticky top-16 z-10">
+          <thead className="bg-surface">
             <tr className="border-subtle border-b">
               {p.columns.map((c) => {
                 const active = p.sort?.key === c.key;
