@@ -172,7 +172,9 @@ export async function submitRequest(
   );
 
   const q = priced.quote;
-  const { data, error } = await supabase.rpc("submit_booking_request", {
+  // Service role: the database takes these totals and this deadline on trust, so only the server may submit
+  // (migration 20261016120000_tenant_hardening). The acting user is passed in rather than read from the session.
+  const { data, error } = await adminDb().rpc("submit_booking_request", {
     p_listing_id: input.listingId,
     p_check_in: input.stay.checkIn,
     p_check_out: input.stay.checkOut,
@@ -195,6 +197,7 @@ export async function submitRequest(
     p_cost_centre: form.costCentre,
     p_notes: form.notes,
     p_decision_due_at: decisionDueAt,
+    p_auth_user_id: claims.sub,
   });
   if (error) {
     // A concurrent duplicate may have landed first: hand back its result (§17.2).

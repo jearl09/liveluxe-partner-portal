@@ -681,9 +681,9 @@ export class FakeDb {
 
   /** Mirrors supabase/migrations …_booking_requests.sql submit_booking_request (the parts the scenarios need). */
   private submitBooking(a: Record<string, unknown>): Row[] {
-    const user = this.actor
-      ? this.table("partner_users").find((u) => u.auth_user_id === this.actor!.auth_user_id)
-      : null;
+    // Called by the service role with the acting user passed in (…_tenant_hardening.sql); the session is a fallback.
+    const authUserId = (a.p_auth_user_id as string | undefined) ?? this.actor?.auth_user_id;
+    const user = authUserId ? this.table("partner_users").find((u) => u.auth_user_id === authUserId) : null;
     if (!user) throw new PgError("P0001", "UNAUTHENTICATED");
     const org = this.table("partner_orgs").find((o) => o.id === user.org_id);
     if (!org || org.status !== "active") throw new PgError("P0001", "ORG_SUSPENDED");

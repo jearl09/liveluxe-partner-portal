@@ -580,6 +580,8 @@ export interface Database {
           p_cost_centre: string;
           p_notes: string;
           p_decision_due_at: string;
+          /** Service role only: the signed-in user the request is submitted as. */
+          p_auth_user_id?: string;
         };
         Returns: {
           id: string;
