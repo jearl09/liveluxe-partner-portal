@@ -45,6 +45,11 @@ export async function POST(req: Request) {
       require_claim_ref: v.requireClaimRef,
       require_po_number: v.requirePoNumber,
       sla_hours: v.slaHours,
+      // The commercial terms the form collects; the edit route saves the same set.
+      payment_terms: v.paymentTerms,
+      credit_limit_cents: v.creditLimitCents,
+      deposit_pct: v.depositPct,
+      finance_contact_email: v.financeContactEmail,
       email_domains: v.emailDomains,
     })
     .select("id")

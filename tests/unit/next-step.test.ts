@@ -68,3 +68,15 @@ describe("nextStep (brief §2.3, §13)", () => {
     }
   });
 });
+
+describe("declined wording", () => {
+  it("never prints two full stops after an ops note that ends with one", () => {
+    const n = nextStep({
+      ...base,
+      status: "DECLINED",
+      declineReason: "Maintenance required — lift works in November.",
+    });
+    expect(n.body).toContain("November. The dates");
+    expect(n.body).not.toContain("..");
+  });
+});

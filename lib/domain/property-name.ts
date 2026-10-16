@@ -78,3 +78,18 @@ export function displayPropertyName(name: string | null | undefined): string {
 export function partnerPropertyName(publicName: string | null | undefined, internalName?: string | null): string {
   return streetName(internalName) ?? displayPropertyName(publicName);
 }
+
+/**
+ * The name Live Luxe staff see: the internal Hostaway name without owner or channel tags, unit included
+ * ("713/628 Flinders Street"), so it matches the partner's street name and still says which apartment. Falls back to
+ * the public name.
+ */
+export function staffPropertyName(publicName: string | null | undefined, internalName?: string | null): string {
+  const cleaned = (internalName ?? "")
+    .replace(/\[[^\]]*\]/g, " ")
+    .replace(/(\s+-\s*)+$/, "")
+    .replace(/\s+-\s*$/, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return cleaned || (publicName ?? "").trim() || "Property";
+}

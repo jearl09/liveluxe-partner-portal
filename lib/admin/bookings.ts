@@ -6,7 +6,7 @@
 import "server-only";
 import { createServerSupabase } from "@/lib/db/server";
 import type { BookingRequestRow } from "@/lib/db/types";
-import { displayPropertyName } from "@/lib/domain/property-name";
+import { partnerPropertyName, staffPropertyName } from "@/lib/domain/property-name";
 import type { BookingStatus } from "@/lib/domain/booking-state-machine";
 import {
   BOOKING_GROUPS,
@@ -101,7 +101,7 @@ export async function toBookingRows(
   const userIds = [...new Set(rows.map((r) => r.created_by))];
   const waiting = rows.filter((r) => QUEUE_STATUSES.includes(r.status)).map((r) => r.id);
   const [listings, orgs, users, payments] = await Promise.all([
-    supabase.from("listings").select("id, public_name, suburb").in("id", listingIds),
+    supabase.from("listings").select("id, public_name, internal_name, suburb").in("id", listingIds),
     supabase.from("partner_orgs").select("id, name, payment_terms").in("id", orgIds),
     supabase.from("partner_users").select("id, role").in("id", userIds),
     waiting.length
@@ -136,8 +136,8 @@ export async function toBookingRows(
       orgName: org?.name ?? null,
       viaLiveLuxe: (roleBy.get(r.created_by) ?? "").startsWith("livluxe_"),
       propertyName: opts.partnerNames
-        ? displayPropertyName(listing?.public_name)
-        : (listing?.public_name ?? "Property"),
+        ? partnerPropertyName(listing?.public_name, listing?.internal_name)
+        : staffPropertyName(listing?.public_name, listing?.internal_name),
       suburb: listing?.suburb ?? null,
       checkIn: r.check_in,
       checkOut: r.check_out,

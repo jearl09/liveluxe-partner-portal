@@ -4,6 +4,7 @@
  * so a mail failure is logged and never shown to ops as a failed decision.
  */
 import "server-only";
+import { partnerPropertyName } from "@/lib/domain/property-name";
 import { createServerSupabase } from "@/lib/db/server";
 import { env } from "@/lib/env";
 import { formatMoney } from "@/lib/domain/money";
@@ -40,7 +41,7 @@ export async function notifyPartnerOfDecision(id: string, kind: Kind, requestId:
     const e = env();
     const common = {
       reference: r.reference,
-      propertyName: detail.listing.name,
+      propertyName: partnerPropertyName(detail.listing.name, detail.listing.internalName),
       checkIn: formatDate(r.check_in),
       checkOut: formatDate(r.check_out),
       nights: r.nights,

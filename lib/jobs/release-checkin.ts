@@ -10,6 +10,7 @@
 import { adminDb } from "@/lib/db/admin";
 import type { BookingRequestRow } from "@/lib/db/types";
 import { instantBeforeCheckIn } from "@/lib/domain/dates";
+import { partnerPropertyName } from "@/lib/domain/property-name";
 import { env } from "@/lib/env";
 import { sendCheckinReady } from "@/lib/payments/notify";
 import { slack } from "@/lib/notifications/slack";
@@ -19,6 +20,7 @@ import type { JobFn } from "./registry";
 interface ListingBits {
   id: string;
   public_name: string;
+  internal_name: string | null;
   timezone: string;
   checkin_from: string | null;
   checkin_release_offset_hours: number | null;
@@ -61,7 +63,7 @@ export async function releaseCheckin(
       url: `${env().NEXT_PUBLIC_APP_URL}/requests/${b.id}`,
     } as never,
   });
-  await sendCheckinReady(claimed, listing.public_name, requestId);
+  await sendCheckinReady(claimed, partnerPropertyName(listing.public_name, listing.internal_name), requestId);
   log.info("checkin.released", { requestId, reference: b.reference, manual: by.actorType !== "system" });
   return true;
 }
@@ -86,7 +88,7 @@ export const releaseCheckinJob: JobFn = async ({ requestId }) => {
   const { data: listings } = listingIds.length
     ? await db
         .from("listings")
-        .select("id, public_name, timezone, checkin_from, checkin_release_offset_hours")
+        .select("id, public_name, internal_name, timezone, checkin_from, checkin_release_offset_hours")
         .in("id", listingIds)
     : { data: [] as ListingBits[] };
   const byId = new Map((listings ?? []).map((l) => [l.id, l as ListingBits]));

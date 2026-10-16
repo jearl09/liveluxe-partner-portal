@@ -12,6 +12,7 @@ import { createServerSupabase } from "@/lib/db/server";
 import { env } from "@/lib/env";
 import { assertAvailable, type StayRequest } from "@/lib/domain/availability";
 import { DomainError, isDomainError } from "@/lib/domain/errors";
+import { partnerPropertyName } from "@/lib/domain/property-name";
 import { formatMoney } from "@/lib/domain/money";
 import {
   creditCheck,
@@ -260,7 +261,7 @@ export async function submitRequest(
         tags: { type: "request_received" },
         template: RequestReceived({
           reference: row.reference,
-          propertyName: listing.public_name,
+          propertyName: partnerPropertyName(listing.public_name, listing.internal_name),
           checkIn: formatDate(input.stay.checkIn),
           checkOut: formatDate(input.stay.checkOut),
           nights: q.nights,

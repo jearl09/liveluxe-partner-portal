@@ -8,7 +8,7 @@ import { headers } from "next/headers";
 import type { BookingModificationRow, BookingStatusDb } from "@/lib/db/types";
 import type { BookingStatus } from "@/lib/domain/booking-state-machine";
 import { todayIn } from "@/lib/domain/dates";
-import { partnerPropertyName } from "@/lib/domain/property-name";
+import { partnerPropertyName, staffPropertyName } from "@/lib/domain/property-name";
 import { approvalPaymentGate, paymentModeFor, type PaymentMode } from "@/lib/domain/payments";
 import { can, type SessionClaims } from "@/lib/domain/permissions";
 import { orgPaymentTerms, paymentViewForBooking } from "@/lib/payments/load";
@@ -80,7 +80,8 @@ export async function loadRequestScreen(
     });
   }
 
-  // Partners see the street-style name; ops keep the unit numbers they work from.
+  // Partners see the street-style name; ops see the internal street name with the unit they work from.
+  if (audience === "ops") d.listing.name = staffPropertyName(d.listing.name, d.listing.internalName);
   if (audience === "partner") {
     d.listing.name = partnerPropertyName(d.listing.name, d.listing.internalName);
     // The internal name carries owner and channel codes; it never reaches a partner's page.

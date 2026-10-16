@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { displayPropertyName, partnerPropertyName, streetName } from "@/lib/domain/property-name";
+import { displayPropertyName, partnerPropertyName, staffPropertyName, streetName } from "@/lib/domain/property-name";
 
 describe("displayPropertyName (brief §7.3)", () => {
   it("drops the unit list in brackets", () => {
@@ -50,5 +50,20 @@ describe("partner property names: the street, never a unit or a marketing title"
       "Cozy & Central 1B Studio at QV Market",
     );
     expect(partnerPropertyName("1311/677 La Trobe Street Docklands", null)).toBe("677 La Trobe Street Docklands");
+  });
+});
+
+describe("staff property names: the internal street name with its unit, no tags", () => {
+  it("drops owner and channel tags but keeps the unit", () => {
+    expect(staffPropertyName("x", "[BLUEMO][BRYAN] 713/628 Flinders Street - [Airbnb + BDC]")).toBe(
+      "713/628 Flinders Street",
+    );
+    expect(
+      staffPropertyName(
+        "x",
+        "[BLUEMO] [BDC] 677 La Trobe Street Docklands - 2BR Standard (602, 1113) - [MEGA - Multi]",
+      ),
+    ).toBe("677 La Trobe Street Docklands - 2BR Standard (602, 1113)");
+    expect(staffPropertyName("Cozy Studio", null)).toBe("Cozy Studio");
   });
 });

@@ -13,6 +13,7 @@
  *    to complete payment".
  */
 import { adminDb } from "@/lib/db/admin";
+import { partnerPropertyName } from "@/lib/domain/property-name";
 import { isAuthorisationStale, needsResumeReminder, paymentStateFromStripe } from "@/lib/domain/payments";
 import { sendResumePayment } from "@/lib/payments/notify";
 import { slack } from "@/lib/notifications/slack";
@@ -47,9 +48,9 @@ export async function sendResumeReminders(requestId: string, now = new Date()): 
     );
   const listingIds = [...new Set((bookings ?? []).map((b) => b.listing_id))];
   const { data: listings } = listingIds.length
-    ? await db.from("listings").select("id, public_name").in("id", listingIds)
-    : { data: [] as { id: string; public_name: string }[] };
-  const nameOf = new Map((listings ?? []).map((l) => [l.id, l.public_name]));
+    ? await db.from("listings").select("id, public_name, internal_name").in("id", listingIds)
+    : { data: [] as { id: string; public_name: string; internal_name: string | null }[] };
+  const nameOf = new Map((listings ?? []).map((l) => [l.id, partnerPropertyName(l.public_name, l.internal_name)]));
 
   let sent = 0;
   for (const p of incomplete) {
@@ -113,8 +114,8 @@ export async function sendNeverStartedReminders(requestId: string, now = new Dat
   const due = open.filter((b) => cardOrgs.has(b.org_id) && !hasPayment.has(b.id) && !already.has(b.id));
   if (!due.length) return 0;
   const listingIds = [...new Set(due.map((b) => b.listing_id))];
-  const { data: listings } = await db.from("listings").select("id, public_name").in("id", listingIds);
-  const nameOf = new Map((listings ?? []).map((l) => [l.id, l.public_name]));
+  const { data: listings } = await db.from("listings").select("id, public_name, internal_name").in("id", listingIds);
+  const nameOf = new Map((listings ?? []).map((l) => [l.id, partnerPropertyName(l.public_name, l.internal_name)]));
   let sent = 0;
   for (const b of due) {
     const { error } = await db.from("notifications").insert({

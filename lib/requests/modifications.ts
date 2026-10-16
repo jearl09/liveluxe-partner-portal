@@ -25,6 +25,7 @@ import { resolveAvailability } from "@/lib/domain/availability";
 import { retentionPctFor } from "@/lib/domain/cancellation";
 import { daysBetween, isIsoDate, todayIn } from "@/lib/domain/dates";
 import { DomainError } from "@/lib/domain/errors";
+import { partnerPropertyName } from "@/lib/domain/property-name";
 import { formatMoney } from "@/lib/domain/money";
 import { assertRefundable, earlyDepartureRefund, invoiceDaysFor, invoiceItemsFromQuote } from "@/lib/domain/payments";
 import type { SessionClaims } from "@/lib/domain/permissions";
@@ -99,7 +100,7 @@ export async function alternativesFor(d: RequestDetail, from: string, to: string
   const pick = [...sameSuburb, ...rows.filter((l) => !sameSuburb.includes(l))].slice(0, 3);
   return pick.map((l) => ({
     listingId: l.id,
-    name: l.public_name,
+    name: partnerPropertyName(l.public_name, (l as { internal_name?: string | null }).internal_name),
     suburb: l.suburb,
     note: `Available ${from} → ${to}; a relocation on ${from} would be arranged by Live Luxe.`,
   }));

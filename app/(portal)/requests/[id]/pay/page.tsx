@@ -10,7 +10,7 @@ import { env } from "@/lib/env";
 import { formatMoney } from "@/lib/domain/money";
 import { PAYABLE_STATUSES, paymentModeFor } from "@/lib/domain/payments";
 import { can } from "@/lib/domain/permissions";
-import { displayPropertyName } from "@/lib/domain/property-name";
+import { partnerPropertyName } from "@/lib/domain/property-name";
 import { orgPaymentTerms, paymentViewForBooking } from "@/lib/payments/load";
 import { getRequest } from "@/lib/requests/load";
 import { formatDate } from "@/lib/utils";
@@ -41,7 +41,7 @@ export default async function PayPage({ params, searchParams }: PageProps<"/requ
 
   const charging = r.status === "AWAITING_PAYMENT";
   const inFlow = str(sp.flow) === "1" && !charging;
-  const name = displayPropertyName(d.listing.name);
+  const name = partnerPropertyName(d.listing.name, d.listing.internalName);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">

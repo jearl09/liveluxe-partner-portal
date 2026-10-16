@@ -29,6 +29,7 @@ import { adminDb } from "@/lib/db/admin";
 import type { BookingRequestRow, InvoiceRow, PaymentRow } from "@/lib/db/types";
 import { assertTransition, type BookingStatus } from "@/lib/domain/booking-state-machine";
 import { todayIn } from "@/lib/domain/dates";
+import { partnerPropertyName } from "@/lib/domain/property-name";
 import {
   balanceDueDate,
   depositPctFor,
@@ -87,7 +88,7 @@ export async function systemTransition(
 async function loadContext(b: BookingRequestRow) {
   const db = adminDb();
   const [listing, quote, settings] = await Promise.all([
-    db.from("listings").select("public_name, hostaway_listing_id").eq("id", b.listing_id).single(),
+    db.from("listings").select("public_name, internal_name, hostaway_listing_id").eq("id", b.listing_id).single(),
     b.quote_id
       ? db.from("quotes").select("line_items, tax_cents, total_cents").eq("id", b.quote_id).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -104,7 +105,11 @@ async function loadContext(b: BookingRequestRow) {
   if (!listing.data) throw new Error("listing missing for booking");
   const setting = (k: string) => settings.data?.find((r) => r.key === k)?.value;
   return {
-    listing: { name: listing.data.public_name, hostawayListingId: listing.data.hostaway_listing_id },
+    // The partner-facing street name: it prints on the tax invoice and in every email from here.
+    listing: {
+      name: partnerPropertyName(listing.data.public_name, listing.data.internal_name),
+      hostawayListingId: listing.data.hostaway_listing_id,
+    },
     quote: quote.data
       ? {
           lines: (Array.isArray(quote.data.line_items) ? quote.data.line_items : []) as unknown as QuoteLine[],

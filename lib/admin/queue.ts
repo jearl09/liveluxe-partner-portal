@@ -5,6 +5,7 @@
  * requests went. RLS: Live Luxe staff read every row.
  */
 import "server-only";
+import { staffPropertyName } from "@/lib/domain/property-name";
 import { createServerSupabase } from "@/lib/db/server";
 import type { BookingRequestRow } from "@/lib/db/types";
 import { approvalPaymentGate, paymentModeFor, paymentStateFromStripe, type PaymentMode } from "@/lib/domain/payments";
@@ -70,7 +71,7 @@ export async function loadQueue(opts: { orgId?: string | null; q?: string } = {}
 
   const [orgs, listings, users, payments, quotes, past] = await Promise.all([
     supabase.from("partner_orgs").select("id, name, payment_terms").in("id", orgIds),
-    supabase.from("listings").select("id, public_name, suburb").in("id", listingIds),
+    supabase.from("listings").select("id, public_name, internal_name, suburb").in("id", listingIds),
     supabase.from("partner_users").select("id, full_name").in("id", userIds),
     supabase
       .from("payments")
@@ -115,7 +116,7 @@ export async function loadQueue(opts: { orgId?: string | null; q?: string } = {}
         r,
         orgName: org?.name ?? null,
         requesterName: userBy.get(r.created_by) ?? null,
-        propertyName: listing?.public_name ?? "Property",
+        propertyName: staffPropertyName(listing?.public_name, listing?.internal_name),
         suburb: listing?.suburb ?? null,
         band: slaBand(r.submitted_at, r.decision_due_at, now, { paused: r.sla_paused_at !== null }),
         decisionDueAt: r.decision_due_at,

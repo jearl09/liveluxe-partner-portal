@@ -237,7 +237,7 @@ export function CounterAction({
           name="newTotal"
           labelText="New total, including GST"
           placeholder={r.total_cents != null ? (r.total_cents / 100).toFixed(2) : ""}
-          hint="Leave empty to keep the current total."
+          hint="Leave empty to price the dates below at the partner's rates (unchanged dates keep the current total)."
         />
         <DateRangeField
           label="Dates"

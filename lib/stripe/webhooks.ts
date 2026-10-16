@@ -16,6 +16,7 @@
 import type Stripe from "stripe";
 import { adminDb } from "@/lib/db/admin";
 import { DomainError } from "@/lib/domain/errors";
+import { partnerPropertyName } from "@/lib/domain/property-name";
 import { declineReasonText } from "@/lib/domain/payments";
 import { confirmBooking } from "@/lib/payments/confirm";
 import { recordDispute } from "@/lib/payments/disputes";
@@ -66,8 +67,12 @@ async function loadBookingOrPark(bookingId: string) {
 }
 
 async function propertyName(listingId: string): Promise<string> {
-  const { data } = await adminDb().from("listings").select("public_name").eq("id", listingId).maybeSingle();
-  return data?.public_name ?? "the property";
+  const { data } = await adminDb()
+    .from("listings")
+    .select("public_name, internal_name")
+    .eq("id", listingId)
+    .maybeSingle();
+  return data ? partnerPropertyName(data.public_name, data.internal_name) : "the property";
 }
 
 /** amount_capturable_updated: the hold landed. Ops may approve; an approved booking proceeds to confirmation. */

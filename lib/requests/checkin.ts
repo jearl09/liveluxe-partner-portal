@@ -56,7 +56,7 @@ export async function releaseCheckinNow(claims: SessionClaims, bookingId: string
     });
   const { data: listing } = await adminDb()
     .from("listings")
-    .select("id, public_name, timezone, checkin_from, checkin_release_offset_hours")
+    .select("id, public_name, internal_name, timezone, checkin_from, checkin_release_offset_hours")
     .eq("id", b.listing_id)
     .maybeSingle();
   if (!listing) throw new DomainError("NOT_FOUND", { listingId: b.listing_id });

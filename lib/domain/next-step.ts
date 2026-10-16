@@ -186,7 +186,8 @@ export function nextStep(i: NextStepInput): NextStep {
     case "DECLINED":
       return {
         title: ops ? "Declined" : "Live Luxe couldn't take this request",
-        body: `${i.declineReason ? `${i.declineReason}. ` : ""}The dates have been released${ops ? "." : " and nothing was charged. You can search again with the same dates."}`,
+        // Ops notes often end with their own full stop; never print two.
+        body: `${i.declineReason ? `${i.declineReason.replace(/[.\s]+$/, "")}. ` : ""}The dates have been released${ops ? "." : " and nothing was charged. You can search again with the same dates."}`,
         tone: "muted",
       };
 
