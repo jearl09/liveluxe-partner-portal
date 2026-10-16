@@ -22,7 +22,7 @@ from scipy import ndimage as ndi
 from skimage.morphology import skeletonize
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-SRC = os.path.join(ROOT, "liveluxelogo2.jpeg")
+SRC = os.path.join(ROOT, "public", "brand", "liveluxelogo2.jpeg")
 
 # Source pixels → output units. The mark sits in x 321–1279, y 241–1359 of the 1600 px source.
 OX, OY, K = 313, 233, 0.25
