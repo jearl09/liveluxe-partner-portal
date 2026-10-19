@@ -135,13 +135,24 @@ export const syncListings: JobFn = async ({ requestId }) => {
   // 4. Upsert new/changed rows, then replace their images and amenities.
   for (const ids of chunk(plan.upsert, UPSERT_BATCH)) {
     const rows = ids.map((id) => toListingInsert(byId.get(id)!, syncedAt));
-    const { data: written, error } = await db
-      .from("listings")
-      .upsert(rows, { onConflict: "hostaway_listing_id" })
-      .select("id, hostaway_listing_id");
-    if (error) throw new Error(`listings upsert failed: ${error.message}`);
+    // A bulk upsert sends the union of the rows' columns, so rows without is_partner_visible would
+    // insert it as null. Rows that set it (internal listings → false) go in their own call; the rest
+    // leave it alone: the column default on insert, ops' choice on update.
+    const written: { id: string; hostaway_listing_id: number }[] = [];
+    for (const group of [
+      rows.filter((r) => "is_partner_visible" in r),
+      rows.filter((r) => !("is_partner_visible" in r)),
+    ]) {
+      if (!group.length) continue;
+      const { data, error } = await db
+        .from("listings")
+        .upsert(group, { onConflict: "hostaway_listing_id" })
+        .select("id, hostaway_listing_id");
+      if (error) throw new Error(`listings upsert failed: ${error.message}`);
+      written.push(...(data ?? []));
+    }
 
-    const uuidByHostaway = new Map((written ?? []).map((w) => [w.hostaway_listing_id, w.id]));
+    const uuidByHostaway = new Map(written.map((w) => [w.hostaway_listing_id, w.id]));
     const uuids = [...uuidByHostaway.values()];
     const [imgDel, amenDel] = await Promise.all([
       db.from("listing_images").delete().in("listing_id", uuids),
