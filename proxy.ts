@@ -84,12 +84,18 @@ export async function proxy(request: NextRequest) {
     }
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    url.searchParams.set("next", path);
+    // The home page is no destination of its own: after sign-in the role decides (ops → /admin/queue).
+    if (path !== "/") url.searchParams.set("next", path);
     return NextResponse.redirect(url);
   }
 
   if (claims && path.startsWith("/admin") && !isLivluxe) {
     return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  // Staff opening the site's home page get their console, not the partner dashboard.
+  if (claims && isLivluxe && path === "/") {
+    return NextResponse.redirect(new URL("/admin/queue", request.url));
   }
 
   // MFA is opt-in. The per-session code prompt for users who enrolled is enforced in the
