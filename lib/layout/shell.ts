@@ -6,6 +6,7 @@
  */
 import "server-only";
 import { createServerSupabase } from "@/lib/db/server";
+import { displayName } from "@/lib/domain/display-name";
 import type { SessionClaims } from "@/lib/domain/permissions";
 import { syncState, type SyncModel } from "@/lib/domain/progress";
 import { circuitState } from "@/lib/hostaway/client";
@@ -49,7 +50,7 @@ export async function loadShell(claims: SessionClaims, side: "partner" | "ops"):
   ]);
   const f = fresh.data?.[0];
   return {
-    name: user.data?.full_name ?? null,
+    name: displayName(user.data?.full_name, user.data?.email ?? claims.email),
     email: user.data?.email ?? claims.email ?? null,
     role: claims.role,
     orgName: org.data?.name ?? null,
