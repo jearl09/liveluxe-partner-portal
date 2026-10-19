@@ -61,8 +61,9 @@ export async function POST(req: Request, ctx: Ctx) {
         return redirectTo(req, okBack, { ref: okRef, done: "review" });
       case "approve": {
         await approve(claims, id, reqId);
-        // Capture → Hostaway → CONFIRMED → invoice → email. Approval stands even if this step
-        // fails; the Stripe webhook and the drain job retry it.
+        // approve() already re-checked live availability. confirmBooking() then runs, in order:
+        // Hostaway reservation → capture (or the net-terms invoice) → CONFIRMED → receipt/invoice → email.
+        // Approval stands even if this step fails; the Stripe webhook and the drain job retry it.
         try {
           const out = await confirmBooking(id, reqId, "approval");
           if (out.status === "CONFIRMED") return redirectTo(req, okBack, { ref: okRef, done: "confirmed" });
