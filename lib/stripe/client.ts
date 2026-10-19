@@ -48,7 +48,7 @@ export async function createAuthorisation(args: {
       currency: args.currency.toLowerCase(),
       customer: args.customerId,
       capture_method: "manual",
-      automatic_payment_methods: { enabled: true },
+      allowed_payment_method_types: ["card"], // cards only, whatever else the Stripe account has switched on
       metadata: { ...args.metadata },
       description: `Livluxe booking ${args.metadata.booking_reference}`,
     },

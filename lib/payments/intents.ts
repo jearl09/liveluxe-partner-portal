@@ -183,7 +183,8 @@ export async function ensurePaymentIntent(booking: BookingRequestRow, payerEmail
         currency: booking.currency.toLowerCase(),
         customer: customerId,
         capture_method: "manual",
-        automatic_payment_methods: { enabled: true },
+        // Cards only (Apple Pay / Google Pay are cards): no Link, Klarna or other methods the account may have on.
+        allowed_payment_method_types: ["card"],
         metadata: { ...metadata },
         description: `Livluxe booking ${booking.reference}`,
         statement_descriptor_suffix: booking.reference.slice(0, 22),
