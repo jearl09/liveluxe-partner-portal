@@ -244,9 +244,10 @@ export async function cancelHostawayReservation(
     });
     return { status: "skipped", reason: "writes_disabled" };
   }
-  const res = await hostaway.updateReservation(
+  // The dedicated cancel endpoint; the general update with status "cancelled" does not release the nights.
+  const res = await hostaway.cancelReservation(
     booking.hostaway_reservation_id,
-    { status: "cancelled" },
+    "host",
     `${paymentKeys.hostaway(booking.id)}:cancel`,
   );
   if (!res.ok) {

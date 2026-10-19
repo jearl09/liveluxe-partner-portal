@@ -57,6 +57,19 @@ export const hostaway = {
       priority: "interactive",
     }),
 
+  /**
+   * Cancel a reservation. Hostaway has a dedicated status endpoint for this; a plain update with
+   * `{ status: "cancelled" }` is accepted but only marks the reservation "modified" and the nights stay
+   * blocked (seen on production, 19 Oct 2026). `cancelledBy` is "host" or "guest" per the API reference.
+   */
+  cancelReservation: (id: number, cancelledBy: "host" | "guest", idempotencyKey: string) =>
+    hostawayFetch(`/reservations/${id}/statuses/cancelled`, HostawayReservation, {
+      method: "PUT",
+      body: { cancelledBy },
+      idempotencyKey,
+      priority: "interactive",
+    }),
+
   amenities: () => hostawayFetch(`/amenities`, z.array(z.object({ id: z.number(), name: z.string() }).passthrough())),
   bedTypes: () => hostawayFetch(`/bedTypes`, z.array(z.object({ id: z.number(), name: z.string() }).passthrough())),
 };

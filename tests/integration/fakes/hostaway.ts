@@ -22,12 +22,14 @@ export class FakeHostaway {
     createReservation: Script<HostawayReservation>;
     listReservations: Script<HostawayReservation[]>;
     updateReservation: Script<HostawayReservation>;
+    cancelReservation: Script<HostawayReservation>;
     getCalendar: Script<HostawayCalendarDay[]>;
     getReservation: Script<HostawayReservation>;
   } = {
     createReservation: null,
     listReservations: null,
     updateReservation: null,
+    cancelReservation: null,
     getCalendar: null,
     getReservation: null,
   };
@@ -44,6 +46,7 @@ export class FakeHostaway {
       createReservation: null,
       listReservations: null,
       updateReservation: null,
+      cancelReservation: null,
       getCalendar: null,
       getReservation: null,
     };
@@ -127,6 +130,24 @@ export class FakeHostaway {
     const r = this.reservations.get(rid);
     if (!r) return Promise.resolve({ ok: false, status: 404, code: "ENVELOPE_FAIL", message: "Reservation not found" });
     Object.assign(r, patch, { updatedOn: new Date().toISOString() });
+    return Promise.resolve({ ok: true, status: 200, data: structuredClone(r) });
+  };
+
+  /** PUT /reservations/{id}/statuses/cancelled — the only call that actually releases the nights in Hostaway. */
+  cancelReservation = (
+    rid: number,
+    cancelledBy: "host" | "guest",
+    idempotencyKey: string,
+  ): Promise<HostawayResult<HostawayReservation>> => {
+    this.onCall?.("cancelReservation");
+    this.calls.push({ method: "cancelReservation", args: [rid, cancelledBy, idempotencyKey] });
+    const s = this.take("cancelReservation");
+    if (typeof s === "function")
+      return Promise.resolve((s as (id: number) => HostawayResult<HostawayReservation>)(rid));
+    if (s) return Promise.resolve(s);
+    const r = this.reservations.get(rid);
+    if (!r) return Promise.resolve({ ok: false, status: 404, code: "ENVELOPE_FAIL", message: "Reservation not found" });
+    Object.assign(r, { status: "cancelled", cancelledBy, updatedOn: new Date().toISOString() });
     return Promise.resolve({ ok: true, status: 200, data: structuredClone(r) });
   };
 

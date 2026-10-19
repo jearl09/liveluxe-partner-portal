@@ -127,11 +127,7 @@ describe("§17.3 — duplicate reservation created in Hostaway", () => {
 describe("§17.3 — reservation cancelled directly in Hostaway", () => {
   it("cancelling in the test account marks the booking cancelled-upstream and raises the refund workflow", async () => {
     const b = await confirmed(160);
-    const upd = await hostaway.updateReservation(
-      b.hostaway_reservation_id!,
-      { status: "cancelled" },
-      `${b.id}:verify-upstream-cancel`,
-    );
+    const upd = await hostaway.cancelReservation(b.hostaway_reservation_id!, "guest", `${b.id}:verify-upstream-cancel`);
     expect(upd.ok).toBe(true);
     const r = await runHostawayReconciliation(REQ);
     expect(r.cancelledUpstream).toBeGreaterThanOrEqual(1);

@@ -221,7 +221,7 @@ export async function cleanup() {
   const { hostaway } = await import("@/lib/hostaway/api");
   const { getStripe } = await import("@/lib/stripe/client");
   for (const rid of live.created.reservations)
-    await hostaway.updateReservation(rid, { status: "cancelled" }, `${TAG}:cleanup:${rid}`).catch(() => null);
+    await hostaway.cancelReservation(rid, "host", `${TAG}:cleanup:${rid}`).catch(() => null);
   for (const b of live.created.bookings) {
     const { data: payments } = await live.db
       .from("payments")

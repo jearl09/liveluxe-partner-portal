@@ -339,8 +339,12 @@ describe("§6.7 cancel reservation: Hostaway first, then Stripe", () => {
     expect(out.hostaway).toBe("cancelled");
     expect(out.refundOk).toBe(true);
     expect(world.hostaway.reservations.get(b.hostaway_reservation_id!)?.status).toBe("cancelled");
+    // The dedicated status endpoint, not a general update: only it releases the nights in Hostaway.
+    const cancelCall = world.hostaway.calls.find((c) => c.method === "cancelReservation")!;
+    expect(cancelCall.args[1]).toBe("host");
+    expect(world.hostaway.calls.filter((c) => c.method === "updateReservation")).toHaveLength(0);
     expect(world.timeline.indexOf("stripe:refunds.create")).toBeGreaterThan(
-      world.timeline.indexOf("hostaway:updateReservation"),
+      world.timeline.indexOf("hostaway:cancelReservation"),
     );
     expect(booking(b.id).status).toBe("CANCELLED");
   });
@@ -350,7 +354,7 @@ describe("§6.7 cancel reservation: Hostaway first, then Stripe", () => {
     await expect(
       cancelBooking(claimsFor("booker"), b.id, { reason: "claim_closed", note: "" }, REQ),
     ).rejects.toMatchObject({ code: "CANCELLATION_REQUIRES_APPROVAL" });
-    world.hostaway.next.updateReservation = { ok: false, status: 503, code: "SERVER_ERROR", message: "HTTP 503" };
+    world.hostaway.next.cancelReservation = { ok: false, status: 503, code: "SERVER_ERROR", message: "HTTP 503" };
     const out = await cancelBooking(claimsFor("ops"), b.id, { reason: "other", note: "" }, REQ);
     expect(out.hostaway).toBe("failed");
     expect(criticalContaining("reservation cancel failed")).toHaveLength(1);
