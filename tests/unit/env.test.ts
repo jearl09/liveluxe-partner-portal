@@ -30,9 +30,9 @@ describe("env(): Stripe key pair", () => {
   });
   it("refuses a key pasted with a trailing space or line break (seen on production, 19 Oct 2026)", () => {
     setEnv({ STRIPE_SECRET_KEY: "rk_live_abc \n", NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_live_abc" });
-    expect(() => env()).toThrow(/STRIPE_SECRET_KEY[sS]*no spaces or line breaks/);
+    expect(() => env()).toThrow(/STRIPE_SECRET_KEY[\s\S]*no spaces or line breaks/);
     setEnv({ STRIPE_WEBHOOK_SECRET: "whsec_abc " });
-    expect(() => env()).toThrow(/STRIPE_WEBHOOK_SECRET[sS]*no spaces/);
+    expect(() => env()).toThrow(/STRIPE_WEBHOOK_SECRET[\s\S]*no spaces/);
     setEnv({ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_test_abc\r\n", STRIPE_SECRET_KEY: "sk_test_abc" });
     expect(() => env()).toThrow(/NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY/);
   });
