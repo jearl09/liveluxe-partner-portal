@@ -7,6 +7,10 @@
  *   node scripts/demo-reset.mjs --yes --include-request LLX-2026-000003
  *                                        # also removes a named test request Live Luxe staff made for the internal
  *                                        # organisation (never another partner's, never the organisation itself)
+ *   node scripts/demo-reset.mjs --env-file .env.live --project <ref> [--yes]
+ *                                        # same removal on the one named project (the live site before real
+ *                                        # partners exist); refused unless that file points at that project, with a
+ *                                        # Stripe test key and Hostaway writes off (scripts/demo/env.mjs)
  *
  * The demo then creates the organisation and its people live, from the ops console (docs/demo/DEMO_SCRIPT.md).
  *
