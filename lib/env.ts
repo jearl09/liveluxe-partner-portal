@@ -40,9 +40,11 @@ const serverSchema = z.object({
 
   // Stripe
   // sk_ = standard secret key; rk_ = restricted key (production uses one without payout/transfer rights).
-  STRIPE_SECRET_KEY: z.string().regex(/^(sk|rk)_(test|live)_/),
-  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().startsWith("pk_"),
-  STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_"),
+  // A key pasted with a trailing space or line break cannot be sent as a header; Stripe's client then reports
+  // "connection to Stripe" errors (19 Oct 2026 on production), so refuse anything but the key's own characters.
+  STRIPE_SECRET_KEY: z.string().regex(/^(sk|rk)_(test|live)_[A-Za-z0-9_]+$/, "must be the key only, no spaces or line breaks"),
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().regex(/^pk_(test|live)_[A-Za-z0-9_]+$/, "must be the key only, no spaces or line breaks"),
+  STRIPE_WEBHOOK_SECRET: z.string().regex(/^whsec_[A-Za-z0-9_]+$/, "must be the secret only, no spaces or line breaks"),
 
   // Email
   RESEND_API_KEY: z.string().min(1),

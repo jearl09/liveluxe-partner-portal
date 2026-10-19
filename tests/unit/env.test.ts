@@ -28,6 +28,14 @@ describe("env(): Stripe key pair", () => {
     setEnv({ STRIPE_SECRET_KEY: "rk_live_x", NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_live_x" });
     expect(env().STRIPE_SECRET_KEY).toBe("rk_live_x");
   });
+  it("refuses a key pasted with a trailing space or line break (seen on production, 19 Oct 2026)", () => {
+    setEnv({ STRIPE_SECRET_KEY: "rk_live_abc \n", NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_live_abc" });
+    expect(() => env()).toThrow(/STRIPE_SECRET_KEY[sS]*no spaces or line breaks/);
+    setEnv({ STRIPE_WEBHOOK_SECRET: "whsec_abc " });
+    expect(() => env()).toThrow(/STRIPE_WEBHOOK_SECRET[sS]*no spaces/);
+    setEnv({ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_test_abc\r\n", STRIPE_SECRET_KEY: "sk_test_abc" });
+    expect(() => env()).toThrow(/NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY/);
+  });
   it("still refuses to start without a webhook secret", () => {
     setEnv({ STRIPE_WEBHOOK_SECRET: "" });
     expect(() => env()).toThrow(/STRIPE_WEBHOOK_SECRET/);
