@@ -224,8 +224,10 @@ export async function confirmBooking(
       depositCents = b.payment_deposit_cents ?? depositSplit(b.total_cents ?? 0, depositPct).depositCents;
     }
     if (payment?.status !== "succeeded") {
+      // Mode A captures the booking's current total, never the authorised amount as such: a counter-offer
+      // accepted after the hold was placed may have lowered the total, and the difference stays uncaptured.
       const cap = await captureBookingPayment(b.id, {
-        amountCents: depositCents ?? undefined,
+        amountCents: depositCents ?? b.total_cents ?? undefined,
         kind: mode === "deposit" ? "deposit" : "full",
       });
       if (!cap.ok) {

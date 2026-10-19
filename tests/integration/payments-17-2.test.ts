@@ -133,6 +133,20 @@ describe("happy paths the §17.2 rows rest on", () => {
     expect(payload.channelId).toBe(2017);
   });
 
+  it("mode A: a counter-offer accepted after the hold lowered the total → only the new total is captured", async () => {
+    const b = seedBooking();
+    await placeHold(b.id); // authorised for TOTAL_CENTS
+    const lowered = TOTAL_CENTS - 50_000;
+    await world.db.from("booking_requests").update({ total_cents: lowered }).eq("id", b.id);
+    const out = await approveAndConfirm(b.id);
+    expect(out.status).toBe("CONFIRMED");
+    const pay = (await latestPayment(b.id)) as PaymentRow;
+    expect(pay.status).toBe("succeeded");
+    expect(pay.amount_captured_cents).toBe(lowered);
+    const capture = world.stripe.calls.find((c) => c.method === "paymentIntents.capture");
+    expect((capture?.args[1] as { amount_to_capture?: number })?.amount_to_capture).toBe(lowered);
+  });
+
   it("mode B: captures only the deposit, releases the rest, issues deposit receipt + balance invoice due before check-in", async () => {
     world.reset();
     seedWorld({ paymentTerms: "deposit", depositPct: 25 });
