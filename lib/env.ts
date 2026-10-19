@@ -38,7 +38,8 @@ const serverSchema = z.object({
   HOSTAWAY_DIRECT_CHANNEL_ID: z.coerce.number().int().optional(),
 
   // Stripe
-  STRIPE_SECRET_KEY: z.string().startsWith("sk_"),
+  // sk_ = standard secret key; rk_ = restricted key (production uses one without payout/transfer rights).
+  STRIPE_SECRET_KEY: z.string().regex(/^(sk|rk)_(test|live)_/),
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().startsWith("pk_"),
   STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_"),
 
