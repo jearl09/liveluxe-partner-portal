@@ -7,6 +7,7 @@
  * They live in the `settings` table and are editable from /admin/settings.
  */
 import { z } from "zod";
+import { approvalBlockedByConfig, stripeKeyPairMismatch } from "@/lib/domain/approval-guard";
 
 /** Variables that are required in every environment. */
 const serverSchema = z.object({
@@ -89,6 +90,9 @@ export function env(): Env {
 
   const d = parsed.data;
   const isProd = d.VERCEL_ENV === "production";
+  // Test and live Stripe keys never mix: the card form and the server would be in different Stripe worlds.
+  const pair = stripeKeyPairMismatch(d.STRIPE_SECRET_KEY, d.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+  if (pair) throw new Error(pair);
   // Hard guard from spec §5.1: writes to the live Hostaway account only ever in production.
   if (d.HOSTAWAY_ALLOW_WRITES === "true" && !isProd && d.HOSTAWAY_WRITE_TARGET !== "test") {
     throw new Error(
@@ -124,6 +128,15 @@ export function hostawayWriteTarget(): "production" | "test" | null {
 /** True only when the guards agree that Hostaway writes are allowed (live in production, or the declared test account). */
 export function hostawayWritesEnabled(): boolean {
   return hostawayWriteTarget() !== null;
+}
+
+/**
+ * Why approval, confirmation and extension must be refused in this configuration (live Stripe
+ * with Hostaway writes off: money would move with no reservation), or null when it is safe.
+ */
+export function approvalConfigBlock(): string | null {
+  const e = env();
+  return approvalBlockedByConfig({ stripeSecretKey: e.STRIPE_SECRET_KEY, hostawayWritesEnabled: hostawayWritesEnabled() });
 }
 
 /** Test-only: forget the cached environment so a test can change process.env. */
