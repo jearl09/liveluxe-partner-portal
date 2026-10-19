@@ -19,6 +19,7 @@ import { approvalPaymentGate, creditCheck, paymentModeFor, withinApprovalCeiling
 import type { SessionClaims } from "@/lib/domain/permissions";
 import { can, isLivluxeRole } from "@/lib/domain/permissions";
 import { applyOpsAdjustment, type CounterOfferInput } from "@/lib/domain/requests";
+import { approvalConfigBlock } from "@/lib/env";
 import { hostaway } from "@/lib/hostaway/api";
 import { mapCalendarDay } from "@/lib/hostaway/mappers";
 import { priceStay } from "@/lib/listings/price";
@@ -162,6 +163,12 @@ async function assertMayApprove(claims: SessionClaims, r: BookingRequestRow) {
 }
 
 export async function approve(claims: SessionClaims, id: string, requestId: string): Promise<BookingRequestRow> {
+  // Before anything changes: live Stripe with Hostaway writes off would take real money for no reservation.
+  const blocked = approvalConfigBlock();
+  if (blocked) {
+    log.error("booking.approve.blocked_by_config", { requestId, id, reason: blocked });
+    throw new DomainError("APPROVAL_BLOCKED_CONFIG", { detail: blocked });
+  }
   let d = await loadForOps(claims, id);
   if (d.request.status === "SUBMITTED") {
     await transition(claims, d.request, "UNDER_REVIEW", { reason: "review started" });

@@ -31,6 +31,7 @@ import { assertRefundable, earlyDepartureRefund, invoiceDaysFor, invoiceItemsFro
 import type { SessionClaims } from "@/lib/domain/permissions";
 import { can, isLivluxeRole } from "@/lib/domain/permissions";
 import type { QuoteLine } from "@/lib/domain/quote-engine";
+import { approvalConfigBlock } from "@/lib/env";
 import { hostaway } from "@/lib/hostaway/api";
 import { mapCalendarDay } from "@/lib/hostaway/mappers";
 import { updateHostawayReservationDates } from "@/lib/hostaway/reservations";
@@ -292,6 +293,12 @@ export async function approveExtension(
   requestId: string,
 ): Promise<BookingModificationRow> {
   if (!can(claims.role, "requests.approve")) throw new DomainError("FORBIDDEN");
+  // Extra nights are written to Hostaway and charged: same rule as approval.
+  const blocked = approvalConfigBlock();
+  if (blocked) {
+    log.error("booking.extension.blocked_by_config", { requestId, modificationId, reason: blocked });
+    throw new DomainError("APPROVAL_BLOCKED_CONFIG", { detail: blocked });
+  }
   const mod = await loadModification(modificationId);
   if (mod.kind !== "extension" || mod.status !== "requested")
     throw new DomainError("INVALID_MODIFICATION", { status: mod.status });

@@ -34,6 +34,11 @@ export const ErrorCodes = {
   INVALID_MODIFICATION: { http: 422, message: "That change cannot be applied to this booking." },
   HOSTAWAY_UNAVAILABLE: { http: 503, message: "Availability data is temporarily degraded. Writes are paused." },
   HOSTAWAY_WRITE_AMBIGUOUS: { http: 500, message: "Booking write outcome unknown; operations have been alerted." },
+  APPROVAL_BLOCKED_CONFIG: {
+    http: 503,
+    message:
+      "Approval is switched off on this site: Stripe is in live mode but Hostaway writes are off, so a real charge would have no reservation behind it. Nothing was changed.",
+  },
   CANCELLATION_REQUIRES_APPROVAL: {
     http: 409,
     message: "This booking is inside the cancellation cut-off; Live Luxe must approve the cancellation.",

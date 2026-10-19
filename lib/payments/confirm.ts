@@ -39,6 +39,7 @@ import {
   type PaymentMode,
 } from "@/lib/domain/payments";
 import type { QuoteLine } from "@/lib/domain/quote-engine";
+import { approvalConfigBlock } from "@/lib/env";
 import { ensureHostawayReservation } from "@/lib/hostaway/reservations";
 import { alertCritical, slack } from "@/lib/notifications/slack";
 import { log } from "@/lib/observability/logger";
@@ -153,6 +154,13 @@ export async function confirmBooking(
 ): Promise<ConfirmOutcome> {
   let b = await loadBookingAdmin(bookingId);
   if (b.status !== "APPROVED" && b.status !== "AWAITING_PAYMENT") return { status: b.status, note: "nothing to do" };
+  // The retry paths (drain job, pay return) land here too: never capture or invoice in a configuration
+  // where no reservation can be written.
+  const blocked = approvalConfigBlock();
+  if (blocked) {
+    log.error("booking.confirm.blocked_by_config", { requestId, reference: b.reference, trigger, reason: blocked });
+    return { status: b.status, note: `blocked: ${blocked}` };
+  }
 
   const org = await loadOrgBilling(b.org_id);
   const mode: PaymentMode = paymentModeFor(org.payment_terms);

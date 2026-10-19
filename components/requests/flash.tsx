@@ -86,10 +86,13 @@ const OPS_ONLY: ReadonlySet<ErrorCode> = new Set<ErrorCode>([
   "APPROVAL_VALUE_CEILING",
   "REFUND_EXCEEDS_CAPTURED",
   "REFUNDS_FROZEN",
+  "APPROVAL_BLOCKED_CONFIG",
 ]);
 
 const EXTRA: Partial<Record<ErrorCode, string>> = {
   VALIDATION_FAILED: "Please check the highlighted fields.",
+  APPROVAL_BLOCKED_CONFIG:
+    "Turn on Hostaway writes for production in Vercel (HOSTAWAY_ALLOW_WRITES=true), or go back to Stripe test keys, then redeploy.",
   PRICE_CHANGED: "The price moved since you saw it. Review the new total and submit again.",
   DATES_HELD: "Another partner placed a hold on these dates seconds ago. Try different dates.",
   HOSTAWAY_UNAVAILABLE: "Live availability could not be checked. Try again in a minute; nothing was changed.",
