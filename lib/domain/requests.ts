@@ -66,6 +66,16 @@ export function guestsSummary(adults: number, children: number, pets: number): s
 // ---------------------------------------------------------------------------
 // SLA — decision deadline counted in business hours (§11.1)
 // ---------------------------------------------------------------------------
+
+/**
+ * The reply promise partners read ("You can expect a decision …"). Worded per David, 20 Oct 2026:
+ * "within 24 hours, usually faster in business hours". The number follows the SLA setting so a
+ * tier-1 partner with a shorter SLA reads the shorter promise.
+ */
+export function replyPromise(slaHours: number): string {
+  const h = Number.isFinite(slaHours) && slaHours > 0 ? Math.round(slaHours) : 24;
+  return `within ${h} ${h === 1 ? "hour" : "hours"}, usually faster in business hours`;
+}
 export interface BusinessHours {
   start: string; // "08:00"
   end: string; // "18:00"

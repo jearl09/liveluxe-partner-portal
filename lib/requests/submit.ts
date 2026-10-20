@@ -22,7 +22,13 @@ import {
   type CreditStanding,
 } from "@/lib/domain/payments";
 import type { SessionClaims } from "@/lib/domain/permissions";
-import { addBusinessHours, guestsSummary, validateRequestForm, type RequestFormInput } from "@/lib/domain/requests";
+import {
+  addBusinessHours,
+  guestsSummary,
+  replyPromise,
+  validateRequestForm,
+  type RequestFormInput,
+} from "@/lib/domain/requests";
 import { priceStay } from "@/lib/listings/price";
 import { sendEmail } from "@/lib/notifications/email";
 import { slack } from "@/lib/notifications/slack";
@@ -270,7 +276,7 @@ export async function submitRequest(
           claimRef: form.claimRef || undefined,
           poNumber: form.poNumber || undefined,
           submittedAtLabel: formatTimestamp(now.toISOString()),
-          slaLabel: `within ${slaHours} business hours`,
+          slaLabel: replyPromise(slaHours),
           requestUrl: `${env().NEXT_PUBLIC_APP_URL}/requests/${row.id}`,
           supportEmail: env().EMAIL_REPLY_TO,
         }),

@@ -4,7 +4,7 @@ import { FLASH_KEYS, ScrubParams } from "@/components/ui/scrub-params";
 import { ErrorCodes, type ErrorCode } from "@/lib/domain/errors";
 
 const DONE: Record<string, string> = {
-  "1": "Request sent. Live Luxe will reply within a few business hours, and we've emailed you a copy.",
+  "1": "Request sent. Live Luxe will reply by the time shown below, usually faster in business hours. We've emailed you a copy.",
   review: "Review started. This request is now assigned to you.",
   approved: "Approved. The dates are now reserved for this partner.",
   declined: "Declined. The partner has been notified and the hold released.",

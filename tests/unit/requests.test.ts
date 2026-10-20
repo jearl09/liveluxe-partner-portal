@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  replyPromise,
   addBusinessHours,
   applyOpsAdjustment,
   guestsSummary,
@@ -36,6 +37,18 @@ describe("addBusinessHours (spec §11.1)", () => {
 
   it("supports fractional hours", () => {
     expect(addBusinessHours("2026-10-12T23:00:00Z", 1.5, BH)).toBe("2026-10-13T00:30:00.000Z");
+  });
+});
+
+describe("replyPromise (David, 20 Oct 2026)", () => {
+  it("words the SLA as a plain promise", () => {
+    expect(replyPromise(24)).toBe("within 24 hours, usually faster in business hours");
+    expect(replyPromise(1)).toBe("within 1 hour, usually faster in business hours");
+    expect(replyPromise(2.4)).toBe("within 2 hours, usually faster in business hours");
+  });
+  it("falls back to 24 hours on a bad setting", () => {
+    expect(replyPromise(0)).toBe("within 24 hours, usually faster in business hours");
+    expect(replyPromise(Number.NaN)).toBe("within 24 hours, usually faster in business hours");
   });
 });
 

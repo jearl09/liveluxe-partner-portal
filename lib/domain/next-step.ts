@@ -97,7 +97,7 @@ export function nextStep(i: NextStepInput): NextStep {
       }
       return {
         title: "Live Luxe is reviewing your request",
-        body: `${due ? `We'll reply by ${due}.` : "We'll reply within a few business hours."} The dates are held for you until then${
+        body: `${due ? `We'll reply by ${due}, usually faster in business hours.` : "We'll reply as soon as we can, usually faster in business hours."} The dates are held for you until then${
           i.mode === "invoice" ? "." : ", and nothing is charged unless we approve."
         }`,
         tone: "info",
