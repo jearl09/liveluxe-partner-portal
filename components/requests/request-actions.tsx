@@ -536,7 +536,7 @@ export function buildActions(i: ActionInput): ActionSet {
             title="Ask Live Luxe to cancel?"
             consequences={[
               `It is ${q.daysUntilCheckIn} days to check-in, inside the ${i.cutoffDays}-day cut-off, so Live Luxe decides`,
-              `Under the policy ${q.retainPct}% (${money(q.retainedCents)}) would be kept`,
+              `Under the policy ${q.retainPct}% of the accommodation (${money(q.retainedCents)}) would be kept; the cleaning fee comes back`,
               "Live Luxe replies by email",
             ]}
             confirmLabel="Send cancellation request"
@@ -681,7 +681,7 @@ export function buildActions(i: ActionInput): ActionSet {
           consequences={[
             "Cancel the reservation in Hostaway and release the dates",
             q.capturedCents > 0
-              ? `Refund ${money(q.refundCents)} under the policy (${q.retainPct}% kept, ${q.daysUntilCheckIn} days to check-in)`
+              ? `Refund ${money(q.refundCents)} under the policy (${q.retainPct}% of the accommodation kept, cleaning fee returned, ${q.daysUntilCheckIn} days to check-in)`
               : "Credit or void the invoice under the policy",
             "Email the partner",
           ]}

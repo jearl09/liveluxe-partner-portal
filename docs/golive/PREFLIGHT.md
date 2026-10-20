@@ -194,7 +194,7 @@ for the pilot. None of them blocks the live keys; revisit after the first real b
 | Item | Default that stands |
 |---|---|
 | Two-factor for staff | ~~Opt-in~~ **Mandatory for staff since 20 Oct 2026 (David): staff without an authenticator are sent to set one up at sign-in; partners stay opt-in.** |
-| Cancellation inside the 7-day cut-off | Whole total retained, cleaning fee included. Ops can still enter a refund amount by hand on the cancel form when a case warrants it. |
+| Cancellation inside the 7-day cut-off | ~~Whole total retained, cleaning fee included~~ **Since 20 Oct 2026 (David): accommodation retained, the cleaning fee (with its GST share) refunded automatically.** Ops can still enter a different refund amount by hand on the cancel form. |
 | GST | Flat 10% placeholder as a plain "GST (10%)" invoice line. |
 | Invoice address and layout | As generated today (Stripe defaults, booking footer). |
 | Counter-offer above the hold | Left as is: Stripe refuses the over-capture, the booking drops to "Awaiting payment" and finance is paged. |
@@ -205,7 +205,7 @@ alert webhooks (blocker 4, an account setup).
 
 - **Counter-offer that raises the total**: the card hold stays at the old amount and approval would try to capture more than was authorised; Stripe refuses, the booking drops to "Awaiting payment" and finance is paged, so it is not silent, but a re-authorise step (or a guard that keeps counter-offers at or below the hold) is cleaner.
 - **Extension invoice names the property by its Airbnb title** (`lib/requests/modifications.ts:342` passes the public name); one-line fix with `partnerPropertyName()`, needs a test fixture with an internal name.
-- **Cancellation inside the 7-day cut-off retains the whole total, cleaning fee included** (AUD 518.98 on test); default kept on 19 Oct. Ops refund by hand via the cancel form's refund amount when warranted; accommodation-only retention can be computed later if wanted.
+- **Cancellation inside the 7-day cut-off**: since 20 Oct 2026 the accommodation is retained and the cleaning fee (with its GST share) is refunded automatically (`cleaningFeeWithTax` in `lib/domain/cancellation.ts`); ops can still override the amount.
 - **Quotes are not persisted** (`app/api/quotes/route.ts` TODO), so there is no server-side quote expiry; a stale quote is caught at submission by the price hash instead.
 - **Cross-tenant GET /requests/{other org's id}** renders an empty page (200, no data) rather than 404; every API route answers 404/403.
 - **Wording** after a partner declines a counter-offer: the request shows "Cancelled".

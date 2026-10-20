@@ -18,6 +18,7 @@ import { createServerSupabase } from "@/lib/db/server";
 import type { BookingRequestRow, InvoiceRow, PaymentRow, RefundRow } from "@/lib/db/types";
 import {
   cancellationQuote,
+  cleaningFeeWithTax,
   parseCancellationPolicy,
   type CancellationPolicy,
   type CancellationQuote,
@@ -73,6 +74,14 @@ export async function cancellationView(detail: RequestDetail): Promise<Cancellat
     totalCents: r.total_cents ?? 0,
     capturedCents: Math.max(0, captured - alreadyRefunded),
     policy,
+    // The cleaning fee is never retained: no clean happens for a cancelled stay.
+    cleaningFeeCents: detail.quote
+      ? cleaningFeeWithTax({
+          lines: detail.quote.lines,
+          subtotalCents: detail.quote.subtotalCents,
+          taxCents: detail.quote.taxCents,
+        })
+      : 0,
   });
   return { quote, policy, payment, invoice, refunds };
 }

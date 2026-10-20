@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   cancellationQuote,
   clampRefund,
+  cleaningFeeWithTax,
   DEFAULT_CANCELLATION_POLICY,
   parseCancellationPolicy,
   retentionPctFor,
@@ -68,6 +69,60 @@ describe("cancellationQuote", () => {
     expect(q.retainPct).toBe(50);
     expect(q.retainedCents).toBe(91850);
     expect(q.refundCents).toBe(91850);
+  });
+
+  it("inside cut-off: the cleaning fee (with its tax share) always comes back; retention applies to the rest (David, 20 Oct 2026)", () => {
+    // Accommodation 1,540 + cleaning 170 = subtotal 1,710; GST 171; total 1,881 (the 19 Oct smoke test).
+    const lines = [
+      { kind: "accommodation", amountCents: 154000 },
+      { kind: "cleaning_fee", amountCents: 17000 },
+      { kind: "tax", amountCents: 17100 },
+    ];
+    const cleaning = cleaningFeeWithTax({ lines, subtotalCents: 171000, taxCents: 17100 });
+    expect(cleaning).toBe(18700); // 170 + 17 GST
+    const q = cancellationQuote({
+      status: "CONFIRMED",
+      checkIn: "2026-11-25",
+      today: "2026-11-22", // 3 days out: inside the cut-off, no tier → 100% retained
+      totalCents: 188100,
+      capturedCents: 188100,
+      policy: { cutoffDays: 7, schedule: [] },
+      cleaningFeeCents: cleaning,
+    })!;
+    expect(q.retainPct).toBe(100);
+    expect(q.retainedCents).toBe(169400); // 1,881 − 187
+    expect(q.refundCents).toBe(18700);
+    // Half retained on a tier: half of the accommodation part, cleaning fee still whole.
+    const half = cancellationQuote({
+      status: "CONFIRMED",
+      checkIn: "2026-11-25",
+      today: "2026-11-15",
+      totalCents: 188100,
+      capturedCents: 188100,
+      policy: tiered,
+      cleaningFeeCents: cleaning,
+    })!;
+    expect(half.retainedCents).toBe(84700);
+    expect(half.refundCents).toBe(103400);
+    // Before the cut-off nothing changes: full refund either way.
+    const free = cancellationQuote({ ...base, status: "CONFIRMED", today: "2026-11-01", cleaningFeeCents: cleaning })!;
+    expect(free.refundCents).toBe(183700);
+    // A cleaning fee larger than the total (bad data) cannot push retention negative.
+    const odd = cancellationQuote({ ...base, status: "CONFIRMED", today: "2026-11-22", cleaningFeeCents: 999999 })!;
+    expect(odd.retainedCents).toBe(0);
+    expect(odd.refundCents).toBe(183700);
+  });
+
+  it("cleaningFeeWithTax: no fee, waived fee, or no tax", () => {
+    expect(
+      cleaningFeeWithTax({ lines: [{ kind: "accommodation", amountCents: 1000 }], subtotalCents: 1000, taxCents: 100 }),
+    ).toBe(0);
+    expect(
+      cleaningFeeWithTax({ lines: [{ kind: "cleaning_fee", amountCents: 500 }], subtotalCents: 1500, taxCents: 0 }),
+    ).toBe(500);
+    expect(
+      cleaningFeeWithTax({ lines: [{ kind: "cleaning_fee", amountCents: 500 }], subtotalCents: 0, taxCents: 0 }),
+    ).toBe(500);
   });
 
   it("never refunds more than was captured (invoice mode captured nothing)", () => {

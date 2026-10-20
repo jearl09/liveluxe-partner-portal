@@ -44,7 +44,9 @@ export async function SecuritySettings({
             <Notice tone="error">Two-factor authentication could not be turned off. Please try again.</Notice>
           )}
           {flash?.error === "mfa_required" && (
-            <Notice tone="error">Two-factor authentication is required for Live Luxe staff and cannot be turned off.</Notice>
+            <Notice tone="error">
+              Two-factor authentication is required for Live Luxe staff and cannot be turned off.
+            </Notice>
           )}
         </div>
       )}

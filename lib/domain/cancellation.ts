@@ -14,6 +14,10 @@
  * `daysBefore` down. An empty schedule means: full refund at or before the
  * cut-off, no refund after it.
  *
+ * Retention applies to the accommodation only. The cleaning fee (with its share of
+ * tax) always comes back, because no clean happens for a cancelled stay (David,
+ * 20 Oct 2026). Pass `cleaningFeeCents` from the accepted quote's lines.
+ *
  * Pure: no framework, database or Stripe imports (spec §3.2).
  */
 import type { BookingStatus } from "./booking-state-machine";
@@ -86,6 +90,23 @@ export interface CancellationInput {
   totalCents: number;
   capturedCents: number;
   policy: CancellationPolicy;
+  /** Cleaning fee including its tax share (see cleaningFeeWithTax); never retained. Default 0. */
+  cleaningFeeCents?: number;
+}
+
+/**
+ * The cleaning fee line plus its proportional share of the tax line, from a quote's lines.
+ * Tax is one line over the whole subtotal, so the fee's share is fee × tax ÷ subtotal.
+ */
+export function cleaningFeeWithTax(args: {
+  lines: ReadonlyArray<{ kind: string; amountCents: number }>;
+  subtotalCents: number;
+  taxCents: number;
+}): number {
+  const fee = args.lines.filter((l) => l.kind === "cleaning_fee").reduce((s, l) => s + Math.max(0, l.amountCents), 0);
+  if (fee <= 0) return 0;
+  const tax = args.subtotalCents > 0 ? Math.round((fee * Math.max(0, args.taxCents)) / args.subtotalCents) : 0;
+  return fee + tax;
 }
 
 /** What cancelling now would mean, or null when the status cannot be cancelled at all. */
@@ -104,7 +125,8 @@ export function cancellationQuote(input: CancellationInput): CancellationQuote |
   }
   if (!CANCELLABLE_STATUSES.includes(input.status)) return null;
   const retainPct = retentionPctFor(daysUntilCheckIn, input.policy);
-  const retainedCents = Math.round((input.totalCents * retainPct) / 100);
+  const cleaning = Math.min(Math.max(0, input.cleaningFeeCents ?? 0), Math.max(0, input.totalCents));
+  const retainedCents = Math.round(((input.totalCents - cleaning) * retainPct) / 100);
   const refundable = Math.max(0, input.totalCents - retainedCents);
   return {
     kind: "cancel",
