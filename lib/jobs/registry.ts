@@ -13,6 +13,7 @@ import { drainWebhooks } from "./drain-webhooks";
 import { checkAuthorisations } from "./check-authorisations";
 import { completeStays } from "./complete-stays";
 import { invoiceDunning } from "./invoice-dunning";
+import { releaseUnpaidInvoices } from "./release-unpaid-invoices";
 import { reconcileHostawayJob } from "./reconcile-hostaway";
 import { reconcileStripeJob } from "./reconcile-stripe";
 import { releaseCheckinJob } from "./release-checkin";
@@ -94,6 +95,12 @@ export const JOBS: Record<string, { schedule: string; description: string; run: 
     schedule: "0 10 * * *",
     description: "Overdue reminders; finance-approval and suspension thresholds for the org (§17.2).",
     run: invoiceDunning,
+  },
+  "release-unpaid-invoices": {
+    schedule: "30 10 * * *",
+    description:
+      "Net-terms invoice unpaid at its due date: warn beforehand, then release the booking (David, 20 Oct 2026).",
+    run: releaseUnpaidInvoices,
   },
   "complete-stays": {
     schedule: "30 4 * * *",

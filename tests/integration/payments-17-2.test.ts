@@ -51,6 +51,7 @@ import { DomainError } from "@/lib/domain/errors";
 import { checkAuthorisations, sendNeverStartedReminders, sendResumeReminders } from "@/lib/jobs/check-authorisations";
 import { drainWebhooks, processWebhookEvent } from "@/lib/jobs/drain-webhooks";
 import { expireHolds } from "@/lib/jobs/expire-holds";
+import { releaseUnpaidInvoices } from "@/lib/jobs/release-unpaid-invoices";
 import { confirmBooking } from "@/lib/payments/confirm";
 import { applyCreditStanding, loadDunningPolicy, runDunning } from "@/lib/payments/dunning";
 import { ensurePaymentIntent, latestPayment } from "@/lib/payments/intents";
@@ -765,5 +766,71 @@ describe("§17.2 row 12 — refund exceeds captured amount", () => {
     );
     expect(out.refundOk).toBe(true);
     expect(out.refundCents).toBe(TOTAL_CENTS);
+  });
+});
+
+describe("unpaid net-terms invoice releases the booking (David, 20 Oct 2026)", () => {
+  const daysAhead = (d: number) => new Date(Date.now() + d * 86_400_000).toISOString();
+
+  async function confirmedOnAccount() {
+    world.reset();
+    seedWorld({ paymentTerms: "net30", creditLimitCents: 1_000_000 });
+    await enableHostawayTestWrites(true);
+    const b = seedBooking({ daysToCheckIn: 20 });
+    const out = await approveAndConfirm(b.id);
+    expect(out.status).toBe("CONFIRMED");
+    const inv = world.db.rows<{ stripe_invoice_id: string; kind: string; status: string }>("invoices")[0];
+    expect(inv.kind).toBe("net_terms");
+    return { b, inv };
+  }
+
+  it("warns once before the due date, then cancels the booking, the Hostaway reservation and the invoice", async () => {
+    const { b, inv } = await confirmedOnAccount();
+    // Due in 36 hours: inside the 2-day warning window.
+    await world.db
+      .from("invoices")
+      .update({ due_at: daysAhead(1.5) })
+      .eq("stripe_invoice_id", inv.stripe_invoice_id);
+    let r = await releaseUnpaidInvoices({ requestId: REQ });
+    expect(r.notes).toBe("warned=1 released=0 failed=0");
+    const warning = emailsOfType("invoice_release_warning");
+    expect(warning).toHaveLength(1);
+    expect(warning[0].to).toEqual(expect.arrayContaining(["ap@acme.test"])); // billing contact copied
+    expect(booking(b.id).status).toBe("CONFIRMED");
+    // Same window, next run: no second warning.
+    r = await releaseUnpaidInvoices({ requestId: REQ });
+    expect(r.notes).toBe("warned=0 released=0 failed=0");
+    // Due date passed and still unpaid: released.
+    await world.db
+      .from("invoices")
+      .update({ due_at: daysAgo(0.1) })
+      .eq("stripe_invoice_id", inv.stripe_invoice_id);
+    r = await releaseUnpaidInvoices({ requestId: REQ });
+    expect(r.notes).toBe("warned=0 released=1 failed=0");
+    const after = booking(b.id);
+    expect(after.status).toBe("CANCELLED");
+    expect(after.cancellation_reason).toContain("unpaid");
+    expect(world.hostaway.calls.filter((c) => c.method === "cancelReservation")).toHaveLength(1);
+    expect(world.db.rows<{ status: string }>("invoices")[0].status).toBe("void");
+    expect(emailsOfType("booking_cancelled")).toHaveLength(1);
+    expect(slackContaining("released")).toHaveLength(1);
+    // Idempotent: nothing left to do.
+    r = await releaseUnpaidInvoices({ requestId: REQ });
+    expect(r.notes).toBe("warned=0 released=0 failed=0");
+  });
+
+  it("a paid invoice, or one not yet in the window, releases nothing", async () => {
+    const { inv } = await confirmedOnAccount();
+    await world.db
+      .from("invoices")
+      .update({ due_at: daysAhead(5) })
+      .eq("stripe_invoice_id", inv.stripe_invoice_id);
+    expect((await releaseUnpaidInvoices({ requestId: REQ })).notes).toBe("warned=0 released=0 failed=0");
+    await world.db
+      .from("invoices")
+      .update({ due_at: daysAgo(1), status: "paid", amount_paid_cents: TOTAL_CENTS })
+      .eq("stripe_invoice_id", inv.stripe_invoice_id);
+    expect((await releaseUnpaidInvoices({ requestId: REQ })).notes).toBe("warned=0 released=0 failed=0");
+    expect(emailsOfType("invoice_release_warning")).toHaveLength(0);
   });
 });

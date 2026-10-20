@@ -13,6 +13,7 @@
     { "path": "/api/cron/reconcile-stripe", "schedule": "45 3 * * *" },
     { "path": "/api/cron/check-authorisations", "schedule": "0 9 * * *" },
     { "path": "/api/cron/invoice-dunning", "schedule": "0 10 * * *" },
+    { "path": "/api/cron/release-unpaid-invoices", "schedule": "30 10 * * *" },
     { "path": "/api/cron/complete-stays", "schedule": "30 4 * * *" },
     { "path": "/api/cron/token-health", "schedule": "0 8 * * *" },
     { "path": "/api/cron/digests", "schedule": "0 7 * * *" }

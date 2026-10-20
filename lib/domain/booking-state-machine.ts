@@ -173,7 +173,8 @@ export const TRANSITIONS: readonly Transition[] = [
   {
     from: "CONFIRMED",
     to: "CANCELLED",
-    actors: ["partner", "livluxe"],
+    // "system": a net-terms invoice still unpaid on its due date releases the booking (release-unpaid-invoices job).
+    actors: ["partner", "livluxe", "system"],
     sideEffects:
       "Policy refund calculated; Hostaway reservation cancelled; credit note if invoiced; notifications; credentials revoked.",
   },

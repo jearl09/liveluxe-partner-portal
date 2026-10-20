@@ -80,6 +80,7 @@ export function seedWorld(
     { key: "deposit.default_pct", value: 20 },
     { key: "deposit.balance_due_days_before_checkin", value: 14 },
     { key: "invoice.due_days_before_checkin", value: 7 },
+    { key: "invoice.release_warning_days", value: 2 },
     { key: "cancellation.cutoff_days", value: 14 },
     { key: "cancellation.retention_schedule", value: [] },
     { key: "checkin.release_offset_hours", value: 48 },

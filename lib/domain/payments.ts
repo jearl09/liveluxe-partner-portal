@@ -4,6 +4,7 @@
  * Pure: no Stripe, no database. The Stripe object states are mapped to a small
  * local vocabulary so screens never branch on raw strings.
  */
+import type { BookingStatus } from "./booking-state-machine";
 import { addDays, daysBetween } from "./dates";
 import { DomainError } from "./errors";
 import type { QuoteLine } from "./quote-engine";
@@ -364,6 +365,44 @@ export function dunningRung(daysPastDue: number, policy: DunningPolicy): number 
     if (daysPastDue >= d) rung = i + 1;
   });
   return rung;
+}
+
+/**
+ * Invoice unpaid at the due date → the booking is released (David, 20 Oct 2026). A net-terms invoice
+ * falls due no later than `invoice.due_days_before_checkin` before check-in (invoiceDaysUntilDue); this
+ * decides what the daily job does with one open invoice:
+ *   warn     `warningDays` before the due date, once (settings `invoice.release_warning_days`)
+ *   release  on or after the due date while the booking is still CONFIRMED and the stay has not started
+ *   none     otherwise (paid, not due yet, already warned, stay under way → ordinary dunning only)
+ */
+export const DEFAULT_RELEASE_WARNING_DAYS = 2;
+
+export function parseReleaseWarningDays(v: unknown): number {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : DEFAULT_RELEASE_WARNING_DAYS;
+}
+
+export type UnpaidInvoiceAction = "none" | "warn" | "release";
+
+export function unpaidInvoiceAction(i: {
+  bookingStatus: BookingStatus;
+  invoiceStatus: string;
+  dueAt: string | null;
+  outstandingCents: number;
+  checkIn: string;
+  today: string;
+  warnedAt: string | null;
+  now: Date;
+  warningDays: number;
+}): UnpaidInvoiceAction {
+  if (i.bookingStatus !== "CONFIRMED" || i.invoiceStatus !== "open" || !i.dueAt || i.outstandingCents <= 0)
+    return "none";
+  if (daysBetween(i.today, i.checkIn) <= 0) return "none";
+  const due = Date.parse(i.dueAt);
+  if (!Number.isFinite(due)) return "none";
+  if (i.now.getTime() >= due) return "release";
+  if (!i.warnedAt && i.now.getTime() >= due - Math.max(0, i.warningDays) * 86_400_000) return "warn";
+  return "none";
 }
 
 export type CreditStanding = "good" | "watch" | "finance_approval" | "suspended";

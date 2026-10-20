@@ -240,6 +240,8 @@ export type InvoiceRow = {
   dunning_stage: number;
   dunning_last_at: string | null;
   attempt_count: number;
+  /** When the "pay by the due date or the booking is released" warning went out (release-unpaid-invoices). */
+  release_warned_at: string | null;
   created_at: string;
   updated_at: string;
 };

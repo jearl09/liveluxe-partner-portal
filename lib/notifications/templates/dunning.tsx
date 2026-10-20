@@ -20,6 +20,60 @@ const button = {
 const foot = { fontSize: "12px", color: "#6b6b6b" } as const;
 const warn = { fontSize: "14px", lineHeight: "22px", color: "#8a2a1f" } as const;
 
+export interface InvoiceReleaseWarningProps {
+  reference: string;
+  propertyName: string;
+  invoiceNumber: string;
+  amountFormatted: string;
+  dueLabel: string;
+  checkInLabel: string;
+  payUrl: string;
+  supportEmail: string;
+}
+
+/** Sent `invoice.release_warning_days` before an unpaid net-terms invoice releases the booking. */
+export function InvoiceReleaseWarning(p: InvoiceReleaseWarningProps) {
+  return (
+    <Html>
+      <Head />
+      <Preview>{`Invoice ${p.invoiceNumber} is due ${p.dueLabel} — booking ${p.reference} is released if unpaid`}</Preview>
+      <Body style={shell}>
+        <Container style={card}>
+          <Text style={h1}>
+            Invoice {p.invoiceNumber} is due {p.dueLabel}
+          </Text>
+          <Text style={facts}>
+            Booking <strong>{p.reference}</strong> at <strong>{p.propertyName}</strong> (check-in {p.checkInLabel}) is
+            on account. If the invoice is not paid by {p.dueLabel}, the booking is released and the dates go back on
+            sale.
+          </Text>
+          <Section style={facts}>
+            <Text style={line}>
+              <strong>Amount:</strong> {p.amountFormatted}
+            </Text>
+            <Text style={line}>
+              <strong>Due:</strong> {p.dueLabel}
+            </Text>
+          </Section>
+          <Section style={{ margin: "20px 0" }}>
+            <Button href={p.payUrl} style={button}>
+              View and pay the invoice
+            </Button>
+          </Section>
+          <Text style={facts}>
+            If this has already been paid, or a PO or claim reference is holding it up, reply to this email before the
+            due date and we will hold the booking.
+          </Text>
+          <Hr />
+          <Text style={foot}>
+            Questions? Reply to this email or write to {p.supportEmail}. Live Luxe Pty Ltd — partner accommodation.
+          </Text>
+        </Container>
+      </Body>
+    </Html>
+  );
+}
+
 export interface InvoiceReminderProps {
   orgName: string;
   invoiceNumber: string;

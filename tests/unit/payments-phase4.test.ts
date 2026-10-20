@@ -16,7 +16,9 @@ import {
   needsResumeReminder,
   parseDunningPolicy,
   parseOverLimitAction,
+  parseReleaseWarningDays,
   paymentModeFor,
+  unpaidInvoiceAction,
   submissionCreditDecision,
   usesCardHold,
   withinApprovalCeiling,
@@ -181,6 +183,46 @@ describe("§17.2 card declines and abandoned flows", () => {
         reminderSentAtIso: "2026-10-13T09:00:00Z",
       }),
     ).toBe(false);
+  });
+});
+
+describe("unpaid net-terms invoice releases the booking (David, 20 Oct 2026)", () => {
+  const base = {
+    bookingStatus: "CONFIRMED" as const,
+    invoiceStatus: "open",
+    dueAt: "2026-11-18T00:00:00Z",
+    outstandingCents: 250_000,
+    checkIn: "2026-11-25",
+    today: "2026-11-10",
+    warnedAt: null,
+    warningDays: 2,
+  };
+  const at = (iso: string) => new Date(iso);
+  it("warns once from warningDays before the due date, releases on the due date", () => {
+    expect(unpaidInvoiceAction({ ...base, now: at("2026-11-15T23:59:00Z") })).toBe("none");
+    expect(unpaidInvoiceAction({ ...base, now: at("2026-11-16T00:00:00Z") })).toBe("warn");
+    expect(unpaidInvoiceAction({ ...base, now: at("2026-11-17T12:00:00Z"), warnedAt: "2026-11-16T00:00:00Z" })).toBe(
+      "none",
+    );
+    expect(unpaidInvoiceAction({ ...base, now: at("2026-11-18T00:00:00Z"), warnedAt: "2026-11-16T00:00:00Z" })).toBe(
+      "release",
+    );
+    // Never warned (job missed a day): still released on the due date, not warned late.
+    expect(unpaidInvoiceAction({ ...base, now: at("2026-11-19T00:00:00Z") })).toBe("release");
+  });
+  it("leaves paid, non-confirmed or started stays alone", () => {
+    const now = at("2026-11-19T00:00:00Z");
+    expect(unpaidInvoiceAction({ ...base, now, outstandingCents: 0 })).toBe("none");
+    expect(unpaidInvoiceAction({ ...base, now, invoiceStatus: "paid" })).toBe("none");
+    expect(unpaidInvoiceAction({ ...base, now, bookingStatus: "CHECKED_IN" })).toBe("none");
+    expect(unpaidInvoiceAction({ ...base, now, today: "2026-11-25" })).toBe("none");
+    expect(unpaidInvoiceAction({ ...base, now, dueAt: null })).toBe("none");
+  });
+  it("parses the warning-days setting with a default of 2", () => {
+    expect(parseReleaseWarningDays(3)).toBe(3);
+    expect(parseReleaseWarningDays("1")).toBe(1);
+    expect(parseReleaseWarningDays(-1)).toBe(2);
+    expect(parseReleaseWarningDays(undefined)).toBe(2);
   });
 });
 

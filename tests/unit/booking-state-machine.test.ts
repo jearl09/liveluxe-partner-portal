@@ -25,6 +25,7 @@ describe("booking state machine (spec §10.1, Appendix B)", () => {
     expect(canTransition("CONFIRMED", "CHECKED_IN", "system")).toBe(true);
     expect(canTransition("CHECKED_IN", "COMPLETED", "system")).toBe(true);
     expect(canTransition("CONFIRMED", "CANCELLED", "partner")).toBe(true);
+    expect(canTransition("CONFIRMED", "CANCELLED", "system")).toBe(true); // unpaid invoice release (20 Oct 2026)
   });
 
   it("rejects every transition NOT listed, for every actor", () => {
