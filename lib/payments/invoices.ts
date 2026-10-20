@@ -10,6 +10,7 @@ import "server-only";
 import type Stripe from "stripe";
 import { adminDb } from "@/lib/db/admin";
 import type { BookingRequestRow, InvoiceRow } from "@/lib/db/types";
+import { invoiceFooter } from "@/lib/domain/invoices";
 import { invoiceItemsFromQuote, paymentKeys, type InvoiceItem } from "@/lib/domain/payments";
 import type { QuoteLine } from "@/lib/domain/quote-engine";
 import { getStripe } from "@/lib/stripe/client";
@@ -128,7 +129,7 @@ async function createAndFinalise(args: {
       currency: b.currency.toLowerCase(),
       description: args.description,
       custom_fields: customFields(b, args.src.propertyName),
-      footer: `Booking ${b.reference}. Questions: reply to this email. Live Luxe Pty Ltd.`,
+      footer: invoiceFooter(b.reference),
       metadata: {
         booking_id: b.id,
         booking_reference: b.reference,

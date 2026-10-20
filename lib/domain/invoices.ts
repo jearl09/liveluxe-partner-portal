@@ -4,6 +4,17 @@
  */
 export type InvoiceDisplayStatus = "draft" | "open" | "overdue" | "paid" | "void";
 
+/** The issuing entity as it must appear on every tax invoice (DECISIONS #11). */
+export const INVOICE_ISSUER = { name: "Live Luxe Pty Ltd", abn: "16 678 772 613" } as const;
+
+/**
+ * Footer printed on every Stripe invoice and receipt. An Australian tax invoice must carry the words
+ * "Tax invoice" and the supplier's ABN; the booking reference and the reply hint follow.
+ */
+export function invoiceFooter(reference: string): string {
+  return `Tax invoice · ${INVOICE_ISSUER.name} · ABN ${INVOICE_ISSUER.abn}. Booking ${reference}. Questions: reply to this email.`;
+}
+
 export const INVOICE_STATUS_LABELS: Record<InvoiceDisplayStatus, string> = {
   draft: "Draft",
   open: "Open",

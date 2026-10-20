@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { invoiceStatus, invoiceSummary, type InvoiceFacts } from "@/lib/domain/invoices";
+import { invoiceFooter, invoiceStatus, invoiceSummary, type InvoiceFacts } from "@/lib/domain/invoices";
 
 const now = new Date("2026-10-14T03:00:00Z");
 const inv = (p: Partial<InvoiceFacts>): InvoiceFacts => ({
@@ -38,5 +38,16 @@ describe("invoices (brief §7.7)", () => {
       overdueCents: 4000,
       paidThisMonthCents: 900,
     });
+  });
+});
+
+describe("invoice footer (tax invoice requirements)", () => {
+  it("names the issuer, the ABN, the words 'Tax invoice' and the booking", () => {
+    const f = invoiceFooter("LLX-2026-000123");
+    expect(f).toContain("Tax invoice");
+    expect(f).toContain("Live Luxe Pty Ltd");
+    expect(f).toContain("ABN 16 678 772 613");
+    expect(f).toContain("Booking LLX-2026-000123");
+    expect(f.length).toBeLessThan(500); // Stripe's footer limit
   });
 });
