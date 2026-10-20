@@ -199,6 +199,7 @@ for the pilot. None of them blocks the live keys; revisit after the first real b
 | Invoice address and layout | As generated today (Stripe defaults, booking footer). |
 | Counter-offer above the hold | Left as is: Stripe refuses the over-capture, the booking drops to "Awaiting payment" and finance is paged. |
 | Supabase plan | Free (decision of 19 Oct); backups and pausing are on us. |
+| Check-in pack timing | **Since 20 Oct 2026 (David): Wi-Fi and directions 48 h before check-in (`checkin.release_offset_hours`), the door code 24 h before (`checkin.door_code_offset_hours`, migration 20261020100000; the code defaults to 24 when the row is missing).** Per-booking door codes that expire at checkout depend on the smart locks, not the portal. |
 
 Still required and not a business decision: the ABN on tax invoices (blocker 7, a Stripe setting) and the Slack
 alert webhooks (blocker 4, an account setup).

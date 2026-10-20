@@ -15,6 +15,8 @@ import {
   canReleaseManually,
   checkinTier,
   checkinTiming,
+  DEFAULT_DOOR_CODE_OFFSET_HOURS,
+  doorCodeVisible,
   normaliseOffset,
   type CheckinTier,
   type CheckinTiming,
@@ -76,6 +78,7 @@ export interface AddressTier {
 }
 
 export interface FullTier {
+  /** Null until the door-code moment (timing.doorCodeDueAt) has passed, even in the full tier. */
   doorCode: string | null;
   wifiSsid: string | null;
   wifiPassword: string | null;
@@ -92,6 +95,8 @@ export interface CheckinView {
   timing: CheckinTiming;
   timezone: string;
   releasedAt: string | null;
+  /** True once the pack is released and the door-code moment has passed. */
+  doorCodeVisible: boolean;
   canReleaseNow: boolean;
   address: AddressTier | null;
   pack: FullTier | null;
@@ -105,6 +110,16 @@ export async function loadOffsetSetting(): Promise<number> {
     .eq("key", "checkin.release_offset_hours")
     .maybeSingle();
   return normaliseOffset(data?.value);
+}
+
+/** settings `checkin.door_code_offset_hours`: how long before check-in the door code appears (default 24). */
+export async function loadDoorCodeOffsetSetting(): Promise<number> {
+  const { data } = await adminDb()
+    .from("settings")
+    .select("value")
+    .eq("key", "checkin.door_code_offset_hours")
+    .maybeSingle();
+  return normaliseOffset(data?.value, DEFAULT_DOOR_CODE_OFFSET_HOURS);
 }
 
 type ListingBits = {
@@ -132,7 +147,7 @@ async function loadListingBits(listingId: string): Promise<ListingBits> {
   return data;
 }
 
-function timingFor(b: BookingRequestRow, l: ListingBits, defaultOffset: number): CheckinTiming {
+function timingFor(b: BookingRequestRow, l: ListingBits, defaultOffset: number, doorCodeOffset: number): CheckinTiming {
   return checkinTiming({
     checkIn: b.check_in,
     checkOut: b.check_out,
@@ -140,12 +155,13 @@ function timingFor(b: BookingRequestRow, l: ListingBits, defaultOffset: number):
     checkinFrom: l.checkin_from,
     checkoutBy: l.checkout_by,
     offsetHours: l.checkin_release_offset_hours ?? defaultOffset,
+    doorCodeOffsetHours: doorCodeOffset,
   });
 }
 
-function fullTier(a: ListingAccessDetailsRow | null): FullTier {
+function fullTier(a: ListingAccessDetailsRow | null, showDoorCode: boolean): FullTier {
   return {
-    doorCode: decryptSecret(a?.door_code_encrypted),
+    doorCode: showDoorCode ? decryptSecret(a?.door_code_encrypted) : null,
     wifiSsid: a?.wifi_ssid ?? null,
     wifiPassword: decryptSecret(a?.wifi_password_encrypted),
     accessInstructions: decryptSecret(a?.access_instructions_encrypted),
@@ -158,10 +174,15 @@ function fullTier(a: ListingAccessDetailsRow | null): FullTier {
 
 /** Everything the check-in panel needs. Secrets are decrypted only when the tier is "full". */
 export async function checkinView(b: BookingRequestRow, now: Date = new Date()): Promise<CheckinView> {
-  const [l, defaultOffset] = await Promise.all([loadListingBits(b.listing_id), loadOffsetSetting()]);
-  const timing = timingFor(b, l, defaultOffset);
+  const [l, defaultOffset, doorCodeOffset] = await Promise.all([
+    loadListingBits(b.listing_id),
+    loadOffsetSetting(),
+    loadDoorCodeOffsetSetting(),
+  ]);
+  const timing = timingFor(b, l, defaultOffset, doorCodeOffset);
   const released = b.credentials_purged_at ? null : b.checkin_released_at;
   const tier = checkinTier({ status: b.status, releasedAt: released, hiddenFrom: timing.hiddenFrom, now });
+  const showDoorCode = doorCodeVisible({ tier, doorCodeDueAt: timing.doorCodeDueAt, now });
   const address: AddressTier | null =
     tier === "address" || tier === "full"
       ? {
@@ -179,13 +200,14 @@ export async function checkinView(b: BookingRequestRow, now: Date = new Date()):
   if (tier === "full" || address) {
     const { data: a } = await adminDb().from("listing_access_details").select("*").eq("listing_id", l.id).maybeSingle();
     if (address) address.parkingNotes = a?.parking_notes ?? null;
-    if (tier === "full") pack = fullTier(a ?? null);
+    if (tier === "full") pack = fullTier(a ?? null, showDoorCode);
   }
   return {
     tier,
     timing,
     timezone: l.timezone,
     releasedAt: released,
+    doorCodeVisible: showDoorCode,
     canReleaseNow: canReleaseManually(b.status, b.checkin_released_at),
     address,
     pack,

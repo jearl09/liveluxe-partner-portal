@@ -54,6 +54,30 @@ describe("nextStep (brief §2.3, §13)", () => {
     expect(s.body).toContain("Check-in D(2026-11-25) from 3:00 pm");
   });
 
+  it("confirmed: the door code is announced separately when it comes later than the pack (David, 20 Oct 2026)", () => {
+    const door = "2026-11-24T04:00:00Z";
+    const s = nextStep({ ...base, status: "CONFIRMED", doorCodeAt: door });
+    expect(s.body).toContain("Wi-Fi and directions W(2026-11-23T04:00) and the door code W(2026-11-24T04:00)");
+    const released = nextStep({
+      ...base,
+      status: "CONFIRMED",
+      checkinReleasedAt: "2026-11-23T04:00:00Z",
+      doorCodeAt: door,
+      doorCodeVisible: false,
+    });
+    expect(released.body).toContain("the door code appears W(2026-11-24T04:00)");
+    const shown = nextStep({
+      ...base,
+      status: "CONFIRMED",
+      checkinReleasedAt: "2026-11-23T04:00:00Z",
+      doorCodeAt: door,
+      doorCodeVisible: true,
+    });
+    expect(shown.body).toContain("The door code and Wi-Fi are below.");
+    const ops = nextStep({ ...base, audience: "ops", status: "CONFIRMED", doorCodeAt: door });
+    expect(ops.body).toContain("; the door code W(2026-11-24T04:00)");
+  });
+
   it("ops: overdue is danger, outcomes are muted", () => {
     expect(nextStep({ ...base, audience: "ops", decisionDueAt: "2026-10-13T01:00:00Z" }).tone).toBe("danger");
     for (const status of ["DECLINED", "EXPIRED", "CANCELLED"] as const)

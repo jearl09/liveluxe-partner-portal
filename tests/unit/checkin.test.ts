@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { canReleaseManually, checkinTier, checkinTiming, normaliseOffset, releaseDue } from "@/lib/domain/checkin";
+import {
+  canReleaseManually,
+  checkinTier,
+  checkinTiming,
+  doorCodeVisible,
+  normaliseOffset,
+  releaseDue,
+} from "@/lib/domain/checkin";
 import { localToUtc } from "@/lib/domain/dates";
 
 describe("localToUtc", () => {
@@ -29,6 +36,43 @@ describe("checkinTiming", () => {
   it("hides the pack 24 h after local checkout", () => {
     expect(t.hiddenFrom.toISOString()).toBe("2026-11-30T23:00:00.000Z");
   });
+  it("shows the door code 24 h before check-in by default, later than the pack (David, 20 Oct 2026)", () => {
+    expect(t.doorCodeOffsetHours).toBe(24);
+    expect(t.doorCodeDueAt.toISOString()).toBe("2026-11-24T04:00:00.000Z");
+    const now = (iso: string) => new Date(iso);
+    expect(doorCodeVisible({ tier: "full", doorCodeDueAt: t.doorCodeDueAt, now: now("2026-11-23T12:00:00Z") })).toBe(
+      false,
+    );
+    expect(doorCodeVisible({ tier: "full", doorCodeDueAt: t.doorCodeDueAt, now: now("2026-11-24T04:00:00Z") })).toBe(
+      true,
+    );
+    expect(doorCodeVisible({ tier: "address", doorCodeDueAt: t.doorCodeDueAt, now: now("2026-11-25T00:00:00Z") })).toBe(
+      false,
+    );
+  });
+  it("never shows the door code before the pack: the door-code offset is clamped to the pack offset", () => {
+    const d = checkinTiming({
+      checkIn: "2026-11-25",
+      checkOut: "2026-11-30",
+      timezone: "Australia/Melbourne",
+      checkinFrom: "15:00:00",
+      checkoutBy: "10:00:00",
+      offsetHours: 12,
+      doorCodeOffsetHours: 24,
+    });
+    expect(d.doorCodeOffsetHours).toBe(12);
+    expect(d.doorCodeDueAt.getTime()).toBe(d.releaseDueAt.getTime());
+    const same = checkinTiming({
+      checkIn: "2026-11-25",
+      checkOut: "2026-11-30",
+      timezone: "Australia/Melbourne",
+      checkinFrom: "15:00:00",
+      checkoutBy: "10:00:00",
+      offsetHours: 48,
+      doorCodeOffsetHours: "bad" as unknown as number,
+    });
+    expect(same.doorCodeOffsetHours).toBe(24);
+  });
   it("falls back to 15:00 / 10:00 and the 48 h default", () => {
     const d = checkinTiming({
       checkIn: "2026-06-10",
@@ -51,6 +95,7 @@ describe("normaliseOffset", () => {
     expect(normaliseOffset(12.9)).toBe(12);
     expect(normaliseOffset(-1)).toBe(48);
     expect(normaliseOffset(null)).toBe(48);
+    expect(normaliseOffset(null, 24)).toBe(24);
   });
 });
 

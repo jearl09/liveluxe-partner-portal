@@ -21,7 +21,7 @@ import { env } from "@/lib/env";
 import { getCalendarDays, getListing, getTakenRanges } from "@/lib/listings/load";
 import { priceStay } from "@/lib/listings/price";
 import { orgPaymentTerms } from "@/lib/payments/load";
-import { loadOffsetSetting } from "@/lib/requests/checkin";
+import { loadDoorCodeOffsetSetting, loadOffsetSetting } from "@/lib/requests/checkin";
 import { formatClock, formatDate } from "@/lib/utils";
 
 const TZ = "Australia/Melbourne";
@@ -68,7 +68,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
   const pets = parsed.query.pets;
   const form = { checkIn: parsed.query.checkIn, checkOut: parsed.query.checkOut, adults, children, pets };
 
-  const [calendarDays, taken, priced, terms, offsetDefault, sync] = await Promise.all([
+  const [calendarDays, taken, priced, terms, offsetDefault, doorOffsetDefault, sync] = await Promise.all([
     getCalendarDays(id, today, addDays(today, PICKER_DAYS)),
     getTakenRanges(id, today, addDays(today, PICKER_DAYS)),
     parsed.hasDates
@@ -80,9 +80,11 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
       : null,
     claims?.org_id ? orgPaymentTerms(claims.org_id) : Promise.resolve(null),
     loadOffsetSetting(),
+    loadDoorCodeOffsetSetting(),
     loadSyncState(now),
   ]);
   const offset = l.checkin_release_offset_hours ?? offsetDefault;
+  const doorOffset = Math.min(offset, doorOffsetDefault);
   // One source for the picker, the calendar and the hints: synced nights plus holds and approved bookings.
   const cal = buildStayCalendar(calendarDays, taken, today, PICKER_DAYS, {
     minNights: l.min_nights,
@@ -247,7 +249,7 @@ export default async function ListingPage({ params, searchParams }: PageProps<"/
                 ["When Live Luxe approves", "The street address and the check-in window."],
                 [
                   `${offset} hours before check-in`,
-                  "The door or key-box code, Wi-Fi and directions, in the booking and by email.",
+                  `Wi-Fi and directions, in the booking and by email${doorOffset < offset ? `; the door or key-box code ${doorOffset} hours before` : ", with the door or key-box code"}.`,
                 ],
               ].map(([when, what], i) => (
                 <li key={when} className="border-subtle bg-surface rounded-card border p-4">

@@ -152,13 +152,16 @@ export function StillReviewing(p: Common & { requestUrl: string; holdUntilLabel:
 }
 
 /** §10.6 check-in pack released. */
-export function CheckinReady(p: Common & { requestUrl: string; guestName: string | null }) {
+export function CheckinReady(
+  p: Common & { requestUrl: string; guestName: string | null; doorCodeFromLabel?: string | null },
+) {
   return (
     <Shell title={`Check-in details ready — ${p.reference}`} preview={`Check-in details ready — ${p.reference}`}>
       <Text>
         The access details for <strong>{p.propertyName}</strong>
         {p.guestName ? ` (${p.guestName})` : ""} are now available in the portal. For security they are shown there
         rather than in this email, and each view is logged.
+        {p.doorCodeFromLabel ? ` The door code appears there from ${p.doorCodeFromLabel}.` : ""}
       </Text>
       <Stay {...p} />
       <Button href={p.requestUrl} style={button}>

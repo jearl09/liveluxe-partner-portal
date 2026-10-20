@@ -245,13 +245,23 @@ export function sendStillReviewing(b: BookingRequestRow, propertyName: string, r
 }
 
 /** §10.6 check-in pack released. */
-export function sendCheckinReady(b: BookingRequestRow, propertyName: string, requestId: string) {
+export function sendCheckinReady(
+  b: BookingRequestRow,
+  propertyName: string,
+  requestId: string,
+  opts: { doorCodeFromLabel?: string | null } = {},
+) {
   return sendEvent("checkin_ready", b, requestId, (to) => ({
     to,
     subject: `Check-in details ready — ${b.reference}`,
     idempotencyKey: `checkin_ready:${b.id}:${b.checkin_released_at ?? ""}`,
     tags: { type: "checkin_ready" },
-    template: CheckinReady({ ...common(b, propertyName), requestUrl: requestUrl(b), guestName: b.guest_name }),
+    template: CheckinReady({
+      ...common(b, propertyName),
+      requestUrl: requestUrl(b),
+      guestName: b.guest_name,
+      doorCodeFromLabel: opts.doorCodeFromLabel ?? null,
+    }),
   }));
 }
 

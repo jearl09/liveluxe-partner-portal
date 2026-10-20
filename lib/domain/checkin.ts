@@ -2,15 +2,18 @@
  * Check-in detail exposure and release timing — spec §8.4, §10.6.
  *
  * What a partner may see is decided here, by one function, never by conditional
- * rendering alone. The full access pack (door code, Wi-Fi, entry instructions,
- * emergency contact) is released at check-in minus N hours — a setting with a
- * per-property override — or earlier by ops, and hidden again 24 h after checkout.
- * Cancellation revokes it immediately.
+ * rendering alone. The full access pack (Wi-Fi, entry instructions, emergency
+ * contact) is released at check-in minus N hours — a setting with a per-property
+ * override — or earlier by ops, and hidden again 24 h after checkout. The door code
+ * is held back until check-in minus M hours (settings `checkin.door_code_offset_hours`,
+ * default 24; David, 20 Oct 2026), never earlier than the pack itself.
+ * Cancellation revokes everything immediately.
  */
 import type { BookingStatus } from "./booking-state-machine";
 import { localToUtc } from "./dates";
 
 export const DEFAULT_RELEASE_OFFSET_HOURS = 48;
+export const DEFAULT_DOOR_CODE_OFFSET_HOURS = 24;
 export const DEFAULT_CHECKIN_TIME = "15:00";
 export const DEFAULT_CHECKOUT_TIME = "10:00";
 const HIDE_AFTER_CHECKOUT_MS = 24 * 3_600_000;
@@ -37,8 +40,11 @@ export interface CheckinTiming {
   checkInAt: Date;
   checkOutAt: Date;
   releaseDueAt: Date;
+  /** When the door code appears: check-in minus the door-code offset, never before releaseDueAt. */
+  doorCodeDueAt: Date;
   hiddenFrom: Date;
   offsetHours: number;
+  doorCodeOffsetHours: number;
 }
 
 /** Property-local check-in/out instants and the release moment for one booking. */
@@ -50,22 +56,35 @@ export function checkinTiming(i: {
   checkoutBy: string | null;
   /** settings.checkin.release_offset_hours, or the listing override when set. */
   offsetHours: number | null | undefined;
+  /** settings.checkin.door_code_offset_hours (default 24). Clamped to the pack offset. */
+  doorCodeOffsetHours?: number | null | undefined;
 }): CheckinTiming {
   const offsetHours = normaliseOffset(i.offsetHours);
+  const doorCodeOffsetHours = Math.min(
+    offsetHours,
+    normaliseOffset(i.doorCodeOffsetHours, DEFAULT_DOOR_CODE_OFFSET_HOURS),
+  );
   const checkInAt = localToUtc(i.checkIn, i.checkinFrom ?? DEFAULT_CHECKIN_TIME, i.timezone);
   const checkOutAt = localToUtc(i.checkOut, i.checkoutBy ?? DEFAULT_CHECKOUT_TIME, i.timezone);
   return {
     checkInAt,
     checkOutAt,
     releaseDueAt: new Date(checkInAt.getTime() - offsetHours * 3_600_000),
+    doorCodeDueAt: new Date(checkInAt.getTime() - doorCodeOffsetHours * 3_600_000),
     hiddenFrom: new Date(checkOutAt.getTime() + HIDE_AFTER_CHECKOUT_MS),
     offsetHours,
+    doorCodeOffsetHours,
   };
 }
 
-export function normaliseOffset(v: unknown): number {
+export function normaliseOffset(v: unknown, fallback = DEFAULT_RELEASE_OFFSET_HOURS): number {
   const n = typeof v === "string" ? Number(v) : v;
-  return typeof n === "number" && Number.isFinite(n) && n >= 0 ? Math.floor(n) : DEFAULT_RELEASE_OFFSET_HOURS;
+  return typeof n === "number" && Number.isFinite(n) && n >= 0 ? Math.floor(n) : fallback;
+}
+
+/** The door code shows only in the full tier and only once its own moment has passed. */
+export function doorCodeVisible(i: { tier: CheckinTier; doorCodeDueAt: Date; now: Date }): boolean {
+  return i.tier === "full" && i.now.getTime() >= i.doorCodeDueAt.getTime();
 }
 
 export function checkinTier(i: {

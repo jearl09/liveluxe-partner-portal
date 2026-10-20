@@ -40,9 +40,10 @@ function Fact({
 
 /**
  * Check-in details (brief §2.4, §8.6). Always says which tier is in force and when the
- * next one unlocks: approximate location → exact address once approved → the full
- * access pack 48 hours before check-in → hidden after checkout. Each item can be
- * copied; the pack carries the confidentiality line and the note that views are logged.
+ * next one unlocks: approximate location → exact address once approved → the access
+ * pack (Wi-Fi, directions) 48 hours before check-in → the door code 24 hours before →
+ * hidden after checkout. Each item can be copied; the pack carries the confidentiality
+ * line and the note that views are logged.
  * Ops release the pack from the action panel, not from here.
  */
 export function CheckinPanel(p: CheckinPanelProps) {
@@ -50,6 +51,8 @@ export function CheckinPanel(p: CheckinPanelProps) {
   if (v.tier === "none") return null;
   const tz = v.timezone;
   const releaseWhen = formatWhen(v.timing.releaseDueAt.toISOString());
+  const doorWhen = formatWhen(v.timing.doorCodeDueAt.toISOString());
+  const splitRelease = v.timing.doorCodeOffsetHours < v.timing.offsetHours;
 
   if (v.tier === "approx")
     return (
@@ -59,7 +62,7 @@ export function CheckinPanel(p: CheckinPanelProps) {
         </h2>
         <p className="text-text-secondary mt-2">
           {p.audience === "partner"
-            ? "The exact address is shared once your request is approved. The door code and Wi-Fi follow 48 hours before check-in."
+            ? `The exact address is shared once your request is approved. Wi-Fi and directions follow ${v.timing.offsetHours} hours before check-in${splitRelease ? `, and the door code ${v.timing.doorCodeOffsetHours} hours before` : ""}.`
             : "The partner sees the suburb only until the request is approved."}
         </p>
       </section>
@@ -88,10 +91,12 @@ export function CheckinPanel(p: CheckinPanelProps) {
       </h2>
       <p className="text-text-secondary mt-1">
         {v.tier === "full"
-          ? `Released ${formatTimestamp(v.releasedAt!, tz)}. Hidden again 24 hours after check-out.`
+          ? `Released ${formatTimestamp(v.releasedAt!, tz)}.${v.doorCodeVisible ? "" : ` The door code appears ${doorWhen}.`} Hidden again 24 hours after check-out.`
           : p.audience === "partner"
-            ? `The door code and Wi-Fi arrive ${releaseWhen}, by email and here.`
-            : `The access pack releases ${releaseWhen} (${v.timing.offsetHours} hours before check-in).`}
+            ? splitRelease
+              ? `Wi-Fi and directions arrive ${releaseWhen}, by email and here; the door code ${doorWhen}.`
+              : `The door code and Wi-Fi arrive ${releaseWhen}, by email and here.`
+            : `The access pack releases ${releaseWhen} (${v.timing.offsetHours} hours before check-in)${splitRelease ? `; the door code ${doorWhen} (${v.timing.doorCodeOffsetHours} hours before)` : ""}.`}
       </p>
 
       <dl className="divide-subtle mt-3 divide-y">
@@ -107,7 +112,11 @@ export function CheckinPanel(p: CheckinPanelProps) {
             Confidential — share with the guest only, do not forward.
           </p>
           <dl className="divide-subtle mt-2 divide-y">
-            <Fact label="Door code" value={v.pack.doorCode} copy mono />
+            {v.doorCodeVisible ? (
+              <Fact label="Door code" value={v.pack.doorCode} copy mono />
+            ) : (
+              <Fact label="Door code" value={`Appears ${doorWhen}`} />
+            )}
             <Fact label="Wi-Fi network" value={v.pack.wifiSsid} copy />
             <Fact label="Wi-Fi password" value={v.pack.wifiPassword} copy mono />
             <Fact label="Getting in" value={v.pack.accessInstructions} />

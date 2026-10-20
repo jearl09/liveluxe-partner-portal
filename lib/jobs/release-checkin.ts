@@ -3,18 +3,22 @@
  * Hourly: every CONFIRMED booking whose check-in minus the release offset
  * (per-property override, else settings `checkin.release_offset_hours`) has
  * passed gets checkin_released_at stamped, an audit row, an in-app notification
+ * (the door code itself stays hidden until `checkin.door_code_offset_hours`, see
+ * lib/domain/checkin.ts)
  * for the booker and an email. The pack itself is only ever read through the
  * checkin_pack() RPC, which logs each view. Ops can release early by hand
  * (`releaseCheckinNow`, capability checkin.release).
  */
 import { adminDb } from "@/lib/db/admin";
 import type { BookingRequestRow } from "@/lib/db/types";
+import { checkinTiming, DEFAULT_DOOR_CODE_OFFSET_HOURS, normaliseOffset } from "@/lib/domain/checkin";
 import { instantBeforeCheckIn } from "@/lib/domain/dates";
 import { partnerPropertyName } from "@/lib/domain/property-name";
 import { env } from "@/lib/env";
 import { sendCheckinReady } from "@/lib/payments/notify";
 import { slack } from "@/lib/notifications/slack";
 import { log } from "@/lib/observability/logger";
+import { formatTimestamp } from "@/lib/utils";
 import type { JobFn } from "./registry";
 
 interface ListingBits {
@@ -23,7 +27,28 @@ interface ListingBits {
   internal_name: string | null;
   timezone: string;
   checkin_from: string | null;
+  checkout_by?: string | null;
   checkin_release_offset_hours: number | null;
+}
+
+/** "Wed 25 Nov, 3:00 pm AEDT"-style label for the moment the door code appears, or null when it is already due. */
+async function doorCodeFromLabel(b: BookingRequestRow, l: ListingBits, now: Date): Promise<string | null> {
+  const db = adminDb();
+  const [{ data: offset }, { data: door }] = await Promise.all([
+    db.from("settings").select("value").eq("key", "checkin.release_offset_hours").maybeSingle(),
+    db.from("settings").select("value").eq("key", "checkin.door_code_offset_hours").maybeSingle(),
+  ]);
+  const t = checkinTiming({
+    checkIn: b.check_in,
+    checkOut: b.check_out,
+    timezone: l.timezone,
+    checkinFrom: l.checkin_from,
+    checkoutBy: l.checkout_by ?? null,
+    offsetHours: l.checkin_release_offset_hours ?? normaliseOffset(offset?.value),
+    doorCodeOffsetHours: normaliseOffset(door?.value, DEFAULT_DOOR_CODE_OFFSET_HOURS),
+  });
+  if (t.doorCodeDueAt.getTime() <= now.getTime()) return null;
+  return formatTimestamp(t.doorCodeDueAt.toISOString(), l.timezone);
 }
 
 /** Stamp the release and tell the partner. Idempotent: a second call is a no-op. */
@@ -63,7 +88,9 @@ export async function releaseCheckin(
       url: `${env().NEXT_PUBLIC_APP_URL}/requests/${b.id}`,
     } as never,
   });
-  await sendCheckinReady(claimed, partnerPropertyName(listing.public_name, listing.internal_name), requestId);
+  await sendCheckinReady(claimed, partnerPropertyName(listing.public_name, listing.internal_name), requestId, {
+    doorCodeFromLabel: await doorCodeFromLabel(claimed, listing, now),
+  });
   log.info("checkin.released", { requestId, reference: b.reference, manual: by.actorType !== "system" });
   return true;
 }
@@ -88,7 +115,7 @@ export const releaseCheckinJob: JobFn = async ({ requestId }) => {
   const { data: listings } = listingIds.length
     ? await db
         .from("listings")
-        .select("id, public_name, internal_name, timezone, checkin_from, checkin_release_offset_hours")
+        .select("id, public_name, internal_name, timezone, checkin_from, checkout_by, checkin_release_offset_hours")
         .in("id", listingIds)
     : { data: [] as ListingBits[] };
   const byId = new Map((listings ?? []).map((l) => [l.id, l as ListingBits]));

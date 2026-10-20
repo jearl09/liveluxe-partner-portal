@@ -83,6 +83,7 @@ export function seedWorld(
     { key: "cancellation.cutoff_days", value: 14 },
     { key: "cancellation.retention_schedule", value: [] },
     { key: "checkin.release_offset_hours", value: 48 },
+    { key: "checkin.door_code_offset_hours", value: 24 },
     { key: "checkin.purge_after_days", value: 7 },
     { key: "authorisation.max_age_days", value: 5 },
     { key: "credit.over_limit_action", value: "block" },

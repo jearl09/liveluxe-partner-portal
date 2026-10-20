@@ -32,6 +32,9 @@ export interface NextStepInput {
   /** When the access pack releases (scheduled) and whether it already has. */
   checkinReleaseAt: string | null;
   checkinReleasedAt: string | null;
+  /** When the door code appears, if later than the pack (null = with the pack) and whether it is visible yet. */
+  doorCodeAt?: string | null;
+  doorCodeVisible?: boolean;
   balanceDueAt: string | null;
   balancePaidAt: string | null;
   declineReason: string | null;
@@ -161,7 +164,15 @@ export function nextStep(i: NextStepInput): NextStep {
       if (i.checkinReleasedAt)
         return {
           title: ops ? "Confirmed · check-in pack released" : "Confirmed — check-in details are ready",
-          body: `${ops ? "The partner can see the door code and Wi-Fi." : "The door code and Wi-Fi are below."} Check-in ${arrive}.${balance}`,
+          body: `${
+            i.doorCodeVisible === false && i.doorCodeAt
+              ? ops
+                ? `The partner can see the Wi-Fi; the door code appears ${i.when(i.doorCodeAt)}.`
+                : `The Wi-Fi and directions are below; the door code appears ${i.when(i.doorCodeAt)}.`
+              : ops
+                ? "The partner can see the door code and Wi-Fi."
+                : "The door code and Wi-Fi are below."
+          } Check-in ${arrive}.${balance}`,
           tone: "success",
         };
       return {
@@ -169,8 +180,10 @@ export function nextStep(i: NextStepInput): NextStep {
         body: `${
           i.checkinReleaseAt
             ? ops
-              ? `The check-in pack releases ${i.when(i.checkinReleaseAt)}.`
-              : `You'll get the door code and Wi-Fi ${i.when(i.checkinReleaseAt)}, by email and on this page.`
+              ? `The check-in pack releases ${i.when(i.checkinReleaseAt)}${i.doorCodeAt ? `; the door code ${i.when(i.doorCodeAt)}` : ""}.`
+              : i.doorCodeAt
+                ? `You'll get the Wi-Fi and directions ${i.when(i.checkinReleaseAt)} and the door code ${i.when(i.doorCodeAt)}, by email and on this page.`
+                : `You'll get the door code and Wi-Fi ${i.when(i.checkinReleaseAt)}, by email and on this page.`
             : ""
         } Check-in ${arrive}.${balance}`.trim(),
         tone: "success",

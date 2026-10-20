@@ -114,6 +114,11 @@ export function RequestDetail({
     checkoutBy: formatClock(s.checkin.address?.checkoutBy ?? null),
     checkinReleaseAt: r.status === "CONFIRMED" ? s.checkin.timing.releaseDueAt.toISOString() : null,
     checkinReleasedAt: r.checkin_released_at,
+    doorCodeAt:
+      s.checkin.timing.doorCodeDueAt.getTime() > s.checkin.timing.releaseDueAt.getTime()
+        ? s.checkin.timing.doorCodeDueAt.toISOString()
+        : null,
+    doorCodeVisible: s.checkin.doorCodeVisible,
     balanceDueAt: r.balance_due_at,
     balancePaidAt: r.balance_paid_at,
     declineReason: r.decline_reason
