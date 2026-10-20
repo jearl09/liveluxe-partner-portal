@@ -3,7 +3,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { Notice, inputClass } from "@/components/auth/notice";
 import { createServerSupabase, getSessionClaims } from "@/lib/db/server";
 import { getMfaStatus } from "@/lib/auth/mfa";
-import { safeRedirectPath } from "@/lib/domain/auth";
+import { safeRedirectPath, totpQrImageSrc } from "@/lib/domain/auth";
 
 export const metadata = { title: "Set up two-factor authentication" };
 
@@ -51,7 +51,7 @@ export default async function MfaEnrolPage({ searchParams }: PageProps<"/mfa/enr
     );
   }
 
-  const qrSrc = `data:image/svg+xml;utf-8,${encodeURIComponent(enrol.totp.qr_code)}`;
+  const qrSrc = totpQrImageSrc(enrol.totp.qr_code);
 
   return (
     <form className="space-y-4" action="/api/auth/mfa/verify" method="post">
@@ -65,7 +65,7 @@ export default async function MfaEnrolPage({ searchParams }: PageProps<"/mfa/enr
       )}
       {error === "rate_limited" && <Notice tone="error">Too many attempts. Please wait 15 minutes.</Notice>}
       {/* Always white: a QR code on a dark surface will not scan, whatever the theme. */}
-      <div className="border-border flex justify-center rounded-md border bg-qr-surface p-3">
+      <div className="border-border bg-qr-surface flex justify-center rounded-md border p-3">
         {/* eslint-disable-next-line @next/next/no-img-element -- inline SVG data URI, never optimised */}
         <img src={qrSrc} alt="Authenticator QR code" width={192} height={192} />
       </div>

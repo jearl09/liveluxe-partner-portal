@@ -88,6 +88,17 @@ export function mfaStepUpRequired(args: { aal: AssuranceLevel; hasVerifiedFactor
   return args.hasVerifiedFactor && args.aal !== "aal2";
 }
 
+/**
+ * The <img src> for the authenticator QR code. Supabase returns `totp.qr_code` already as a
+ * `data:image/svg+xml;utf-8,…` URL; wrapping it again produced a broken image on the enrol page
+ * (20 Oct 2026). A bare SVG string is wrapped once.
+ */
+export function totpQrImageSrc(qrCode: string): string {
+  const v = qrCode.trim();
+  if (v.startsWith("data:")) return v;
+  return `data:image/svg+xml;utf-8,${encodeURIComponent(v)}`;
+}
+
 /** Only ever redirect to a same-origin path. Protocol-relative ("//evil") and absolute URLs are rejected. */
 export function safeRedirectPath(next: unknown, fallback = "/"): string {
   if (typeof next !== "string" || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\"))

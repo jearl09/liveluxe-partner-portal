@@ -8,8 +8,22 @@ import {
   mfaRequiredForRole,
   mfaStepUpRequired,
   safeRedirectPath,
+  totpQrImageSrc,
   validatePassword,
 } from "@/lib/domain/auth";
+
+describe("totpQrImageSrc", () => {
+  it("passes a Supabase data URL through untouched (double wrapping broke the QR on 20 Oct 2026)", () => {
+    const supa = "data:image/svg+xml;utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3C%2Fsvg%3E";
+    expect(totpQrImageSrc(supa)).toBe(supa);
+    expect(totpQrImageSrc(` ${supa}\n`)).toBe(supa);
+  });
+  it("wraps a bare SVG once", () => {
+    expect(totpQrImageSrc('<svg xmlns="http://www.w3.org/2000/svg"></svg>')).toBe(
+      "data:image/svg+xml;utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg"></svg>'),
+    );
+  });
+});
 
 describe("auth policy (spec §8.1 / §8.2)", () => {
   it("rate limits match the spec: 5 per account and 20 per IP in 15 minutes", () => {
