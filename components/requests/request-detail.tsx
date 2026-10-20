@@ -154,6 +154,7 @@ export function RequestDetail({
     counter: s.counter ? { newTotalCents: s.counter.newTotalCents, message: s.counter.message } : null,
     can: s.can,
     today: s.today,
+    longStayFromNights: s.longStayFromNights,
   });
 
   // One banner at most (brief §4.8), the most serious condition wins.
@@ -408,6 +409,11 @@ export function RequestDetail({
               </Fact>
               <Fact label="Household">{guestsSummary(r.guests_adults, r.guests_children, r.guests_pets)}</Fact>
               {r.cost_centre && <Fact label="Cost centre">{r.cost_centre}</Fact>}
+              {r.stay_terms && (
+                <Fact label="Terms for this stay">
+                  <span className="block text-left whitespace-pre-line">{r.stay_terms}</span>
+                </Fact>
+              )}
               {r.notes && (
                 <Fact label={ops ? "Partner notes" : "Your notes"}>
                   <span className="block text-left whitespace-pre-line">{r.notes}</span>

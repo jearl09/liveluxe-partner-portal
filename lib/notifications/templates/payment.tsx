@@ -99,6 +99,8 @@ export interface BookingConfirmedProps extends Common {
   invoiceUrl: string | null;
   requestUrl: string;
   checkinReleaseLabel: string;
+  /** Terms staff wrote into the quote (mandatory from 28 nights). */
+  stayTerms?: string | null;
 }
 
 export function BookingConfirmed(p: BookingConfirmedProps) {
@@ -121,6 +123,11 @@ export function BookingConfirmed(p: BookingConfirmedProps) {
             <br />
             <strong>Payment:</strong> {p.paymentLabel}
           </Text>
+          {p.stayTerms && (
+            <Text style={facts}>
+              <strong>Terms for this stay:</strong> {p.stayTerms}
+            </Text>
+          )}
           <Text>{p.checkinReleaseLabel}</Text>
           <Button href={p.requestUrl} style={button}>
             View booking

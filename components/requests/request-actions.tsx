@@ -37,6 +37,8 @@ export interface ActionInput {
   canReleaseNow: boolean;
   /** Counter-offer terms, for the accept confirmation. */
   counter: { newTotalCents: number | null; message: string | null } | null;
+  /** settings `stay.long_stay_terms_from_nights`: from this many nights the quote must carry terms. */
+  longStayFromNights: number;
   can: {
     submit: boolean;
     cancel: boolean;
@@ -138,8 +140,37 @@ function MoneyField({
 
 type DecisionTarget = Pick<
   BookingRequestRow,
-  "id" | "reference" | "total_cents" | "currency" | "check_in" | "check_out"
+  "id" | "reference" | "total_cents" | "currency" | "check_in" | "check_out" | "nights" | "stay_terms"
 >;
+
+/**
+ * Terms for the stay, written into the quote by staff (David, 20 Oct 2026). Optional for short stays,
+ * required from `stay.long_stay_terms_from_nights`; shown to the partner, in the emails and on the invoice.
+ */
+function StayTermsField({ r, longStayFromNights }: { r: DecisionTarget; longStayFromNights: number }) {
+  const required = r.nights >= longStayFromNights;
+  return (
+    <label className={label}>
+      Terms for this stay{required ? req : " (optional)"}
+      <textarea
+        name="stayTerms"
+        rows={3}
+        required={required}
+        aria-required={required}
+        maxLength={1000}
+        defaultValue={r.stay_terms ?? ""}
+        className="mt-1 w-full"
+        placeholder="Cancellation, payment schedule, anything specific to this quote"
+      />
+      <span className="text-text-muted text-body-sm mt-1 block font-normal">
+        {required
+          ? `Required for ${longStayFromNights} nights or more. `
+          : `Required from ${longStayFromNights} nights; optional here. `}
+        The partner sees these on the booking, in the email and on the invoice.
+      </span>
+    </label>
+  );
+}
 
 /** Hidden fields that send a decision taken in the queue back to the queue. */
 const back = (r: DecisionTarget, returnTo?: string): Record<string, string> =>
@@ -151,6 +182,7 @@ export function ApproveAction({
   mode,
   gate,
   notifies,
+  longStayFromNights,
   className = "w-full",
   size,
   returnTo,
@@ -159,6 +191,7 @@ export function ApproveAction({
   mode: PaymentMode;
   gate: { ok: boolean; reason?: string };
   notifies: string;
+  longStayFromNights: number;
   className?: string;
   size?: "sm" | "default";
   returnTo?: string;
@@ -195,7 +228,9 @@ export function ApproveAction({
       confirmLabel="Approve and confirm"
       action={`/api/admin/requests/${r.id}`}
       hidden={{ action: "approve", ...back(r, returnTo) }}
-    />
+    >
+      <StayTermsField r={r} longStayFromNights={longStayFromNights} />
+    </ConfirmDialog>
   );
 }
 
@@ -203,12 +238,14 @@ export function ApproveAction({
 export function CounterAction({
   r,
   today,
+  longStayFromNights,
   className = "w-full",
   size,
   returnTo,
 }: {
   r: DecisionTarget;
   today: string;
+  longStayFromNights: number;
   className?: string;
   size?: "sm" | "default";
   returnTo?: string;
@@ -260,6 +297,7 @@ export function CounterAction({
             placeholder="Why you are proposing this, in a sentence or two"
           />
         </label>
+        <StayTermsField r={r} longStayFromNights={longStayFromNights} />
       </SheetForm>
     </Sheet>
   );
@@ -583,9 +621,18 @@ export function buildActions(i: ActionInput): ActionSet {
     const who = `${i.createdByName ?? "The partner"}${i.orgName ? ` (${i.orgName})` : ""} is emailed.`;
 
     if ((s === "SUBMITTED" || s === "UNDER_REVIEW") && i.can.approve) {
-      primary = <ApproveAction key="approve" r={r} mode={i.mode} gate={i.gate} notifies={who} />;
+      primary = (
+        <ApproveAction
+          key="approve"
+          r={r}
+          mode={i.mode}
+          gate={i.gate}
+          notifies={who}
+          longStayFromNights={i.longStayFromNights}
+        />
+      );
       secondary.push(
-        <CounterAction key="counter" r={r} today={i.today} />,
+        <CounterAction key="counter" r={r} today={i.today} longStayFromNights={i.longStayFromNights} />,
         <DeclineAction key="decline" r={r} notifies={who} />,
       );
       if (s === "SUBMITTED") secondary.push(<AssignAction key="review" id={r.id} />);

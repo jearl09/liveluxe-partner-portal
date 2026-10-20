@@ -137,6 +137,8 @@ export interface CounterOfferProps extends Common {
   newTotalFormatted: string;
   datesChanged: boolean;
   respondByLabel: string;
+  /** Terms staff wrote into the quote (mandatory from 28 nights). */
+  stayTerms?: string | null;
 }
 
 export function CounterOffer(p: CounterOfferProps) {
@@ -159,6 +161,11 @@ export function CounterOffer(p: CounterOfferProps) {
             {p.datesChanged && (
               <Text style={line}>
                 <strong>Dates:</strong> changed — see above
+              </Text>
+            )}
+            {p.stayTerms && (
+              <Text style={line}>
+                <strong>Terms for this stay:</strong> {p.stayTerms}
               </Text>
             )}
             <Text style={line}>

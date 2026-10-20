@@ -145,6 +145,7 @@ export default async function QueuePage({ searchParams }: PageProps<"/admin/queu
               mode={row.mode}
               gate={row.gate}
               notifies={who}
+              longStayFromNights={data.longStayFromNights}
               size="sm"
               className="w-full lg:w-auto"
               returnTo={QUEUE}
@@ -202,7 +203,14 @@ export default async function QueuePage({ searchParams }: PageProps<"/admin/queu
           <div className="border-subtle flex flex-col gap-2 border-t pt-4 sm:flex-row sm:flex-wrap sm:items-center">
             {mayDecide && (
               <>
-                <CounterAction r={r} today={today} size="sm" className="w-full sm:w-auto" returnTo={QUEUE} />
+                <CounterAction
+                  r={r}
+                  today={today}
+                  longStayFromNights={data.longStayFromNights}
+                  size="sm"
+                  className="w-full sm:w-auto"
+                  returnTo={QUEUE}
+                />
                 {r.status === "SUBMITTED" && (
                   <AssignAction
                     id={r.id}

@@ -8,6 +8,8 @@ import {
   slaBand,
   validateCounterOffer,
   validateRequestForm,
+  validateStayTerms,
+  parseLongStayFromNights,
 } from "@/lib/domain/requests";
 import { buildQuote, PLACEHOLDER_TAX_RULES } from "@/lib/domain/quote-engine";
 
@@ -97,8 +99,61 @@ describe("guestsSummary / requestBucket", () => {
   });
 });
 
+describe("terms for the stay (David, 20 Oct 2026: 28+ nights carry their terms in the quote)", () => {
+  it("optional below the threshold, required from it, trimmed and capped", () => {
+    expect(validateStayTerms("", 10, 28)).toEqual({ ok: true, error: null, value: null, required: false });
+    expect(validateStayTerms("  Weekly clean included.  ", 10, 28).value).toBe("Weekly clean included.");
+    const missing = validateStayTerms("   ", 28, 28);
+    expect(missing.ok).toBe(false);
+    expect(missing.required).toBe(true);
+    expect(missing.error).toContain("28 nights or more");
+    expect(validateStayTerms("Monthly invoicing; 14-day notice to end early.", 45, 28).ok).toBe(true);
+    expect(validateStayTerms("x".repeat(2000), 5, 28).value).toHaveLength(1000);
+  });
+  it("parses the threshold setting with a default of 28", () => {
+    expect(parseLongStayFromNights(21)).toBe(21);
+    expect(parseLongStayFromNights("30")).toBe(30);
+    expect(parseLongStayFromNights(0)).toBe(28);
+    expect(parseLongStayFromNights(undefined)).toBe(28);
+  });
+});
+
 describe("counter-offers", () => {
   const current = { totalCents: 100000, checkIn: "2026-11-10", checkOut: "2026-11-14" };
+
+  it("requires the terms when the countered stay is 28 nights or more", () => {
+    const long = { totalCents: 500000, checkIn: "2026-11-01", checkOut: "2026-12-01" };
+    const noTerms = validateCounterOffer({ newTotal: "4800", message: "Long-stay rate", stayTerms: "" }, long, {
+      longStayFromNights: 28,
+    });
+    expect(noTerms.ok).toBe(false);
+    expect(noTerms.errors.join(" ")).toContain("Write the terms for this stay");
+    const withTerms = validateCounterOffer(
+      { newTotal: "4800", message: "Long-stay rate", stayTerms: "Invoiced monthly; 14 days notice to end early." },
+      long,
+      { longStayFromNights: 28 },
+    );
+    expect(withTerms.ok).toBe(true);
+    expect(withTerms.value.stayTerms).toBe("Invoiced monthly; 14 days notice to end early.");
+    // Shortening the stay below the threshold makes them optional again.
+    const shortened = validateCounterOffer(
+      { newCheckIn: "2026-11-01", newCheckOut: "2026-11-10", message: "Only 9 nights free", stayTerms: "" },
+      long,
+      { longStayFromNights: 28 },
+    );
+    expect(shortened.ok).toBe(true);
+    expect(shortened.value.stayTerms).toBeNull();
+    // Terms already on the request satisfy the rule when the form does not send the field.
+    const kept = validateCounterOffer(
+      { newTotal: "4800", message: "Rate" },
+      { ...long, stayTerms: "As agreed." },
+      {
+        longStayFromNights: 28,
+      },
+    );
+    expect(kept.ok).toBe(true);
+    expect("stayTerms" in kept.value).toBe(false);
+  });
 
   it("requires a real change and a message", () => {
     expect(validateCounterOffer({}, current).errors).toContain(

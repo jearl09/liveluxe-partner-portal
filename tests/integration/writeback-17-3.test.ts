@@ -554,3 +554,24 @@ describe("Hostaway writes stay skipped (never faked) when the switch is off", ()
     expect(HOSTAWAY_LISTING_ID).toBe(70001);
   });
 });
+
+describe("terms for the stay on approval (David, 20 Oct 2026)", () => {
+  it("a 30-night stay cannot be approved without terms; with them they are stored on the booking", async () => {
+    const b = seedBooking({ nights: 30 });
+    await placeHold(b.id);
+    await expect(approve(claimsFor("ops"), b.id, REQ)).rejects.toMatchObject({ code: "VALIDATION_FAILED" });
+    expect(booking(b.id).status).not.toBe("APPROVED");
+    const terms = "Invoiced monthly in advance; 14 days notice to end the stay early; weekly clean included.";
+    await approve(claimsFor("ops"), b.id, REQ, { stayTerms: terms });
+    const after = booking(b.id);
+    expect(after.status).toBe("APPROVED");
+    expect(after.stay_terms).toBe(terms);
+  });
+
+  it("a short stay approves without terms, and keeps any terms given", async () => {
+    const b = seedBooking({ nights: 5 });
+    await placeHold(b.id);
+    await approve(claimsFor("ops"), b.id, REQ, { stayTerms: "Late check-out agreed." });
+    expect(booking(b.id).stay_terms).toBe("Late check-out agreed.");
+  });
+});

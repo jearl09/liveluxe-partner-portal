@@ -14,6 +14,7 @@ import { can, type SessionClaims } from "@/lib/domain/permissions";
 import { orgPaymentTerms, paymentViewForBooking } from "@/lib/payments/load";
 import { cancellationView, type CancellationView } from "./cancel";
 import { checkinAccessLog, checkinView, recordCheckinAccess, type CheckinView } from "./checkin";
+import { loadLongStayFromNights } from "./decide";
 import { getRequest, type RequestDetail } from "./load";
 import { modificationsForBooking } from "./modifications";
 
@@ -39,6 +40,8 @@ export interface RequestScreen {
   } | null;
   can: { submit: boolean; cancel: boolean; approve: boolean; release: boolean; overrideRefund: boolean };
   today: string;
+  /** settings `stay.long_stay_terms_from_nights`: from this many nights the quote must carry terms. */
+  longStayFromNights: number;
 }
 
 const ENDED: readonly BookingStatusDb[] = ["DECLINED", "EXPIRED", "CANCELLED", "FAILED"];
@@ -60,13 +63,14 @@ export async function loadRequestScreen(
   const d = await getRequest(id);
   if (!d) return null;
   const r = d.request;
-  const [terms, pay, cancel, modifications, checkin, accessLog] = await Promise.all([
+  const [terms, pay, cancel, modifications, checkin, accessLog, longStayFromNights] = await Promise.all([
     orgPaymentTerms(r.org_id),
     paymentViewForBooking(id),
     cancellationView(d),
     modificationsForBooking(id),
     checkinView(r),
     audience === "ops" && r.checkin_released_at ? checkinAccessLog(id) : Promise.resolve([]),
+    loadLongStayFromNights(),
   ]);
 
   // §8.4: every partner view of a released pack is logged with user, time and IP.
@@ -106,6 +110,7 @@ export async function loadRequestScreen(
     d,
     mode,
     terms: terms ?? null,
+    longStayFromNights,
     pay,
     cancel,
     modifications,

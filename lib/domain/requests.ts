@@ -3,6 +3,7 @@
  * Pure: validation, SLA arithmetic and view-model helpers. No I/O.
  */
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
+import { daysBetween } from "./dates";
 import { BOOKING_STATUSES, type BookingStatus } from "./booking-state-machine";
 import type { Quote, QuoteLine } from "./quote-engine";
 import { computePriceHash } from "./quote-engine";
@@ -188,6 +189,40 @@ export const BUCKET_STATUSES: Record<RequestBucket, BookingStatus[]> = (() => {
 })();
 
 // ---------------------------------------------------------------------------
+// Terms for a stay (David, 20 Oct 2026: 28+ night and peak stays carry their exact
+// terms in the quote, never "case by case")
+// ---------------------------------------------------------------------------
+export const DEFAULT_LONG_STAY_TERMS_FROM_NIGHTS = 28;
+export const STAY_TERMS_MAX_CHARS = 1000;
+
+/** settings `stay.long_stay_terms_from_nights`: from this many nights the terms are mandatory. */
+export function parseLongStayFromNights(v: unknown): number {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : DEFAULT_LONG_STAY_TERMS_FROM_NIGHTS;
+}
+
+/**
+ * The terms staff write into a quote (counter-offer or approval): cancellation, payment schedule,
+ * anything specific to this stay. Optional for short stays, required from `longStayFromNights`.
+ */
+export function validateStayTerms(
+  raw: string | null | undefined,
+  nights: number,
+  longStayFromNights: number,
+): { ok: boolean; error: string | null; value: string | null; required: boolean } {
+  const required = nights >= longStayFromNights;
+  const value = (raw ?? "").trim().slice(0, STAY_TERMS_MAX_CHARS) || null;
+  if (required && !value)
+    return {
+      ok: false,
+      error: `Write the terms for this stay: ${longStayFromNights} nights or more need them in the quote.`,
+      value: null,
+      required,
+    };
+  return { ok: true, error: null, value, required };
+}
+
+// ---------------------------------------------------------------------------
 // Counter-offers (§10.1 COUNTER_OFFERED)
 // ---------------------------------------------------------------------------
 export interface CounterOfferInput {
@@ -195,11 +230,14 @@ export interface CounterOfferInput {
   newCheckIn: string | null;
   newCheckOut: string | null;
   message: string;
+  /** Terms for the stay; undefined = leave what is on the request. */
+  stayTerms?: string | null;
 }
 
 export function validateCounterOffer(
   raw: Record<string, string | undefined>,
-  current: { totalCents: Cents | null; checkIn: string; checkOut: string },
+  current: { totalCents: Cents | null; checkIn: string; checkOut: string; stayTerms?: string | null },
+  rules: { longStayFromNights?: number } = {},
 ): { ok: boolean; errors: string[]; value: CounterOfferInput } {
   const errors: string[] = [];
   const message = (raw.message ?? "").trim().slice(0, 1000);
@@ -215,6 +253,18 @@ export function validateCounterOffer(
   const totalChanged = newTotalCents !== null && newTotalCents !== current.totalCents;
   if (!datesChanged && !totalChanged) errors.push("A counter-offer needs a different price or different dates.");
   if (!message) errors.push("Tell the partner why you are proposing this.");
+  // Terms: validated against the stay as it would be after this counter-offer (both new dates, else the current ones).
+  const bothDates = datesChanged && !!newCheckIn && !!newCheckOut;
+  const nights = Math.max(
+    0,
+    daysBetween(bothDates ? newCheckIn! : current.checkIn, bothDates ? newCheckOut! : current.checkOut),
+  );
+  const terms = validateStayTerms(
+    raw.stayTerms !== undefined ? raw.stayTerms : (current.stayTerms ?? null),
+    nights,
+    rules.longStayFromNights ?? DEFAULT_LONG_STAY_TERMS_FROM_NIGHTS,
+  );
+  if (!terms.ok && terms.error) errors.push(terms.error);
   return {
     ok: errors.length === 0,
     errors,
@@ -223,6 +273,7 @@ export function validateCounterOffer(
       newCheckIn: datesChanged ? newCheckIn : null,
       newCheckOut: datesChanged ? newCheckOut : null,
       message,
+      ...(raw.stayTerms !== undefined ? { stayTerms: terms.value } : {}),
     },
   };
 }

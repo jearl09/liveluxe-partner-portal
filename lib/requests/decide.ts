@@ -9,6 +9,7 @@
  * limit for mode C. Decline and withdrawal void any uncaptured hold.
  */
 import "server-only";
+import { adminDb } from "@/lib/db/admin";
 import { createServerSupabase } from "@/lib/db/server";
 import type { BookingRequestRow, DeclineReasonDb } from "@/lib/db/types";
 import { resolveAvailability } from "@/lib/domain/availability";
@@ -18,7 +19,13 @@ import { formatMoney } from "@/lib/domain/money";
 import { approvalPaymentGate, creditCheck, paymentModeFor, withinApprovalCeiling } from "@/lib/domain/payments";
 import type { SessionClaims } from "@/lib/domain/permissions";
 import { can, isLivluxeRole } from "@/lib/domain/permissions";
-import { applyOpsAdjustment, type CounterOfferInput } from "@/lib/domain/requests";
+import {
+  applyOpsAdjustment,
+  DEFAULT_LONG_STAY_TERMS_FROM_NIGHTS,
+  parseLongStayFromNights,
+  validateStayTerms,
+  type CounterOfferInput,
+} from "@/lib/domain/requests";
 import { approvalConfigBlock } from "@/lib/env";
 import { hostaway } from "@/lib/hostaway/api";
 import { mapCalendarDay } from "@/lib/hostaway/mappers";
@@ -162,7 +169,12 @@ async function assertMayApprove(claims: SessionClaims, r: BookingRequestRow) {
     });
 }
 
-export async function approve(claims: SessionClaims, id: string, requestId: string): Promise<BookingRequestRow> {
+export async function approve(
+  claims: SessionClaims,
+  id: string,
+  requestId: string,
+  opts: { stayTerms?: string | null; longStayFromNights?: number } = {},
+): Promise<BookingRequestRow> {
   // Before anything changes: live Stripe with Hostaway writes off would take real money for no reservation.
   const blocked = approvalConfigBlock();
   if (blocked) {
@@ -170,6 +182,17 @@ export async function approve(claims: SessionClaims, id: string, requestId: stri
     throw new DomainError("APPROVAL_BLOCKED_CONFIG", { detail: blocked });
   }
   let d = await loadForOps(claims, id);
+  // Terms for the stay: optional for short stays, mandatory from `stay.long_stay_terms_from_nights`.
+  const terms = validateStayTerms(
+    opts.stayTerms !== undefined ? opts.stayTerms : d.request.stay_terms,
+    d.request.nights,
+    opts.longStayFromNights ?? DEFAULT_LONG_STAY_TERMS_FROM_NIGHTS,
+  );
+  if (!terms.ok) throw new DomainError("VALIDATION_FAILED", { reason: terms.error });
+  if (terms.value !== (d.request.stay_terms ?? null)) {
+    const { error } = await adminDb().from("booking_requests").update({ stay_terms: terms.value }).eq("id", id);
+    if (error) throw new Error(`stay_terms update failed: ${error.message}`);
+  }
   if (d.request.status === "SUBMITTED") {
     await transition(claims, d.request, "UNDER_REVIEW", { reason: "review started" });
     d = (await getRequest(id))!;
@@ -183,6 +206,7 @@ export async function approve(claims: SessionClaims, id: string, requestId: stri
     reason: "approved",
     metadata: {
       liveCheck: "hostaway",
+      ...(terms.value ? { stayTerms: terms.value } : {}),
       ...(d.request.finance_approval_required ? { financeApprovedBy: claims.sub } : {}),
     },
   });
@@ -273,10 +297,17 @@ export async function counterOffer(
     .single();
   if (qErr || !inserted) throw new Error(`counter quote insert failed: ${qErr?.message}`);
 
+  // Terms for the stay travel with the quote (validated by validateCounterOffer against the new nights).
+  if (input.stayTerms !== undefined && input.stayTerms !== (r.stay_terms ?? null)) {
+    const { error } = await adminDb().from("booking_requests").update({ stay_terms: input.stayTerms }).eq("id", r.id);
+    if (error) throw new Error(`stay_terms update failed: ${error.message}`);
+  }
+
   return transition(claims, r, "COUNTER_OFFERED", {
     reason: input.message,
     metadata: {
       message: input.message,
+      ...(input.stayTerms !== undefined ? { stayTerms: input.stayTerms } : {}),
       previousTotalCents: r.total_cents,
       newTotalCents: quote.totalCents,
       previousCheckIn: r.check_in,
@@ -309,4 +340,14 @@ export async function loadPolicy(): Promise<{ holdDurationHours: number }> {
   const supabase = await createServerSupabase();
   const { data } = await supabase.rpc("request_policy");
   return { holdDurationHours: Number(data?.[0]?.hold_duration_hours ?? 48) };
+}
+
+/** settings `stay.long_stay_terms_from_nights` (default 28): from this many nights the quote must carry terms. */
+export async function loadLongStayFromNights(): Promise<number> {
+  const { data } = await adminDb()
+    .from("settings")
+    .select("value")
+    .eq("key", "stay.long_stay_terms_from_nights")
+    .maybeSingle();
+  return parseLongStayFromNights(data?.value);
 }

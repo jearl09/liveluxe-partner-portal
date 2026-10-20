@@ -18,7 +18,7 @@ import { log } from "@/lib/observability/logger";
 import { confirmBooking } from "@/lib/payments/confirm";
 import { cancelBooking } from "@/lib/requests/cancel";
 import { releaseCheckinNow } from "@/lib/requests/checkin";
-import { approve, counterOffer, decline, loadPolicy, startReview } from "@/lib/requests/decide";
+import { approve, counterOffer, decline, loadLongStayFromNights, loadPolicy, startReview } from "@/lib/requests/decide";
 import { approveEarlyDeparture, approveExtension, declineModification } from "@/lib/requests/modifications";
 import { notifyPartnerOfDecision } from "@/lib/requests/notify";
 import { getRequest } from "@/lib/requests/load";
@@ -43,6 +43,7 @@ export async function POST(req: Request, ctx: Ctx) {
     "newCheckIn",
     "newCheckOut",
     "message",
+    "stayTerms",
     "refundAmount",
     "modificationId",
     "returnTo",
@@ -60,7 +61,10 @@ export async function POST(req: Request, ctx: Ctx) {
         await startReview(claims, id);
         return redirectTo(req, okBack, { ref: okRef, done: "review" });
       case "approve": {
-        await approve(claims, id, reqId);
+        await approve(claims, id, reqId, {
+          stayTerms: f.stayTerms,
+          longStayFromNights: await loadLongStayFromNights(),
+        });
         // approve() already re-checked live availability. confirmBooking() then runs, in order:
         // Hostaway reservation → capture (or the net-terms invoice) → CONFIRMED → receipt/invoice → email.
         // Approval stands even if this step fails; the Stripe webhook and the drain job retry it.
@@ -101,12 +105,20 @@ export async function POST(req: Request, ctx: Ctx) {
         const current = await getRequest(id);
         if (!current) return redirectTo(req, "/admin/queue", { error: "NOT_FOUND" });
         const v = validateCounterOffer(
-          { newTotal: f.newTotal, newCheckIn: f.newCheckIn, newCheckOut: f.newCheckOut, message: f.message },
+          {
+            newTotal: f.newTotal,
+            newCheckIn: f.newCheckIn,
+            newCheckOut: f.newCheckOut,
+            message: f.message,
+            stayTerms: f.stayTerms,
+          },
           {
             totalCents: current.request.total_cents,
             checkIn: current.request.check_in,
             checkOut: current.request.check_out,
+            stayTerms: current.request.stay_terms,
           },
+          { longStayFromNights: await loadLongStayFromNights() },
         );
         if (!v.ok) return redirectTo(req, back, { error: "VALIDATION_FAILED", detail: v.errors.join(" ") });
         await counterOffer(claims, id, v.value, await loadPolicy());

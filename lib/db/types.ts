@@ -87,6 +87,8 @@ export type BookingRequestRow = {
   sla_escalation_pct: number;
   decline_reason: DeclineReasonDb | null;
   decline_notes: string | null;
+  /** Terms written into the quote by staff (cancellation, payment schedule); mandatory from 28 nights. */
+  stay_terms: string | null;
   hostaway_reservation_id: number | null;
   hostaway_write_key: string | null;
   hostaway_write_attempted_at: string | null;

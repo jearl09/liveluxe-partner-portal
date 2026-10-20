@@ -7,6 +7,7 @@
 import "server-only";
 import { staffPropertyName } from "@/lib/domain/property-name";
 import { createServerSupabase } from "@/lib/db/server";
+import { loadLongStayFromNights } from "@/lib/requests/decide";
 import type { BookingRequestRow } from "@/lib/db/types";
 import { approvalPaymentGate, paymentModeFor, paymentStateFromStripe, type PaymentMode } from "@/lib/domain/payments";
 import type { QuoteLine } from "@/lib/domain/quote-engine";
@@ -33,6 +34,8 @@ export interface QueueData {
   rows: QueueRow[];
   /** When Live Luxe last approved, countered or declined anything, for the empty state. */
   lastDecisionAt: string | null;
+  /** settings `stay.long_stay_terms_from_nights`: from this many nights the quote must carry terms. */
+  longStayFromNights: number;
 }
 
 const CONFIRMED_LIKE = new Set(["APPROVED", "AWAITING_PAYMENT", "CONFIRMED", "CHECKED_IN", "COMPLETED"]);
@@ -48,7 +51,7 @@ export async function loadQueue(opts: { orgId?: string | null; q?: string } = {}
     .limit(500);
   if (opts.orgId) q = q.eq("org_id", opts.orgId);
   q = withSearch(q, opts.q ?? "");
-  const [{ data, error }, last] = await Promise.all([
+  const [{ data, error }, last, longStayFromNights] = await Promise.all([
     q,
     supabase
       .from("booking_status_history")
@@ -58,10 +61,11 @@ export async function loadQueue(opts: { orgId?: string | null; q?: string } = {}
       .order("occurred_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    loadLongStayFromNights(),
   ]);
   if (error) throw new Error(`queue read failed: ${error.message}`);
   const rows = data ?? [];
-  if (rows.length === 0) return { rows: [], lastDecisionAt: last.data?.occurred_at ?? null };
+  if (rows.length === 0) return { rows: [], lastDecisionAt: last.data?.occurred_at ?? null, longStayFromNights };
 
   const ids = rows.map((r) => r.id);
   const orgIds = [...new Set(rows.map((r) => r.org_id))];
@@ -105,6 +109,7 @@ export async function loadQueue(opts: { orgId?: string | null; q?: string } = {}
   const now = new Date();
   return {
     lastDecisionAt: last.data?.occurred_at ?? null,
+    longStayFromNights,
     rows: rows.map((r) => {
       const org = orgBy.get(r.org_id);
       const mode = paymentModeFor(org?.payment_terms ?? null);

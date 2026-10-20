@@ -92,6 +92,7 @@ export async function notifyPartnerOfDecision(id: string, kind: Kind, requestId:
           newTotalFormatted: money(r.total_cents) ?? "see portal",
           datesChanged: meta.previousCheckIn !== meta.newCheckIn || meta.previousCheckOut !== meta.newCheckOut,
           respondByLabel: r.hold_expires_at ? formatTimestamp(r.hold_expires_at) : "as soon as possible",
+          stayTerms: r.stay_terms,
         }),
       });
     }

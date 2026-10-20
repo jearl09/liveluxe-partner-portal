@@ -183,7 +183,9 @@ function stayItems(src: InvoiceSource): InvoiceItem[] {
 
 function stayDescription(src: InvoiceSource): string {
   const b = src.booking;
-  return `Accommodation: ${src.propertyName}, ${b.check_in} to ${b.check_out} (${b.nights} nights). Guest: ${b.guest_name ?? "see booking"}.`;
+  const base = `Accommodation: ${src.propertyName}, ${b.check_in} to ${b.check_out} (${b.nights} nights). Guest: ${b.guest_name ?? "see booking"}.`;
+  // Terms written into the quote travel onto the invoice (Stripe caps the description at 1,500 characters).
+  return b.stay_terms ? `${base} Terms: ${b.stay_terms}`.slice(0, 1500) : base;
 }
 
 /**

@@ -107,6 +107,7 @@ export async function sendBookingConfirmed(
         invoiceUrl: invoice?.hosted_url ?? invoice?.pdf_url ?? null,
         requestUrl: `${env().NEXT_PUBLIC_APP_URL}/requests/${b.id}`,
         checkinReleaseLabel: `Check-in details are released in the portal ${checkinOffsetHours} hours before arrival.`,
+        stayTerms: b.stay_terms,
       }),
     });
   } catch (e) {
