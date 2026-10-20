@@ -28,13 +28,25 @@ describe("env(): Stripe key pair", () => {
     setEnv({ STRIPE_SECRET_KEY: "rk_live_x", NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_live_x" });
     expect(env().STRIPE_SECRET_KEY).toBe("rk_live_x");
   });
-  it("refuses a key pasted with a trailing space or line break (seen on production, 19 Oct 2026)", () => {
-    setEnv({ STRIPE_SECRET_KEY: "rk_live_abc \n", NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_live_abc" });
+  it("trims a key pasted with a space or line break around it (19 Oct 2026 on production)", () => {
+    setEnv({
+      STRIPE_SECRET_KEY: "rk_live_abc \n",
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: " pk_live_abc\r\n",
+      STRIPE_WEBHOOK_SECRET: "whsec_abc ",
+    });
+    expect(env().STRIPE_SECRET_KEY).toBe("rk_live_abc");
+    expect(env().NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).toBe("pk_live_abc");
+    expect(env().STRIPE_WEBHOOK_SECRET).toBe("whsec_abc");
+  });
+  it("refuses whitespace inside a key, but no stricter (an exact character set broke sign-in on 20 Oct 2026)", () => {
+    setEnv({ STRIPE_SECRET_KEY: "rk_live_ab c", NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_live_abc" });
     expect(() => env()).toThrow(/STRIPE_SECRET_KEY[\s\S]*no spaces or line breaks/);
-    setEnv({ STRIPE_WEBHOOK_SECRET: "whsec_abc " });
-    expect(() => env()).toThrow(/STRIPE_WEBHOOK_SECRET[\s\S]*no spaces/);
-    setEnv({ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_test_abc\r\n", STRIPE_SECRET_KEY: "sk_test_abc" });
-    expect(() => env()).toThrow(/NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY/);
+    setEnv({
+      STRIPE_SECRET_KEY: "rk_live_a-b.c",
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_live_x-y",
+      STRIPE_WEBHOOK_SECRET: "whsec_q.z",
+    });
+    expect(() => env()).not.toThrow();
   });
   it("still refuses to start without a webhook secret", () => {
     setEnv({ STRIPE_WEBHOOK_SECRET: "" });
