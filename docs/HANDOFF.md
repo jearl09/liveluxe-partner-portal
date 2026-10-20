@@ -73,7 +73,7 @@ Stripe, Hostaway Public API v1 (hand-rolled client), Resend, MapLibre, Vercel Cr
    and is audited before the email is sent; a send failure surfaces as HTTP 500 from `POST /api/invitations`).
 
 Run `node scripts/check-auth-setup.mjs claudia@liveluxeau.com` — it tells you which of steps 1–2 is still outstanding.
-Then sign in → `/admin/queue`; optionally Settings → Security → Turn on MFA.
+Then sign in; staff are asked to set up an authenticator app (mandatory for `livluxe_*` roles) before reaching `/admin/queue`.
 Then issue an invitation with `curl -X POST /api/invitations -H 'content-type: application/json'
 -d '{"email":"…","role":"partner_admin","orgId":"<partner org uuid>"}'` (cookie from the browser session) and accept it.
 

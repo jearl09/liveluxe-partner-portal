@@ -76,6 +76,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
       </section>
 
       <SecuritySettings
+        role={claims.role}
         settingsPath="/settings"
         flash={{
           mfa: typeof p.mfa === "string" ? p.mfa : undefined,

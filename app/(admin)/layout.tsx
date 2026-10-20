@@ -4,22 +4,23 @@ import { AppShell } from "@/components/layout/app-shell";
 import { createServerSupabase, getSessionClaims } from "@/lib/db/server";
 import { can, isLivluxeRole } from "@/lib/domain/permissions";
 import { getMfaStatus } from "@/lib/auth/mfa";
-import { mfaStepUpRequired } from "@/lib/domain/auth";
+import { mfaEnrolmentRequired, mfaStepUpRequired } from "@/lib/domain/auth";
 import { env } from "@/lib/env";
 import { loadShell } from "@/lib/layout/shell";
 
 /**
  * Live Luxe console. Only screens that exist are linked; calendar, reports, integrations
- * and audit slot in after Settings when they ship (brief §6.1). Users who turned MFA on
- * must verify a code each session.
+ * and audit slot in after Settings when they ship (brief §6.1). Two-factor authentication is
+ * mandatory for staff: no authenticator → set one up first; otherwise verify a code each session.
  */
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const claims = await getSessionClaims();
   if (!claims) redirect("/login");
   if (!isLivluxeRole(claims.role)) redirect("/");
   const mfa = await getMfaStatus(await createServerSupabase());
-  if (mfaStepUpRequired({ aal: mfa.aal, hasVerifiedFactor: mfa.verifiedTotp.length > 0 }))
-    redirect("/mfa/verify?next=/admin/queue");
+  const hasVerifiedFactor = mfa.verifiedTotp.length > 0;
+  if (mfaEnrolmentRequired({ role: claims.role, hasVerifiedFactor })) redirect("/mfa/enrol?next=/admin/queue");
+  if (mfaStepUpRequired({ aal: mfa.aal, hasVerifiedFactor })) redirect("/mfa/verify?next=/admin/queue");
   const shell = await loadShell(claims, "ops");
   const nav = [
     { href: "/admin/queue", label: "Queue", count: shell.queue?.live, alert: (shell.queue?.breached ?? 0) > 0 },

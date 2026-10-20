@@ -4,6 +4,8 @@ import {
   canInvite,
   evaluateInvitation,
   postLoginDestination,
+  mfaEnrolmentRequired,
+  mfaRequiredForRole,
   mfaStepUpRequired,
   safeRedirectPath,
   validatePassword,
@@ -74,13 +76,30 @@ describe("auth policy (spec §8.1 / §8.2)", () => {
     });
   });
 
-  describe("postLoginDestination (MFA is opt-in; enrolled users get the code prompt)", () => {
-    it("users without a factor go straight to their page", () => {
+  describe("postLoginDestination (MFA mandatory for staff, opt-in for partners; enrolled users get the code prompt)", () => {
+    it("partners without a factor go straight to their page", () => {
       expect(mfaStepUpRequired({ aal: "aal1", hasVerifiedFactor: false })).toBe(false);
       expect(
         postLoginDestination({ role: "partner_booker", aal: "aal1", hasVerifiedFactor: false, next: "/search" }),
       ).toBe("/search");
-      expect(postLoginDestination({ role: "livluxe_ops", aal: "aal1", hasVerifiedFactor: false })).toBe("/admin/queue");
+    });
+    it("staff without a factor must set one up first (David, 20 Oct 2026)", () => {
+      expect(mfaRequiredForRole("livluxe_ops")).toBe(true);
+      expect(mfaRequiredForRole("livluxe_admin")).toBe(true);
+      expect(mfaRequiredForRole("partner_admin")).toBe(false);
+      expect(mfaEnrolmentRequired({ role: "livluxe_ops", hasVerifiedFactor: false })).toBe(true);
+      expect(mfaEnrolmentRequired({ role: "livluxe_ops", hasVerifiedFactor: true })).toBe(false);
+      expect(mfaEnrolmentRequired({ role: "partner_admin", hasVerifiedFactor: false })).toBe(false);
+      expect(postLoginDestination({ role: "livluxe_ops", aal: "aal1", hasVerifiedFactor: false })).toBe(
+        "/mfa/enrol?next=%2Fadmin%2Fqueue",
+      );
+      expect(
+        postLoginDestination({ role: "livluxe_admin", aal: "aal1", hasVerifiedFactor: false, next: "/admin/audit" }),
+      ).toBe("/mfa/enrol?next=%2Fadmin%2Faudit");
+      // Enrolment keeps `next` on the same origin too.
+      expect(postLoginDestination({ role: "livluxe_ops", aal: "aal1", hasVerifiedFactor: false, next: "//evil" })).toBe(
+        "/mfa/enrol?next=%2Fadmin%2Fqueue",
+      );
     });
     it("enrolled users are asked for a code until the session is aal2", () => {
       expect(mfaStepUpRequired({ aal: "aal1", hasVerifiedFactor: true })).toBe(true);

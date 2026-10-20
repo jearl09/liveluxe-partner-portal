@@ -15,7 +15,7 @@ Section numbers in code comments (e.g. "§6.2") refer to that document.
 | UI        | Tailwind CSS v4, shadcn/ui-style components on Radix primitives, lucide-react                             |
 | Forms     | react-hook-form + Zod (same schemas on client and server)                                                 |
 | Data      | Supabase Postgres 15 + PostGIS, row-level security, generated types                                       |
-| Auth      | Supabase Auth, invite-only, JWT custom claims (`org_id`, `role`), optional TOTP MFA (Settings → Security) |
+| Auth      | Supabase Auth, invite-only, JWT custom claims (`org_id`, `role`), TOTP MFA (mandatory for staff, optional for partners) |
 | Payments  | Stripe PaymentIntents (manual capture), Invoicing, Customers, BECS                                        |
 | PMS       | Hostaway Public API v1 via a hand-rolled governed client (`lib/hostaway`)                                 |
 | Maps      | MapLibre GL + MapTiler/Mapbox tiles, supercluster, native heatmap layer                                   |

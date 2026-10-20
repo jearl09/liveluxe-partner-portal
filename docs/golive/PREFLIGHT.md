@@ -193,7 +193,7 @@ for the pilot. None of them blocks the live keys; revisit after the first real b
 
 | Item | Default that stands |
 |---|---|
-| Two-factor for staff | Opt-in. A staff member who enrols is then required to use it every session; nobody is forced to enrol. |
+| Two-factor for staff | ~~Opt-in~~ **Mandatory for staff since 20 Oct 2026 (David): staff without an authenticator are sent to set one up at sign-in; partners stay opt-in.** |
 | Cancellation inside the 7-day cut-off | Whole total retained, cleaning fee included. Ops can still enter a refund amount by hand on the cancel form when a case warrants it. |
 | GST | Flat 10% placeholder as a plain "GST (10%)" invoice line. |
 | Invoice address and layout | As generated today (Stripe defaults, booking footer). |
@@ -210,7 +210,7 @@ alert webhooks (blocker 4, an account setup).
 - **Cross-tenant GET /requests/{other org's id}** renders an empty page (200, no data) rather than 404; every API route answers 404/403.
 - **Wording** after a partner declines a counter-offer: the request shows "Cancelled".
 - **Dev-mode logging dropped the tail of some requests** (no `email.sent` line for 4 confirmations that did send); check production logs on Vercel show complete request tails (section 7).
-- **Two-factor for staff**: stays opt-in (default kept, 19 Oct); enforcing it for `livluxe_*` roles is a one-line rule when wanted.
+- **Two-factor for staff**: mandatory for `livluxe_*` roles since 20 Oct 2026 (David's decision); partners stay opt-in.
 - **Content-Security-Policy** header: build the allow-list and run report-only first.
 - **Sentry** (or equivalent) for error capture with stack traces; Vercel Logs are enough for the pilot if someone looks at them.
 - **Nightly database backup** off the Free plan's project (no backups on Free): needed before volume, strongly advised before the pilot's first real booking.

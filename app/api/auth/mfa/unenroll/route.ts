@@ -1,12 +1,12 @@
 /**
  * POST /api/auth/mfa/unenroll — turn two-factor authentication off (Settings → Security).
- * Supabase only allows removing a verified factor from an aal2 session, so an aal1 caller is
+ * Refused for Live Luxe staff, for whom it is mandatory (mfaRequiredForRole). Supabase only allows removing a verified factor from an aal2 session, so an aal1 caller is
  * sent to /mfa/verify first and returns here afterwards. Clears mfa_enrolled and audits.
  */
 import { createServerSupabase, getSessionClaims } from "@/lib/db/server";
 import { adminDb, appendAudit } from "@/lib/db/admin";
 import { log } from "@/lib/observability/logger";
-import { safeRedirectPath } from "@/lib/domain/auth";
+import { mfaRequiredForRole, safeRedirectPath } from "@/lib/domain/auth";
 import { getMfaStatus } from "@/lib/auth/mfa";
 import { clientIp, formFields, redirectTo, userAgent } from "@/lib/auth/request";
 import { requestId } from "@/lib/api/response";
@@ -19,6 +19,10 @@ export async function POST(req: Request) {
   const claims = await getSessionClaims();
   if (!claims) return redirectTo(req, "/login");
   const back = safeRedirectPath(next, claims.role.startsWith("livluxe_") ? "/admin/settings" : "/settings");
+  if (mfaRequiredForRole(claims.role)) {
+    log.warn("auth.mfa_unenroll_refused", { requestId: reqId, userId: claims.sub, role: claims.role });
+    return redirectTo(req, back, { error: "mfa_required" });
+  }
 
   const supabase = await createServerSupabase();
   const status = await getMfaStatus(supabase);

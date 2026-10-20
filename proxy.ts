@@ -98,8 +98,9 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/admin/queue", request.url));
   }
 
-  // MFA is opt-in. The per-session code prompt for users who enrolled is enforced in the
-  // (portal) and (admin) layouts, which can see whether a verified factor exists; the JWT cannot.
+  // MFA is mandatory for staff and opt-in for partners. Enrolment and the per-session code prompt
+  // are enforced in the (portal) and (admin) layouts, which can see whether a verified factor
+  // exists; the JWT cannot.
 
   if (claims && claims.user_role && path === "/login") {
     return NextResponse.redirect(new URL(isLivluxe ? "/admin/queue" : "/", request.url));

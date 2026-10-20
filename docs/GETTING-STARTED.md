@@ -55,7 +55,7 @@ uri = "pg-functions://postgres/public/custom_access_token_hook"
 
 ### Enabling TOTP multi-factor authentication (once per Supabase project)
 
-MFA is optional and turned on per user from Settings → Security. Enrolment at `/mfa/enrol`
+MFA is mandatory for Live Luxe staff (asked for at first sign-in) and optional for partners, who turn it on from Settings → Security. Enrolment at `/mfa/enrol`
 calls the Supabase MFA API, which must be switched on: **Authentication → Multi-Factor → TOTP → Enabled**. Locally:
 
 ```toml

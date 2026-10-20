@@ -71,10 +71,19 @@ export function canInvite(
 export type AssuranceLevel = "aal1" | "aal2";
 
 /**
- * MFA (TOTP) is OPTIONAL for every role: users turn it on from Settings → Security.
- * Product decision 2026-10-06 (overrides the scaffold's reading of §8.2, which made it
- * mandatory for livluxe_* roles). Once enrolled, the per-session code prompt is enforced.
+ * MFA (TOTP) is MANDATORY for Live Luxe staff (livluxe_* roles, spec §8.2; confirmed by David on
+ * 20 Oct 2026: staff approve bookings and see guest data) and optional for partners, who turn it
+ * on from Settings → Security. Once enrolled, the per-session code prompt applies to everyone.
  */
+export function mfaRequiredForRole(role: UserRole): boolean {
+  return isLivluxeRole(role);
+}
+
+/** A staff member with no verified authenticator must set one up before reaching the console. */
+export function mfaEnrolmentRequired(args: { role: UserRole; hasVerifiedFactor: boolean }): boolean {
+  return mfaRequiredForRole(args.role) && !args.hasVerifiedFactor;
+}
+
 export function mfaStepUpRequired(args: { aal: AssuranceLevel; hasVerifiedFactor: boolean }): boolean {
   return args.hasVerifiedFactor && args.aal !== "aal2";
 }
@@ -88,7 +97,8 @@ export function safeRedirectPath(next: unknown, fallback = "/"): string {
 
 /**
  * Where to send a user immediately after a successful password sign-in.
- * Users who turned MFA on are asked for their code first; everyone else goes straight through.
+ * Staff without an authenticator are sent to set one up; users who have one are asked for their
+ * code; everyone else goes straight through.
  */
 export function postLoginDestination(args: {
   role: UserRole;
@@ -97,6 +107,7 @@ export function postLoginDestination(args: {
   next?: unknown;
 }): string {
   const next = safeRedirectPath(args.next, isLivluxeRole(args.role) ? "/admin/queue" : "/");
+  if (mfaEnrolmentRequired(args)) return `/mfa/enrol?next=${encodeURIComponent(next)}`;
   if (!mfaStepUpRequired(args)) return next;
   return `/mfa/verify?next=${encodeURIComponent(next)}`;
 }
