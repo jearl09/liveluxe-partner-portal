@@ -28,6 +28,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     // Only links the role can open: operations staff would be sent straight back to the queue.
     ...(can(claims.role, "partners.manage") ? [{ href: "/admin/partners", label: "Partners" }] : []),
     ...(can(claims.role, "rate_cards.manage") ? [{ href: "/admin/rate-cards", label: "Rate cards" }] : []),
+    // Staff accounts: the internal organisation's people page, which the Partners list hides.
+    ...(can(claims.role, "org.manage_users") ? [{ href: "/admin/team", label: "Team" }] : []),
     { href: "/admin/settings", label: "Settings" },
   ];
   return (
