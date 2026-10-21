@@ -7,6 +7,9 @@
  *   node scripts/demo-reset.mjs --yes --include-request LLX-2026-000003
  *                                        # also removes a named test request Live Luxe staff made for the internal
  *                                        # organisation (never another partner's, never the organisation itself)
+ *   node scripts/demo-reset.mjs --org "NRMA Insurance" [--yes]
+ *                                        # also removes a named test partner organisation (repeatable; the internal
+ *                                        # Live Luxe organisation is never matched)
  *   node scripts/demo-reset.mjs --env-file .env.live --project <ref> [--yes]
  *                                        # same removal on the one named project (the live site before real
  *                                        # partners exist); refused unless that file points at that project, with a
@@ -29,6 +32,8 @@ import { DEMO_ORG_NAMES, loadTestEnv, must } from "./demo/env.mjs";
 
 const apply = process.argv.includes("--yes");
 const extraRefs = process.argv.flatMap((a, i, all) => (a === "--include-request" && all[i + 1] ? [all[i + 1]] : []));
+const extraOrgs = process.argv.flatMap((a, i, all) => (a === "--org" && all[i + 1] ? [all[i + 1].trim()] : []));
+const orgNames = [...new Set([...DEMO_ORG_NAMES, ...extraOrgs.filter(Boolean)])];
 const { db, stripe } = loadTestEnv();
 
 const ids = (rows, key = "id") => [...new Set((rows ?? []).map((r) => r[key]).filter(Boolean))];
@@ -40,11 +45,12 @@ const orgs = must(
   await db
     .from("partner_orgs")
     .select("id, name, stripe_customer_id, is_internal")
-    .in("name", DEMO_ORG_NAMES)
+    .in("name", orgNames)
     .eq("is_internal", false),
 );
+for (const name of extraOrgs) if (!orgs.some((o) => o.name === name)) console.warn(`  --org "${name}": not found, skipped`);
 if (!orgs.length && !extraRefs.length) {
-  console.log(`No demo organisation (${DEMO_ORG_NAMES.join(", ")}) found: nothing to remove.`);
+  console.log(`No demo organisation (${orgNames.join(", ")}) found: nothing to remove.`);
   await reportNumbering();
   process.exit(0);
 }
