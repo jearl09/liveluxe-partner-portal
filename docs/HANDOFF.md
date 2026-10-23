@@ -1,6 +1,139 @@
-# Handoff — state of the project as of 2026-10-09 (session 4)
+# Handover — Livluxe Partner Portal (state at 23 Oct 2026)
 
-Read this first when starting a new Claude Code session in this folder.
+Read this first. The build is complete and live; what remains is business-side (section 7). The session-by-session
+history that used to be this file is kept below under "History".
+
+## 1. What it is
+
+Invite-only booking portal where insurance and corporate partners book Live Luxe apartments for long stays. Partners
+search live availability, send a request, and pay by card or on account; Live Luxe staff approve, counter-offer or
+decline; an approved booking is written into Hostaway (which blocks the nights on Airbnb and the other channels),
+invoiced through Stripe, and then runs itself: check-in details released before arrival, extensions, cancellations
+and refunds under the policy, unpaid invoices chased and released. Owner: Live Luxe Pty Ltd (ABN 16 678 772 613).
+Architecture of record: `docs/spec/Livluxe-Partner-Booking-Platform-Architecture-Spec.pdf` (code cites it as §N).
+
+## 2. Where it runs
+
+| | Live (partners use this) | Test (for trying things) |
+|---|---|---|
+| URL | https://partners.liveluxe.au | https://liveluxe-partner-portal.vercel.app |
+| Vercel | Pro team `contact-43238825`, project `liveluxe-partner-portal` | engineer's Hobby account (same project name) |
+| Supabase | ref `hypimlrdlfcwsmqcodtq`, Sydney, Free plan | ref `adgvnmbkvydkonnpskzx` |
+| Stripe | live keys, account "Live Luxe Pty Ltd" (org "Direct bookings"), webhook destination `partner-portal-live` | sandbox keys |
+| Hostaway | production account, writes ON (`HOSTAWAY_ALLOW_WRITES=true`), unified webhook id 37606 | same account, writes OFF |
+| Email | Resend, from `bookings@booking.liveluxe.au`, reply-to `contact@liveluxeau.com` | same |
+| Deploys | push to `main` on GitHub `jearl09/liveluxe-partner-portal` → Vercel builds production | `node scripts/deploy-hobby.mjs` |
+
+`GET /api/health` on either site returns the deployed git hash. Live is on `71d8176` or later.
+
+Secrets live in exactly three places: Vercel → Settings → Environment Variables (live values), `.env.local` (test
+values, git-ignored) and Proton Pass. `.env.live` on the engineer's laptop is a temporary copy and should be deleted
+once Proton Pass has everything. Never put a key in chat, a document or a `NEXT_PUBLIC_` variable.
+
+## 3. Accounts and who owns them
+
+| Account | Owner | Notes |
+|---|---|---|
+| Vercel Pro team, GitHub repo | David | engineer has deploy access |
+| Supabase (both projects) | David / Angel | Free plan on live: no automatic backups; project pauses after 7 idle days (cron traffic keeps it awake) |
+| Stripe | David | ABN and "Tax invoice" footer configured; Stripe's own customer emails turned off (the portal sends its own) |
+| Hostaway | David / Angel | API key labelled for the portal; webhook 37606 points at the live site |
+| Resend, Slack webhooks | David | `#bookings` and `#alerts` channels |
+| Domains | GoDaddy (liveluxe.au DNS also carries the Resend DKIM/SPF records) | |
+| Portal staff | claudia@liveluxeau.com, role `livluxe_admin`, authenticator enrolled | the only staff account on live at handover |
+
+Staff sign-in requires an authenticator app (mandatory for all `livluxe_*` roles since 20 Oct 2026, David's
+decision). **Invite a second administrator before anything else** so a lost phone cannot lock the business out:
+Admin → Team → invite → "Live Luxe administrator".
+
+## 4. Day-to-day operation (no code involved)
+
+- **Staff**: Admin → Team. Roles: Operations (queue, decisions, bookings), Finance (plus rate cards, refunds,
+  audit, reconciliation), Administrator (everything incl. partners and users). The invitee sets a password, then
+  scans the QR code with any authenticator app.
+- **New partner**: Admin → Partners → New partner. Required: name and type. Payment terms: card hold (default),
+  card deposit, or invoice net 14 / net 30 (only partners David approves; set a credit limit and a finance contact).
+  Then scroll to People and invite their first user as Administrator; they invite their own colleagues from then on.
+  Partners do not need an authenticator (optional for them).
+- **Negotiated prices**: Admin → Rate cards: a discount %, fixed rates on chosen properties or long-stay tiers for one
+  partner, valid between two dates. There is no standard discount.
+- **Queue**: requests arrive most urgent first. Approve (28+ night stays must carry written "Terms for this stay"),
+  counter-offer (price and/or dates, same terms rule), decline. Every decision emails the partner.
+- **Bookings**: filter All / In progress / Confirmed / Closed; open one to cancel, extend, shorten, release the
+  check-in pack early, override a refund (finance/admin), or see the audit trail.
+- **Which properties partners see**: one global list; a listing is hidden or shown by `listings.is_partner_visible`
+  (SQL editor for now; per-partner lists are agreed for after the pilot). Prices come from Hostaway's calendar: the
+  27 listings still priced at $10 in Hostaway must be fixed there before the pilot.
+- **Business tunables** are rows in the `settings` table, changed in the Supabase SQL editor, no deploy needed.
+  Live values that matter: `hold.duration_hours` 24, `sla.default_hours` 24, `cancellation.cutoff_days` 14,
+  `checkin.release_offset_hours` 48, `checkin.door_code_offset_hours` 24, `invoice.release_warning_days` 2,
+  `stay.long_stay_terms_from_nights` 28, `tax.rules` flat 10 % GST (awaiting the accountant). Full list: grep
+  `insert into settings` in `supabase/migrations`.
+- **Demo / test data on live**: `node scripts/demo-reset.mjs --env-file .env.live --project hypimlrdlfcwsmqcodtq
+  [--org "<name>"]` lists (dry run) and with `--yes` removes a test partner and everything under it. Cancel the test
+  booking in the portal first so Hostaway and Stripe are cleaned too. `select setval('booking_reference_seq', 1,
+  false);` restarts numbering at LLX-…-000001 while no requests exist.
+
+## 5. What runs by itself (Vercel cron; `lib/jobs/registry.ts`, `vercel.json`)
+
+| Job | When (UTC) | Does |
+|---|---|---|
+| sync-listings | hourly | catalogue from Hostaway, incl. encrypted door codes and Wi-Fi |
+| sync-calendar-near / -far | every 15 min / every 6 h | availability 0–120 d / 121–400 d |
+| drain-webhooks | every minute | processes Stripe and Hostaway webhook events, finishes stuck confirmations |
+| expire-holds | every 5 min | releases 24 h holds, cancels the card authorisation |
+| sla-escalation | every 10 min | Slack/email ladder at 50/80/100/150 % of the reply promise |
+| release-checkin | hourly | Wi-Fi and directions 48 h before, door code 24 h before |
+| complete-stays | 04:30 | CONFIRMED → CHECKED_IN → COMPLETED, purges codes after the stay |
+| reconcile-hostaway / reconcile-stripe | 03:15 / 03:45 | compares our records with Hostaway and Stripe, raises exceptions |
+| check-authorisations, invoice-dunning | 09:00 / 10:00 | stale card holds; overdue invoice reminders and suspension |
+| release-unpaid-invoices | 10:30 | warns 2 days before due, releases the booking on the due date |
+| token-health | 08:00 | Hostaway token expiry warnings |
+
+Failures go to Slack `#alerts` with the booking reference; money problems also email finance. A Stripe refund that
+fails is flagged for manual processing rather than retried blindly.
+
+## 6. Verified on the live site (20–22 Oct 2026)
+
+Two complete real runs: partner created → invited by email → request with claim number → approved → Hostaway
+reservation created and nights blocked → invoice emailed → cancelled → reservation cancelled, nights freed, invoice
+voided. Stripe and Hostaway webhooks confirmed arriving and processed. Test data removed afterwards. **Not yet done
+with a real card on live**: the card hold / charge / refund path is tested on the test site and in the automated
+suite; the first live card booking is planned with David present (book, approve, cancel, watch the refund).
+
+## 7. Open items
+
+Business (David / Angel):
+1. Final list of properties partners may see, and real prices for the 27 placeholder listings in Hostaway.
+2. Accountant's answer on GST (flat 10 % is applied meanwhile; blocking for invoices to real partners).
+3. Pilot partner name and contact; which smart locks the properties use (per-booking door codes depend on it).
+4. First real card booking and refund, with David.
+5. Second staff administrator invited (section 3).
+6. Delete leftover Stripe customers "Smoke Test Co", "NRMA Insurance", "Demo Insurance Co" (cosmetic).
+
+Engineering, agreed for after the pilot: per-partner property lists; Supabase backups (Free plan has none: either
+the Pro plan or a nightly `pg_dump`); Sentry and a Content-Security-Policy header; map tiles key; Hostaway webhook
+events are stored and reconciled but not acted on in real time; a counter-offer with a raised total under-collects
+the difference; quotes are not persisted; wording and lint nits listed in `docs/golive/PREFLIGHT.md` §5.
+
+## 8. For the next developer
+
+- Setup: `docs/GETTING-STARTED.md`. Layout: `README.md`. Decisions and reasons: `docs/DECISIONS-REQUIRED.md`,
+  `docs/adr/`. Go-live record: `docs/GO-LIVE-CHECKLIST.md`, `docs/golive/PREFLIGHT.md`. Demo script:
+  `docs/demo/DEMO_SCRIPT.md`. End-user guide: `docs/guides/Livluxe-Partner-Portal-User-Guide.pdf`.
+- Rules that keep it safe: `lib/domain/**` is pure and unit-tested (≥ 90 %); the service-role client is forbidden in
+  partner-facing code (`npm run guard:service-role`); every Hostaway call goes through `hostawayFetch()`; Hostaway
+  writes refuse to run unless `HOSTAWAY_ALLOW_WRITES=true` and `VERCEL_ENV=production`; money is integer cents;
+  business numbers live in `settings`, never in code.
+- Before pushing: `npm run typecheck && npm run lint && npm test && npm run guard:service-role` (418 tests green at
+  handover). Migrations are plain SQL in `supabase/migrations`, applied by pasting into the Supabase SQL editor, the
+  live project included; the latest applied on live is `20261020120000`.
+- Read-only checks against live are fine with the service key; anything that writes to production or Hostaway is
+  done by hand in the portal, or by the person who owns the account.
+
+---
+
+# History (session log, oldest first)
 
 > Cut-over steps for the pilot live in `docs/GO-LIVE-CHECKLIST.md`.
 
